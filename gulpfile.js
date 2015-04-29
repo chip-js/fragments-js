@@ -24,10 +24,10 @@ gulp.task('default', [ 'dist', 'docs' ]);
 
 gulp.task('dist', function() {
   return gulp.src(srcFiles)
-    .pipe(concat('chip.js'))
+    .pipe(concat('chip-binding.js'))
     .pipe(coffee({ bare: true })).on('error', gutil.log)
     .pipe(gulp.dest('dist'))
-    .pipe(rename('chip.min.js'))
+    .pipe(rename('chip-binding.min.js'))
     .pipe(uglify()).on('error', gutil.log)
     .pipe(gulp.dest('dist'))
 });
