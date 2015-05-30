@@ -23,7 +23,7 @@ THE SOFTWARE.
 // > Based on work from Google's observe-js polyfill: https://github.com/Polymer/observe-js
 
 // A namespace to store the functions on
-diff = {};
+diff = exports;
 
 (function() {
 

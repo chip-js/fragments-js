@@ -1,3 +1,5 @@
+module.exports = Filter;
+
 # # Chip Filter
 
 # A Filter is stored to process the value of an expression in `controller.watch` (and thus most bindings which use

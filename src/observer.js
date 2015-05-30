@@ -1,22 +1,55 @@
 module.exports = Observer;
+var expression = require('./expression');
+var filters = require('./filter').filters;
+var diff = require('./diff');
 
-// # Chip Observer
+// # Observer
 
-// Defines an observer class which represents a bound `getter` function. Whenever that `getter` returns a new value the
-// `callback` is called with the value.
+// Defines an observer class which represents an expression. Whenever that expression returns a new value the `callback`
+// is called with the value.
 //
 // If the old and new values were either an array or an object, the `callback` also
 // receives an array of splices (for an array), or an array of change objects (for an object) which are the same
 // format that `Array.observe` and `Object.observe` return <http://wiki.ecmascript.org/doku.php?id=harmony:observe>.
-// An Observer should never be created with its constructor. Only through `Observer.add()`.
-function Observer(getter, callback, oldValue) {
-  this.getter = getter;
+function Observer(expr, callback) {
+  this.getter = expression.get(expr);
+  this.setter = expression.getSetter(expr);
   this.callback = callback;
-  this.oldValue = oldValue;
   this.skip = false;
+  this.context = null;
+  this.oldValue = undefined;
 }
 
 Observer.prototype = {
+
+  // Binds this expression to a given context
+  bind: function(context) {
+    this.context = context;
+    if (this.callback) Observer.add(this);
+  },
+
+  // Unbinds this expression
+  unbind: function() {
+    this.context = null;
+    Observer.remove(this);
+    this.sync();
+  },
+
+  // Returns the current value of this observer
+  get: function() {
+    if (this.context) {
+      return this.getter.call(this.context, filters);
+    }
+  },
+
+  // Sets the value of this expression
+  set: function(value) {
+    if (this.context) {
+      return this.setter.call(this.context, filters, value);
+    }
+  },
+
+
   // Instructs this observer to not call its `callback` on the next sync, whether the value has changed or not
   skipNextSync: function() {
     this.skip = true;
@@ -25,7 +58,7 @@ Observer.prototype = {
 
   // Syncs this observer now, calling the callback immediately if there have been changes
   sync: function() {
-    var value = this.getter();
+    var value = this.get();
 
     // Don't call the callback if `skipNextSync` was called on the observer
     if (this.skip) {
@@ -41,16 +74,10 @@ Observer.prototype = {
       }
     }
 
-    // Store an immutable version of the value, allowing for arrays and objects to change instance but not
-    // content and still refrain from dispatching callbacks (e.g. when using an object in bind-class or when
-    // using array filters in bind-each)
+    // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
+    // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array filters in
+    // bind-each)
     this.oldValue = diff.clone(value);
-  },
-
-
-  // Closes the observer, stopping it from being run and allowing it to be garbage-collected
-  close: function() {
-    Observer.remove(this);
   }
 };
 
@@ -62,34 +89,14 @@ Observer.observers = [];
 Observer.callbacks = [];
 Observer.listeners = [];
 
-// Adds a new observer to be notified of changes. `getter` is a function which returns a value. `callback` is called
-// whenever `getter` returns a new value. `callback` is called with that value and perhaps splices or change records.
-// If `skipTriggerImmediately` is true then the callback will only be called when a change is made, not initially.
-//
-// **Example:**
-// ```javascript
-// var obj = {firstName: 'Jacob', lastName: 'Wright'}
-// var getter = function() {
-//   return this.firstName + ' ' + this.lastName
-// }.bind(obj)
-//
-// Observer.add(getter, function(value) {
-//   $('#user-name').text(value)
-// })
-Observer.add = function(getter, skipTriggerImmediately, callback) {
-  if (typeof skipTriggerImmediately === 'function') {
-    callback = skipTriggerImmediately;
-    skipTriggerImmediately = false;
-  }
-
-  var value = getter();
-  var observer = new Observer(getter, callback, diff.clone(value));
+// Adds a new observer to be synced with changes. If `skipUpdate` is true then the callback will only be called when a
+// change is made, not initially.
+Observer.add = function(observer, skipUpdate) {
   this.observers.push(observer);
-  if (!skipTriggerImmediately) callback(value);
-  return observer;
+  if (!skipUpdate) observer.sync();
 };
 
-// Removes an observer, stopping it from being run and allowing it to be garbage-collected
+// Removes an observer, stopping it from being run
 Observer.remove = function(observer) {
   var index = this.observers.indexOf(observer);
   if (index !== -1) {
