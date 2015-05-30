@@ -1,9 +1,11 @@
+Filter = require('./filter')
+
 # # Default Filters
 
 # ## filter
 # Filters an array by the given filter function(s), may provide a function, an
 # array, or an object with filtering functions
-chip.filter 'filter', (value, filterFunc) ->
+Filter.addFilter 'filter', (value, filterFunc) ->
   return [] unless Array.isArray value
   return value unless filterFunc
   if typeof filterFunc is 'function'
@@ -20,7 +22,7 @@ chip.filter 'filter', (value, filterFunc) ->
 
 # ## map
 # Adds a filter to map an array or value by the given mapping function
-chip.filter 'map', (value, mapFunc) ->
+Filter.addFilter 'map', (value, mapFunc) ->
   return value unless value? and mapFunc
   if Array.isArray value
     value.map(mapFunc, this)
@@ -29,7 +31,7 @@ chip.filter 'map', (value, mapFunc) ->
 
 # ## reduce
 # Adds a filter to reduce an array or value by the given reduce function
-chip.filter 'reduce', (value, reduceFunc, initialValue) ->
+Filter.addFilter 'reduce', (value, reduceFunc, initialValue) ->
   return value unless value? and reduceFunc
   if Array.isArray value
     if arguments.length is 3 then value.reduce(reduceFunc, initialValue) else value.reduce(reduceFunc)
@@ -38,7 +40,7 @@ chip.filter 'reduce', (value, reduceFunc, initialValue) ->
 
 # ## reduce
 # Adds a filter to reduce an array or value by the given reduce function
-chip.filter 'slice', (value, index, endIndex) ->
+Filter.addFilter 'slice', (value, index, endIndex) ->
   if Array.isArray value
     value.slice(index, endIndex)
   else
@@ -47,7 +49,7 @@ chip.filter 'slice', (value, index, endIndex) ->
 
 # ## date
 # Adds a filter to format dates and strings
-chip.filter 'date', (value) ->
+Filter.addFilter 'date', (value) ->
   return '' unless value
   unless value instanceof Date
     value = new Date(value)
@@ -57,14 +59,14 @@ chip.filter 'date', (value) ->
 
 # ## log
 # Adds a filter to log the value of the expression, useful for debugging
-chip.filter 'log', (value, prefix = 'Log') ->
+Filter.addFilter 'log', (value, prefix = 'Log') ->
   console.log prefix + ':', value
   return value
 
 
 # ## limit
 # Adds a filter to limit the length of an array or string
-chip.filter 'limit', (value, limit) ->
+Filter.addFilter 'limit', (value, limit) ->
   if value and typeof value.slice is 'function'
     if limit < 0
       value.slice limit
@@ -76,7 +78,7 @@ chip.filter 'limit', (value, limit) ->
 
 # ## sort
 # Sorts an array given a field name or sort function, and a direction
-chip.filter 'sort', (value, sortFunc, dir) ->
+Filter.addFilter 'sort', (value, sortFunc, dir) ->
   return value unless sortFunc and Array.isArray value
   dir = if dir is 'desc' then -1 else 1
   if typeof sortFunc is 'string'
@@ -96,7 +98,7 @@ chip.filter 'sort', (value, sortFunc, dir) ->
 
 # ## addQuery
 # Takes the input URL and adds (or replaces) the field in the query
-chip.filter 'addQuery', (value, queryField, queryValue) ->
+Filter.addFilter 'addQuery', (value, queryField, queryValue) ->
   url = value or location.href
   [url, query] = url.split('?')
   addedQuery = ''
@@ -117,7 +119,7 @@ chip.filter 'addQuery', (value, queryField, queryValue) ->
 
 # ## paginate
 # Paginates an array by pageSize with a defaultPage and optional name for the data
-chip.filter 'paginate', (value, pageSize, defaultPage = 1, name = 'pagination') ->
+Filter.addFilter 'paginate', (value, pageSize, defaultPage = 1, name = 'pagination') ->
   unless pageSize and Array.isArray value
     delete this.app.rootController[name]
     # triggers that pagination has run so view that is higher up in the page can refresh
@@ -154,6 +156,11 @@ chip.filter 'paginate', (value, pageSize, defaultPage = 1, name = 'pagination') 
     pagination.page
 
 
+div = document.createElement('div')
+escape = (value) ->
+  div.textContent = value or ''
+  div.innerHTML
+
 # ## escape
 # HTML escapes content. For use with other HTML-adding filters such as autolink.
 #
@@ -165,10 +172,8 @@ chip.filter 'paginate', (value, pageSize, defaultPage = 1, name = 'pagination') 
 # ```xml
 # <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
 # ```
-div = null
-chip.filter 'escape', (value) ->
-  div = $('<div></div>') unless div
-  div.text(value or '').text()
+Filter.addFilter 'escape', escape
+
 
 # ## p
 # HTML escapes content wrapping paragraphs in <p> tags.
@@ -182,10 +187,9 @@ chip.filter 'escape', (value) ->
 # <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</p>
 # <p>It's great</p></div>
 # ```
-chip.filter 'p', (value) ->
-  div = $('<div></div>') unless div
+Filter.addFilter 'p', (value) ->
   lines = (value or '').split(/\r?\n/)
-  escaped = lines.map (line) -> div.text(line).text() or '<br>'
+  escaped = lines.map (line) -> escape(line) or '<br>'
   '<p>' + escaped.join('</p><p>') + '</p>'
 
 
@@ -201,10 +205,9 @@ chip.filter 'p', (value) ->
 # <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
 # It's great</div>
 # ```
-chip.filter 'br', (value) ->
-  div = $('<div></div>') unless div
+Filter.addFilter 'br', (value) ->
   lines = (value or '').split(/\r?\n/)
-  escaped = lines.map (line) -> div.text(line).text()
+  escaped = lines.map (line) -> escape(line)
   escaped.join('<br>')
 
 
@@ -220,12 +223,12 @@ chip.filter 'br', (value) ->
 # <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
 # It's great</p></div>
 # ```
-chip.filter 'newline', (value) ->
+Filter.addFilter 'newline', (value) ->
   div = $('<div></div>') unless div
   paragraphs = (value or '').split(/\r?\n\s*\r?\n/)
   escaped = paragraphs.map (paragraph) ->
     lines = paragraph.split(/\r?\n/)
-    escaped = lines.map (line) -> div.text(line).text()
+    escaped = lines.map (line) -> escape(line)
     escaped.join('<br>')
   '<p>' + escaped.join('</p><p>') + '</p>'
 
@@ -243,22 +246,22 @@ chip.filter 'newline', (value) ->
 # <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
 # ```
 urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi
-chip.filter 'autolink', (value, target) ->
+Filter.addFilter 'autolink', (value, target) ->
   target = if target then ' target="_blank"' else ''
   ('' + value).replace /<[^>]+>|[^<]+/g, (match) ->
     return match if match.charAt(0) is '<'
     match.replace(urlExp, '$1<a href="$2"' + target + '>$2</a>')
 
 
-chip.filter 'int', (value) ->
+Filter.addFilter 'int', (value) ->
   value = parseInt value
   if isNaN(value) then null else value
 
 
-chip.filter 'float', (value) ->
+Filter.addFilter 'float', (value) ->
   value = parseFloat value
   if isNaN(value) then null else value
 
 
-chip.filter 'bool', (value) ->
+Filter.addFilter 'bool', (value) ->
   value and value isnt '0' and value isnt 'false'

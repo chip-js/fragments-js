@@ -6,41 +6,30 @@
 # errors, allows for filters on data, and provides detailed error reporting.
 
 # The expression object with its expression cache.
-expression = {
-  cache: {}
-  globals: ['true', 'false', 'window', 'this']
-}
-
-# Tests whether an expression is inverted. An inverted expression will look like
-# `/user/{{user.id}}` instead of `'/user/' + user.id`
-expression.isInverted = (expr) ->
-  expr.match(invertedExpr) and true
-
-# Reverts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
-expression.revert = (expr) ->
-  expr = '"' + expr.replace(invertedExpr, (match, expr) -> '" + (' + expr + ') + "') + '"'
-  expr.replace(/^"" \+ | \+ ""$/g, '')
+expression = exports;
+expression.cache = {}
+expression.globals = ['true', 'false', 'null', 'undefined', 'window', 'this']
 
 
 # Creates a function from the given expression. An `options` object may be
 # provided with the following options:
 # * `args` is an array of strings which will be the function's argument names
 # * `globals` is an array of strings which define globals available to the
-# function (these will not be prefixed with `this.`). `'true'`, `'false'` and,
+# function (these will not be prefixed with `this.`). `'true'`, `'false'`,
 # `'null'`, and `'window'` are included by default.
 #
 # This function will be cached so subsequent calls with the same expression will
 # return the same function. E.g. the expression "name" will always return a
 # single function with the body `return this.name`.
-#
-# The function's scope expects an object named `_filters` on it to provide the
-# filters that the expressions may use.
 expression.get = (expr, options = {}) ->
-  args = options.args or []
+  options.args = [] unless options.args
+  args = options.args
   cacheKey = expr + '|' + args.join(',')
   # Returns the cached function for this expression if it exists.
   func = expression.cache[cacheKey]
   return func if func
+
+  args.unshift('_filters_');
 
   # Prefix all property lookups with the `this` keyword. Ignores keywords
   # (window, true, false) and extra args
@@ -57,14 +46,18 @@ expression.get = (expr, options = {}) ->
   func
 
 
+# Creates a setter function from the given expression.
+expression.getSetter = (expr, options = {}) ->
+  options.args = ['value']
+  expr = expr.replace(/(\s*\||$)/, ' = value$1');
+  expression.get(expr, options);
+
+
 
 # Compiles an expression and binds it in the given scope. This allows it to be
 # called from anywhere (e.g. event listeners) while retaining the scope.
 expression.bind = (expr, scope, options) ->
   expression.get(expr, options).bind(scope)
-
-# determines whether an expression is inverted
-invertedExpr = /{{(.*)}}/g
 
 # finds all quoted strings
 quoteExpr = /(['"\/])(\\\1|[^\1])*?\1/g
@@ -167,7 +160,7 @@ parseFilters = (expr) ->
     filterName = args.shift()
     args.unshift(value)
     args.push(true) if setter
-    value = "_filters.#{filterName}.call(this, #{args.join(', ')})"
+    value = "_filters_.#{filterName}.call(this, #{args.join(', ')})"
 
   setter + value
 
@@ -326,5 +319,3 @@ parsePart = (part, index) ->
   currentReference = ++referenceCount
   ref = "_ref#{currentReference}"
   "(#{ref} = #{part}) == null ? undefined : "
-
-chip.expression = expression

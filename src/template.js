@@ -1,5 +1,4 @@
-var toFragment = require('./util/toFragment');
-var slice = Array.prototype.slice;
+var toFragment = require('./toFragment');
 
 // ## Template
 // Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
@@ -64,6 +63,7 @@ function addHook(type, hook) {
   hooks[type].push(hook);
 }
 
+
 function removeHook(type, hook) {
   if (typeof hook !== 'function') throw new TypeError('A hook must be a function');
   if (!hooks[type]) throw new TypeError('Invalid type for hook');
@@ -71,6 +71,7 @@ function removeHook(type, hook) {
   if (index >= 0) hooks[type].splice(index, 1);
   return index >= 0;
 }
+
 
 function createTemplate(html) {
   var node = fragment = toFragment(html);
@@ -90,9 +91,11 @@ function createTemplate(html) {
   return node;
 }
 
+
 function templateCreateView() {
   return this.pool.pop() || createView(this.cloneNode(true), this);
 }
+
 
 function createView(node, template) {
   if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
@@ -114,6 +117,7 @@ function createView(node, template) {
 
   return node;
 }
+
 
 function removeView() {
   if (this.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
@@ -140,6 +144,7 @@ function removeView() {
   return this;
 }
 
+
 function disposeView() {
   // Make sure the view is removed from the DOM
   this.remove();
@@ -148,6 +153,7 @@ function disposeView() {
     this.template.pool.push(this);
   }
 }
+
 
 function runHooks(type, value) {
   hooks[type].forEach(function(hook) {
