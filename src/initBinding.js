@@ -1,5 +1,6 @@
 var Template = require('./template');
 var Binder = require('./binder');
+var Binding = require('./binding');
 var slice = Array.prototype.slice;
 
 
@@ -14,6 +15,7 @@ Template.viewMethods.unbind = unbindView;
 function compileTemplate(template) {
   var walker = document.createTreeWalker(template, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
   var bindings = [], previous;
+  template.bindings = bindings;
 
   // This ensures the first node will be a valid node from SHOW_NODES (the root isn't valid if it's a document fragment)
   walker.nextNode();
@@ -21,14 +23,17 @@ function compileTemplate(template) {
 
   // find bindings for each node
   do {
-    bindings.push.apply(bindings, getBindingsForNode(walker.currentNode, template));
+    var node = walker.currentNode;
+    var parentNode = node.parentNode;
+    bindings.push.apply(bindings, getBindingsForNode(node, template));
 
-    if (walker.currentNode.previousSibling !== previous) {
+    if (node.parentNode !== parentNode && previous) {
       // currentNode was removed and made a template
       walker.currentNode = previous;
-      if (previous.nextSibling.nodeType === Node.TEXT_NODE && previous.nextSibling.nodeValue === '') {
-        // an empty text node was used as a placeholder (or if not, still can skip)
-        walker.nextNode();
+      walker.nextNode();
+      if (walker.currentNode.nodeType !== Node.TEXT_NODE || walker.currentNode.nodeValue !== '') {
+        // an empty text node wasn't used as a placeholder, go back
+        walker.previousNode();
       }
     }
 
@@ -57,7 +62,7 @@ function cleanupView(view) {
 
 // Adds a method to views to bind their observers with an object
 function bindView(context) {
-  view.bindings.forEach(function(binding) {
+  this.bindings.forEach(function(binding) {
     binding.bind(context);
   });
 }
@@ -65,7 +70,7 @@ function bindView(context) {
 
 // Adds a method to view to unbind their observers
 function unbindView() {
-  view.bindings.forEach(function(binding) {
+  this.bindings.forEach(function(binding) {
     binding.unbind();
   });
 }
@@ -168,7 +173,7 @@ function cloneBinding(binding, view) {
   binding.elementPath.forEach(function(index) {
     node = node.childNodes[index];
   });
-  var binding = new Binding(this);
+  var binding = new Binding(binding);
   binding.element = node;
   binding.view = view;
   return binding;

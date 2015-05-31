@@ -156,7 +156,7 @@ function createBinding(binder, options) {
 }
 
 
-// Takes a string like "(*)" or "on-*" and converts it into a regular expression.
+// Takes a string like "(\*)" or "on-\*" and converts it into a regular expression.
 function escapeRegExp(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 }
