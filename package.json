@@ -1,18 +1,22 @@
 {
-  "name": "chip-binding",
+  "name": "fragments-js",
   "version": "0.1.0",
   "scripts": {
-    "build": "browserify -t coffeeify --extension='.coffee' --standalone binding index.js -o dist/chip-binding.js",
-    "watch": "watchify -t coffeeify --extension='.coffee' --standalone binding index.js -o dist/chip-binding.js",
-    "compress": "uglifyjs dist/chip-binding.js -c -o dist/chip-binding.min.js",
+    "build": "browserify -t coffeeify --extension='.coffee' --standalone fragments index.js -o dist/fragments.js",
+    "watch": "watchify -t coffeeify --extension='.coffee' --standalone fragments index.js -o dist/fragments.js",
+    "compress": "uglifyjs dist/fragments.js -c -o dist/fragments.min.js",
     "docs": "docco -o docs src/*.js",
     "prepublish": "npm run build",
     "postbuild": "npm run compress"
   },
   "devDependencies": {
     "browserify": "^10.2.1",
+    "chai": "^2.3.0",
     "coffeeify": "^1.1.0",
     "docco": "^0.7.0",
+    "mocha": "^2.2.5",
+    "mocha-phantomjs": "^3.5.3",
+    "phantomjs": "^1.9.17",
     "uglify-js": "^2.4.23",
     "watchify": "^3.2.1"
   }

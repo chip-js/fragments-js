@@ -1,8 +1,9 @@
-exports.observer = require('./src/observer');
+exports.Observer = require('./src/observer');
 exports.diff = require('./src/diff');
-exports.template = require('./src/template');
+exports.Template = require('./src/template');
 exports.expression = require('./src/expression');
-exports.binding = require('./src/binding');
-exports.binder = require('./src/binder');
-exports.filter = require('./src/filter');
+exports.Binding = require('./src/binding');
+exports.Binder = require('./src/binder');
+exports.Filter = require('./src/filter');
 exports.filters = require('./src/filters');
+require('./src/initBinding');

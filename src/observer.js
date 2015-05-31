@@ -13,7 +13,9 @@ var diff = require('./diff');
 // format that `Array.observe` and `Object.observe` return <http://wiki.ecmascript.org/doku.php?id=harmony:observe>.
 function Observer(expr, callback) {
   this.getter = expression.get(expr);
-  this.setter = expression.getSetter(expr);
+  if (!/['"']$/.test(expr)) {
+    this.setter = expression.getSetter(expr);
+  }
   this.callback = callback;
   this.skip = false;
   this.context = null;
@@ -23,9 +25,9 @@ function Observer(expr, callback) {
 Observer.prototype = {
 
   // Binds this expression to a given context
-  bind: function(context) {
+  bind: function(context, skipUpdate) {
     this.context = context;
-    if (this.callback) Observer.add(this);
+    Observer.add(this, skipUpdate);
   },
 
   // Unbinds this expression
@@ -44,7 +46,7 @@ Observer.prototype = {
 
   // Sets the value of this expression
   set: function(value) {
-    if (this.context) {
+    if (this.context && this.setter) {
       return this.setter.call(this.context, filters, value);
     }
   },
@@ -61,7 +63,7 @@ Observer.prototype = {
     var value = this.get();
 
     // Don't call the callback if `skipNextSync` was called on the observer
-    if (this.skip) {
+    if (this.skip || !this.callback) {
       this.skip = false;
     } else {
       // If an array has changed calculate the splices and call the callback. This

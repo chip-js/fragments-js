@@ -2,7 +2,7 @@
 
 <html>
 <head>
-  <title>Chip Diff</title>
+  <title>Diff</title>
   <meta http-equiv="content-type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
   <link rel="stylesheet" media="all" href="docco.css" />
@@ -10,6 +10,64 @@
 <body>
   <div id="container">
     <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              
+                
+                <a class="source" href="binder.html">
+                  binder.js
+                </a>
+              
+                
+                <a class="source" href="binders.html">
+                  binders.js
+                </a>
+              
+                
+                <a class="source" href="binding.html">
+                  binding.js
+                </a>
+              
+                
+                <a class="source" href="diff.html">
+                  diff.js
+                </a>
+              
+                
+                <a class="source" href="initBinding.html">
+                  initBinding.js
+                </a>
+              
+                
+                <a class="source" href="observer.html">
+                  observer.js
+                </a>
+              
+                
+                <a class="source" href="template.html">
+                  template.js
+                </a>
+              
+                
+                <a class="source" href="toFragment.html">
+                  toFragment.js
+                </a>
+              
+                
+                <a class="source" href="transition.html">
+                  transition.js
+                </a>
+              
+            </div>
+          </div>
+        </li>
+      </ul>
     
     <ul class="sections">
         
@@ -21,12 +79,30 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-1">&#182;</a>
               </div>
-              <h1 id="chip-diff">Chip Diff</h1>
-<blockquote>
-<p>Based on work from Google’s observe-js polyfill: <a href="https://github.com/Polymer/observe-js">https://github.com/Polymer/observe-js</a></p>
-</blockquote>
-
+              
             </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-comment">/*
+Copyright (c) 2015 Jacob Wright &lt;jacwright@gmail.com&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/</span></pre></div></div>
             
         </li>
         
@@ -37,13 +113,12 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
-              <p>A namespace to store the functions on</p>
+              <h1 id="diff">Diff</h1>
+<blockquote>
+<p>Based on work from Google’s observe-js polyfill: <a href="https://github.com/Polymer/observe-js">https://github.com/Polymer/observe-js</a></p>
+</blockquote>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>diff = {}
-
-(<span class="hljs-function">-&gt;</span></pre></div></div>
             
         </li>
         
@@ -54,28 +129,19 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-3">&#182;</a>
               </div>
-              <p>Creates a clone or copy of an array or object (or simply returns a string/number/boolean which are immutable)
-Does not provide deep copies.</p>
+              <p>A namespace to store the functions on</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  diff.clone = <span class="hljs-function"><span class="hljs-params">(value, deep)</span> -&gt;</span>
-    <span class="hljs-keyword">if</span> Array.isArray(value)
-      <span class="hljs-keyword">if</span> deep
-        <span class="hljs-keyword">return</span> value.map (value) -&gt; diff.clone value, deep
-      <span class="hljs-keyword">else</span>
-        <span class="hljs-keyword">return</span> value.slice()
-    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> value <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> value <span class="hljs-keyword">is</span> <span class="hljs-string">'object'</span>
-      <span class="hljs-keyword">if</span> value.valueOf() <span class="hljs-keyword">isnt</span> value
-        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> value.constructor value.valueOf()
-      <span class="hljs-keyword">else</span>
-        copy = {}
-        <span class="hljs-keyword">for</span> key, objValue <span class="hljs-keyword">of</span> value
-          objValue = diff.clone objValue, deep <span class="hljs-keyword">if</span> deep
-          copy[key] = objValue
-        <span class="hljs-keyword">return</span> copy
-    <span class="hljs-keyword">else</span>
-      value</pre></div></div>
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> diff = exports;
+
+(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+
+  diff.clone = clone;
+  diff.values = diffValues;
+  diff.basic = diffBasic;
+  diff.objects = diffObjects;
+  diff.arrays = diffArrays;</pre></div></div>
             
         </li>
         
@@ -86,13 +152,16 @@ Does not provide deep copies.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-4">&#182;</a>
               </div>
-              <p>Diffs two values, returning a truthy value if there are changes or <code>false</code> if there are no changes. If the two
-values are both arrays or both objects, an array of changes (splices or change records) between the two will be
-returned. Otherwise  <code>true</code> will be returned.</p>
+              <p>A change record for the object changes</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  diff.values = <span class="hljs-function"><span class="hljs-params">(value, oldValue)</span> -&gt;</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">ChangeRecord</span>(<span class="hljs-params">object, type, name, oldValue</span>) </span>{
+    <span class="hljs-keyword">this</span>.object = object;
+    <span class="hljs-keyword">this</span>.type = type;
+    <span class="hljs-keyword">this</span>.name = name;
+    <span class="hljs-keyword">this</span>.oldValue = oldValue;
+  }</pre></div></div>
             
         </li>
         
@@ -103,13 +172,15 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-5">&#182;</a>
               </div>
-              <p>If an array has changed calculate the splices</p>
+              <p>A splice record for the array changes</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> Array.isArray(value) <span class="hljs-keyword">and</span> Array.isArray(oldValue)
-      splices = diff.arrays value, oldValue
-      <span class="hljs-keyword">return</span> <span class="hljs-keyword">if</span> splices.length <span class="hljs-keyword">then</span> splices <span class="hljs-keyword">else</span> <span class="hljs-literal">false</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">Splice</span>(<span class="hljs-params">index, removed, addedCount</span>) </span>{
+    <span class="hljs-keyword">this</span>.index = index;
+    <span class="hljs-keyword">this</span>.removed = removed;
+    <span class="hljs-keyword">this</span>.addedCount = addedCount;
+  }</pre></div></div>
             
         </li>
         
@@ -120,11 +191,38 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-6">&#182;</a>
               </div>
-              <p>If an object has changed calculate the chnages and call the callback</p>
+              <p>Creates a clone or copy of an array or object (or simply returns a string/number/boolean which are immutable)
+Does not provide deep copies.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> value <span class="hljs-keyword">and</span> oldValue <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> value <span class="hljs-keyword">is</span> <span class="hljs-string">'object'</span> <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> oldValue <span class="hljs-keyword">is</span> <span class="hljs-string">'object'</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">clone</span>(<span class="hljs-params">value, deep</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">Array</span>.isArray(value)) {
+      <span class="hljs-keyword">if</span> (deep) {
+        <span class="hljs-keyword">return</span> value.map(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value</span>) </span>{
+          <span class="hljs-keyword">return</span> clone(value, deep);
+        });
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">return</span> value.slice();
+      }
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (value &amp;&amp; <span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'object'</span>) {
+      <span class="hljs-keyword">if</span> (value.valueOf() !== value) {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> value.constructor(value.valueOf());
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">var</span> copy = {};
+        <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> key <span class="hljs-keyword">in</span> value) {
+          <span class="hljs-keyword">var</span> objValue = value[key];
+          <span class="hljs-keyword">if</span> (deep) {
+            objValue = clone(objValue, deep);
+          }
+          copy[key] = objValue;
+        }
+        <span class="hljs-keyword">return</span> copy;
+      }
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-keyword">return</span> value;
+    }
+  }</pre></div></div>
             
         </li>
         
@@ -135,12 +233,14 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-7">&#182;</a>
               </div>
-              <p>Allow dates and Number/String objects to be compared</p>
+              <p>Diffs two values, returning a truthy value if there are changes or <code>false</code> if there are no changes. If the two
+values are both arrays or both objects, an array of changes (splices or change records) between the two will be
+returned. Otherwise  <code>true</code> will be returned.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      valueValue = value.valueOf()
-      oldValueValue = oldValue.valueOf()</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">diffValues</span>(<span class="hljs-params">value, oldValue</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">Array</span>.isArray(value) &amp;&amp; <span class="hljs-built_in">Array</span>.isArray(oldValue)) {</pre></div></div>
             
         </li>
         
@@ -151,15 +251,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-8">&#182;</a>
               </div>
-              <p>Allow dates and Number/String objects to be compared</p>
+              <p>If an array has changed calculate the splices</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">if</span> <span class="hljs-keyword">typeof</span> valueValue <span class="hljs-keyword">isnt</span> <span class="hljs-string">'object'</span> <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> oldValueValue <span class="hljs-keyword">isnt</span> <span class="hljs-string">'object'</span>
-        <span class="hljs-keyword">return</span> valueValue <span class="hljs-keyword">isnt</span> oldValueValue
-      <span class="hljs-keyword">else</span>
-        changeRecords = diff.objects value, oldValue
-        <span class="hljs-keyword">return</span> <span class="hljs-keyword">if</span> changeRecords.length <span class="hljs-keyword">then</span> changeRecords <span class="hljs-keyword">else</span> <span class="hljs-literal">false</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">var</span> splices = diffArrays(value, oldValue);
+      <span class="hljs-keyword">return</span> splices.length ? splices : <span class="hljs-literal">false</span>;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (value &amp;&amp; oldValue &amp;&amp; <span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'object'</span> &amp;&amp; <span class="hljs-keyword">typeof</span> oldValue === <span class="hljs-string">'object'</span>) {</pre></div></div>
             
         </li>
         
@@ -170,12 +268,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-9">&#182;</a>
               </div>
-              <p>If a value has changed call the callback</p>
+              <p>If an object has changed calculate the chnages and call the callback
+Allow dates and Number/String objects to be compared</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">else</span>
-      <span class="hljs-keyword">return</span> diff.basic value, oldValue</pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">var</span> valueValue = value.valueOf();
+      <span class="hljs-keyword">var</span> oldValueValue = oldValue.valueOf();</pre></div></div>
             
         </li>
         
@@ -186,12 +285,17 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-10">&#182;</a>
               </div>
-              <p>Diffs two basic types, returning true if changed or false if not</p>
+              <p>Allow dates and Number/String objects to be compared</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  diff.basic = <span class="hljs-function"><span class="hljs-params">(value, oldValue)</span> -&gt;</span>
-   <span class="hljs-keyword">if</span> value <span class="hljs-keyword">and</span> oldValue <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> value <span class="hljs-keyword">is</span> <span class="hljs-string">'object'</span> <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> oldValue <span class="hljs-keyword">is</span> <span class="hljs-string">'object'</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> valueValue !== <span class="hljs-string">'object'</span> &amp;&amp; <span class="hljs-keyword">typeof</span> oldValueValue !== <span class="hljs-string">'object'</span>) {
+        <span class="hljs-keyword">return</span> valueValue !== oldValueValue;
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">var</span> changeRecords = diffObjects(value, oldValue);
+        <span class="hljs-keyword">return</span> changeRecords.length ? changeRecords : <span class="hljs-literal">false</span>;
+      }
+    } <span class="hljs-keyword">else</span> {</pre></div></div>
             
         </li>
         
@@ -202,12 +306,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-11">&#182;</a>
               </div>
-              <p>Allow dates and Number/String objects to be compared</p>
+              <p>If a value has changed call the callback</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      valueValue = value.valueOf()
-      oldValueValue = oldValue.valueOf()</pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">return</span> diffBasic(value, oldValue);
+    }
+  }</pre></div></div>
             
         </li>
         
@@ -218,12 +323,12 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
-              <p>Allow dates and Number/String objects to be compared</p>
+              <p>Diffs two basic types, returning true if changed or false if not</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">if</span> <span class="hljs-keyword">typeof</span> valueValue <span class="hljs-keyword">isnt</span> <span class="hljs-string">'object'</span> <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> oldValueValue <span class="hljs-keyword">isnt</span> <span class="hljs-string">'object'</span>
-        <span class="hljs-keyword">return</span> diff.basic valueValue, oldValueValue</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">diffBasic</span>(<span class="hljs-params">value, oldValue</span>) </span>{
+   <span class="hljs-keyword">if</span> (value &amp;&amp; oldValue &amp;&amp; <span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'object'</span> &amp;&amp; <span class="hljs-keyword">typeof</span> oldValue === <span class="hljs-string">'object'</span>) {</pre></div></div>
             
         </li>
         
@@ -234,14 +339,12 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
-              <p>If a value has changed call the callback</p>
+              <p>Allow dates and Number/String objects to be compared</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> <span class="hljs-keyword">typeof</span> value <span class="hljs-keyword">is</span> <span class="hljs-string">'number'</span> <span class="hljs-keyword">and</span> <span class="hljs-keyword">typeof</span> oldValue <span class="hljs-keyword">is</span> <span class="hljs-string">'number'</span> <span class="hljs-keyword">and</span> isNaN(value) <span class="hljs-keyword">and</span> isNaN(oldValue)
-      <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>
-    <span class="hljs-keyword">else</span>
-      <span class="hljs-keyword">return</span> value <span class="hljs-keyword">isnt</span> oldValue</pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">var</span> valueValue = value.valueOf();
+      <span class="hljs-keyword">var</span> oldValueValue = oldValue.valueOf();</pre></div></div>
             
         </li>
         
@@ -251,6 +354,44 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>Allow dates and Number/String objects to be compared</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> valueValue !== <span class="hljs-string">'object'</span> &amp;&amp; <span class="hljs-keyword">typeof</span> oldValueValue !== <span class="hljs-string">'object'</span>) {
+        <span class="hljs-keyword">return</span> diffBasic(valueValue, oldValueValue);
+      }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>If a value has changed call the callback</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'number'</span> &amp;&amp; <span class="hljs-keyword">typeof</span> oldValue === <span class="hljs-string">'number'</span> &amp;&amp; <span class="hljs-built_in">isNaN</span>(value) &amp;&amp; <span class="hljs-built_in">isNaN</span>(oldValue)) {
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>;
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-keyword">return</span> value !== oldValue;
+    }
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
               <p>Diffs two objects returning an array of change records. The change record looks like:</p>
 <pre><code class="lang-javascript">{
@@ -263,39 +404,9 @@ returned. Otherwise  <code>true</code> will be returned.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  diff.objects = <span class="hljs-function"><span class="hljs-params">(object, oldObject)</span> -&gt;</span>
-    changeRecords = []</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-15">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-15">&#182;</a>
-              </div>
-              <p>Goes through the old object (should be a clone) and look for things that are now gone or changed</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> prop, oldValue <span class="hljs-keyword">of</span> oldObject
-      value = object[prop]</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-16">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-16">&#182;</a>
-              </div>
-              <p>Allow for the case of obj.prop = undefined (which is a new property, even if it is undefined)</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">continue</span> <span class="hljs-keyword">if</span> value <span class="hljs-keyword">isnt</span> <span class="hljs-literal">undefined</span> <span class="hljs-keyword">and</span> <span class="hljs-keyword">not</span> diff.basic value, oldValue</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">diffObjects</span>(<span class="hljs-params">object, oldObject</span>) </span>{
+    <span class="hljs-keyword">var</span> changeRecords = [];
+    <span class="hljs-keyword">var</span> prop, oldValue, value;</pre></div></div>
             
         </li>
         
@@ -306,16 +417,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
-              <p>If the property is gone it was removed</p>
+              <p>Goes through the old object (should be a clone) and look for things that are now gone or changed</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">unless</span> `<span class="javascript">(prop <span class="hljs-keyword">in</span> object)</span>`
-        changeRecords.push newChange object, <span class="hljs-string">'deleted'</span>, prop, oldValue
-        <span class="hljs-keyword">continue</span>
-
-      <span class="hljs-keyword">if</span> diff.basic value, oldValue
-        changeRecords.push newChange object, <span class="hljs-string">'updated'</span>, prop, oldValue</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> (prop <span class="hljs-keyword">in</span> oldObject) {
+      oldValue = oldObject[prop];
+      value = object[prop];</pre></div></div>
             
         </li>
         
@@ -326,19 +434,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-18">&#182;</a>
               </div>
-              <p>Goes through the old object and looks for things that are new</p>
+              <p>Allow for the case of obj.prop = undefined (which is a new property, even if it is undefined)</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> prop, value <span class="hljs-keyword">of</span> object
-      <span class="hljs-keyword">continue</span> <span class="hljs-keyword">if</span> `<span class="javascript">prop <span class="hljs-keyword">in</span> oldObject</span>`
-
-      changeRecords.push newChange object, <span class="hljs-string">'new'</span>, prop
-
-    <span class="hljs-keyword">if</span> Array.isArray(object) <span class="hljs-keyword">and</span> object.length <span class="hljs-keyword">isnt</span> oldObject.length
-      changeRecords.push newChange object, <span class="hljs-string">'updated'</span>, <span class="hljs-string">'length'</span>, oldObject.length
-
-    changeRecords</pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">if</span> (value !== <span class="hljs-literal">undefined</span> &amp;&amp; !diffBasic(value, oldValue)) {
+        <span class="hljs-keyword">continue</span>;
+      }</pre></div></div>
             
         </li>
         
@@ -349,15 +451,43 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
-              <p>Creates a change record for the object changes</p>
+              <p>If the property is gone it was removed</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre><span class="hljs-function">  <span class="hljs-title">newChange</span> = <span class="hljs-params">(object, type, name, oldValue)</span> -&gt;</span>
-    <span class="hljs-attribute">object</span>: object
-    <span class="hljs-attribute">type</span>: type
-    <span class="hljs-attribute">name</span>: name
-    <span class="hljs-attribute">oldValue</span>: oldValue
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">if</span> (! (prop <span class="hljs-keyword">in</span> object)) {
+        changeRecords.push(<span class="hljs-keyword">new</span> ChangeRecord(object, <span class="hljs-string">'deleted'</span>, prop, oldValue));
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (diffBasic(value, oldValue)) {
+        changeRecords.push(<span class="hljs-keyword">new</span> ChangeRecord(object, <span class="hljs-string">'updated'</span>, prop, oldValue));
+      }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>Goes through the old object and looks for things that are new</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> (prop <span class="hljs-keyword">in</span> object) {
+      value = object[prop];
+      <span class="hljs-keyword">if</span> (! (prop <span class="hljs-keyword">in</span> oldObject)) {
+        changeRecords.push(<span class="hljs-keyword">new</span> ChangeRecord(object, <span class="hljs-string">'new'</span>, prop));
+      }
+    }
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">Array</span>.isArray(object) &amp;&amp; object.length !== oldObject.length) {
+      changeRecords.push(<span class="hljs-keyword">new</span> ChangeRecord(object, <span class="hljs-string">'updated'</span>, <span class="hljs-string">'length'</span>, oldObject.length));
+    }
+
+    <span class="hljs-keyword">return</span> changeRecords;
+  }
 
 
 
@@ -371,11 +501,11 @@ returned. Otherwise  <code>true</code> will be returned.</p>
         </li>
         
         
-        <li id="section-20">
+        <li id="section-21">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-20">&#182;</a>
+                <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
               <p>Diffs two arrays returning an array of splices. A splice object looks like:</p>
 <pre><code class="lang-javascript">{
@@ -387,39 +517,24 @@ returned. Otherwise  <code>true</code> will be returned.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  diff.arrays = <span class="hljs-function"><span class="hljs-params">(value, oldValue)</span> -&gt;</span>
-    currentStart = <span class="hljs-number">0</span>
-    currentEnd = value.length
-    oldStart = <span class="hljs-number">0</span>
-    oldEnd = oldValue.length
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">diffArrays</span>(<span class="hljs-params">value, oldValue</span>) </span>{
+    <span class="hljs-keyword">var</span> currentStart = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">var</span> currentEnd = value.length;
+    <span class="hljs-keyword">var</span> oldStart = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">var</span> oldEnd = oldValue.length;
 
-    minLength = Math.min(currentEnd, oldEnd)
-    prefixCount = sharedPrefix(value, oldValue, minLength)
-    suffixCount = sharedSuffix(value, oldValue, minLength - prefixCount)
+    <span class="hljs-keyword">var</span> minLength = <span class="hljs-built_in">Math</span>.min(currentEnd, oldEnd);
+    <span class="hljs-keyword">var</span> prefixCount = sharedPrefix(value, oldValue, minLength);
+    <span class="hljs-keyword">var</span> suffixCount = sharedSuffix(value, oldValue, minLength - prefixCount);
 
-    currentStart += prefixCount
-    oldStart += prefixCount
-    currentEnd -= suffixCount
-    oldEnd -= suffixCount
+    currentStart += prefixCount;
+    oldStart += prefixCount;
+    currentEnd -= suffixCount;
+    oldEnd -= suffixCount;
 
-    <span class="hljs-keyword">if</span> currentEnd - currentStart <span class="hljs-keyword">is</span> <span class="hljs-number">0</span> <span class="hljs-keyword">and</span> oldEnd - oldStart <span class="hljs-keyword">is</span> <span class="hljs-number">0</span>
-      <span class="hljs-keyword">return</span> []</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-21">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-21">&#182;</a>
-              </div>
-              <p>if nothing was added, only removed from one spot</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> currentStart <span class="hljs-keyword">is</span> currentEnd
-      <span class="hljs-keyword">return</span> [ newSplice(currentStart, oldValue.slice(oldStart, oldEnd), <span class="hljs-number">0</span>) ]</pre></div></div>
+    <span class="hljs-keyword">if</span> (currentEnd - currentStart === <span class="hljs-number">0</span> &amp;&amp; oldEnd - oldStart === <span class="hljs-number">0</span>) {
+      <span class="hljs-keyword">return</span> [];
+    }</pre></div></div>
             
         </li>
         
@@ -430,12 +545,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
-              <p>if nothing was removed, only added to one spot</p>
+              <p>if nothing was added, only removed from one spot</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> oldStart <span class="hljs-keyword">is</span> oldEnd
-      <span class="hljs-keyword">return</span> [ newSplice(currentStart, [], currentEnd - currentStart) ]</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (currentStart === currentEnd) {
+      <span class="hljs-keyword">return</span> [ <span class="hljs-keyword">new</span> Splice(currentStart, oldValue.slice(oldStart, oldEnd), <span class="hljs-number">0</span>) ];
+    }</pre></div></div>
             
         </li>
         
@@ -446,47 +562,13 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
-              <p>a mixture of adds and removes</p>
+              <p>if nothing was removed, only added to one spot</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    distances = calcEditDistances(value, currentStart, currentEnd, oldValue, oldStart, oldEnd)
-    ops = spliceOperationsFromEditDistances distances
-
-    splice = <span class="hljs-literal">undefined</span>
-    splices = []
-    index = currentStart
-    oldIndex = oldStart
-
-    <span class="hljs-keyword">for</span> op <span class="hljs-keyword">in</span> ops
-      <span class="hljs-keyword">if</span> op <span class="hljs-keyword">is</span> EDIT_LEAVE
-        <span class="hljs-keyword">if</span> splice
-          splices.push splice
-          splice = <span class="hljs-literal">undefined</span>
-
-        index++
-        oldIndex++
-      <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> op <span class="hljs-keyword">is</span> EDIT_UPDATE
-        splice = newSplice(index, [], <span class="hljs-number">0</span>) <span class="hljs-keyword">unless</span> splice
-
-        splice.addedCount++
-        index++
-
-        splice.removed.push oldValue[oldIndex]
-        oldIndex++
-      <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> op <span class="hljs-keyword">is</span> EDIT_ADD
-        splice = newSplice(index, [], <span class="hljs-number">0</span>) <span class="hljs-keyword">unless</span> splice
-
-        splice.addedCount++
-        index++
-      <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> op <span class="hljs-keyword">is</span> EDIT_DELETE
-        splice = newSplice(index, [], <span class="hljs-number">0</span>) <span class="hljs-keyword">unless</span> splice
-
-        splice.removed.push oldValue[oldIndex]
-        oldIndex++
-
-    splices.push(splice) <span class="hljs-keyword">if</span> splice
-    splices</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (oldStart === oldEnd) {
+      <span class="hljs-keyword">return</span> [ <span class="hljs-keyword">new</span> Splice(currentStart, [], currentEnd - currentStart) ];
+    }</pre></div></div>
             
         </li>
         
@@ -497,14 +579,61 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
-              <p>find the number of items at the beginning that are the same</p>
+              <p>a mixture of adds and removes</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre><span class="hljs-function">  <span class="hljs-title">sharedPrefix</span> = <span class="hljs-params">(current, old, searchLength)</span> -&gt;</span>
-    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> [<span class="hljs-number">0.</span>..searchLength]
-      <span class="hljs-keyword">return</span> i <span class="hljs-keyword">if</span> diff.basic current[i], old[i]
-    <span class="hljs-keyword">return</span> searchLength</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> distances = calcEditDistances(value, currentStart, currentEnd, oldValue, oldStart, oldEnd);
+    <span class="hljs-keyword">var</span> ops = spliceOperationsFromEditDistances(distances);
+
+    <span class="hljs-keyword">var</span> splice = <span class="hljs-literal">null</span>;
+    <span class="hljs-keyword">var</span> splices = [];
+    <span class="hljs-keyword">var</span> index = currentStart;
+    <span class="hljs-keyword">var</span> oldIndex = oldStart;
+
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>, l = ops.length; i &lt; l; i++) {
+      <span class="hljs-keyword">var</span> op = ops[i];
+      <span class="hljs-keyword">if</span> (op === EDIT_LEAVE) {
+        <span class="hljs-keyword">if</span> (splice) {
+          splices.push(splice);
+          splice = <span class="hljs-literal">null</span>;
+        }
+
+        index++;
+        oldIndex++;
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (op === EDIT_UPDATE) {
+        <span class="hljs-keyword">if</span> (!splice) {
+          splice = <span class="hljs-keyword">new</span> Splice(index, [], <span class="hljs-number">0</span>);
+        }
+
+        splice.addedCount++;
+        index++;
+
+        splice.removed.push(oldValue[oldIndex]);
+        oldIndex++;
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (op === EDIT_ADD) {
+        <span class="hljs-keyword">if</span> (!splice) {
+          splice = <span class="hljs-keyword">new</span> Splice(index, [], <span class="hljs-number">0</span>);
+        }
+
+        splice.addedCount++;
+        index++;
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (op === EDIT_DELETE) {
+        <span class="hljs-keyword">if</span> (!splice) {
+          splice = <span class="hljs-keyword">new</span> Splice(index, [], <span class="hljs-number">0</span>);
+        }
+
+        splice.removed.push(oldValue[oldIndex]);
+        oldIndex++;
+      }
+    }
+
+    <span class="hljs-keyword">if</span> (splice) {
+      splices.push(splice);
+    }
+
+    <span class="hljs-keyword">return</span> splices;
+  }</pre></div></div>
             
         </li>
         
@@ -515,70 +644,18 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
-              <p>find the number of items at the end that are the same</p>
+              <p>find the number of items at the beginning that are the same</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre><span class="hljs-function">  <span class="hljs-title">sharedSuffix</span> = <span class="hljs-params">(current, old, searchLength)</span> -&gt;</span>
-    index1 = current.length
-    index2 = old.length
-    count = <span class="hljs-number">0</span>
-    <span class="hljs-keyword">while</span> count &lt; searchLength <span class="hljs-keyword">and</span> <span class="hljs-keyword">not</span> diff.basic current[--index1], old[--index2]
-      count++
-    count
-<span class="hljs-function">
-  <span class="hljs-title">newSplice</span> = <span class="hljs-params">(index, removed, addedCount)</span> -&gt;</span>
-    <span class="hljs-attribute">index</span>: index
-    <span class="hljs-attribute">removed</span>: removed
-    <span class="hljs-attribute">addedCount</span>: addedCount
-<span class="hljs-function">
-
-  <span class="hljs-title">spliceOperationsFromEditDistances</span> = <span class="hljs-params">(distances)</span> -&gt;</span>
-    i = distances.length - <span class="hljs-number">1</span>
-    j = distances[<span class="hljs-number">0</span>].length - <span class="hljs-number">1</span>
-    current = distances[i][j]
-    edits = []
-    <span class="hljs-keyword">while</span> i &gt; <span class="hljs-number">0</span> <span class="hljs-keyword">or</span> j &gt; <span class="hljs-number">0</span>
-      <span class="hljs-keyword">if</span> i <span class="hljs-keyword">is</span> <span class="hljs-number">0</span>
-        edits.push EDIT_ADD
-        j--
-        <span class="hljs-keyword">continue</span>
-
-      <span class="hljs-keyword">if</span> j <span class="hljs-keyword">is</span> <span class="hljs-number">0</span>
-        edits.push EDIT_DELETE
-        i--
-        <span class="hljs-keyword">continue</span>
-
-      northWest = distances[i - <span class="hljs-number">1</span>][j - <span class="hljs-number">1</span>]
-      west = distances[i - <span class="hljs-number">1</span>][j]
-      north = distances[i][j - <span class="hljs-number">1</span>]
-
-      <span class="hljs-keyword">if</span> west &lt; north
-        min = <span class="hljs-keyword">if</span> west &lt; northWest <span class="hljs-keyword">then</span> west <span class="hljs-keyword">else</span> northWest
-      <span class="hljs-keyword">else</span>
-        min = <span class="hljs-keyword">if</span> north &lt; northWest <span class="hljs-keyword">then</span> north <span class="hljs-keyword">else</span> northWest
-
-      <span class="hljs-keyword">if</span> min <span class="hljs-keyword">is</span> northWest
-        <span class="hljs-keyword">if</span> northWest <span class="hljs-keyword">is</span> current
-          edits.push EDIT_LEAVE
-        <span class="hljs-keyword">else</span>
-          edits.push EDIT_UPDATE
-          current = northWest
-        i--
-        j--
-      <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> min <span class="hljs-keyword">is</span> west
-        edits.push EDIT_DELETE
-        i--
-        current = west
-      <span class="hljs-keyword">else</span>
-        edits.push EDIT_ADD
-        j--
-        current = north
-    edits.reverse()
-    edits
-<span class="hljs-function">
-
-  <span class="hljs-title">calcEditDistances</span> = <span class="hljs-params">(current, currentStart, currentEnd, old, oldStart, oldEnd)</span> -&gt;</span></pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sharedPrefix</span>(<span class="hljs-params">current, old, searchLength</span>) </span>{
+    <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; searchLength; i++) {
+      <span class="hljs-keyword">if</span> (diffBasic(current[i], old[i])) {
+        <span class="hljs-keyword">return</span> i;
+      }
+    }
+    <span class="hljs-keyword">return</span> searchLength;
+  }</pre></div></div>
             
         </li>
         
@@ -589,13 +666,74 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
-              <p>“Deletion” columns</p>
+              <p>find the number of items at the end that are the same</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    rowCount = oldEnd - oldStart + <span class="hljs-number">1</span>
-    columnCount = currentEnd - currentStart + <span class="hljs-number">1</span>
-    distances = <span class="hljs-keyword">new</span> Array(rowCount)</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sharedSuffix</span>(<span class="hljs-params">current, old, searchLength</span>) </span>{
+    <span class="hljs-keyword">var</span> index1 = current.length;
+    <span class="hljs-keyword">var</span> index2 = old.length;
+    <span class="hljs-keyword">var</span> count = <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">while</span> (count &lt; searchLength &amp;&amp; !diffBasic(current[--index1], old[--index2])) {
+      count++;
+    }
+    <span class="hljs-keyword">return</span> count;
+  }
+
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">spliceOperationsFromEditDistances</span>(<span class="hljs-params">distances</span>) </span>{
+    <span class="hljs-keyword">var</span> i = distances.length - <span class="hljs-number">1</span>;
+    <span class="hljs-keyword">var</span> j = distances[<span class="hljs-number">0</span>].length - <span class="hljs-number">1</span>;
+    <span class="hljs-keyword">var</span> current = distances[i][j];
+    <span class="hljs-keyword">var</span> edits = [];
+    <span class="hljs-keyword">while</span> (i &gt; <span class="hljs-number">0</span> || j &gt; <span class="hljs-number">0</span>) {
+      <span class="hljs-keyword">if</span> (i === <span class="hljs-number">0</span>) {
+        edits.push(EDIT_ADD);
+        j--;
+        <span class="hljs-keyword">continue</span>;
+      }
+
+      <span class="hljs-keyword">if</span> (j === <span class="hljs-number">0</span>) {
+        edits.push(EDIT_DELETE);
+        i--;
+        <span class="hljs-keyword">continue</span>;
+      }
+
+      <span class="hljs-keyword">var</span> northWest = distances[i - <span class="hljs-number">1</span>][j - <span class="hljs-number">1</span>];
+      <span class="hljs-keyword">var</span> west = distances[i - <span class="hljs-number">1</span>][j];
+      <span class="hljs-keyword">var</span> north = distances[i][j - <span class="hljs-number">1</span>];
+
+      <span class="hljs-keyword">if</span> (west &lt; north) {
+        min = west &lt; northWest ? west : northWest;
+      } <span class="hljs-keyword">else</span> {
+        min = north &lt; northWest ? north : northWest;
+      }
+
+      <span class="hljs-keyword">if</span> (min === northWest) {
+        <span class="hljs-keyword">if</span> (northWest === current) {
+          edits.push(EDIT_LEAVE);
+        } <span class="hljs-keyword">else</span> {
+          edits.push(EDIT_UPDATE);
+          current = northWest;
+        }
+        i--;
+        j--;
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (min === west) {
+        edits.push(EDIT_DELETE);
+        i--;
+        current = west;
+      } <span class="hljs-keyword">else</span> {
+        edits.push(EDIT_ADD);
+        j--;
+        current = north;
+      }
+    }
+    edits.reverse();
+    <span class="hljs-keyword">return</span> edits;
+  }
+
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">calcEditDistances</span>(<span class="hljs-params">current, currentStart, currentEnd, old, oldStart, oldEnd</span>) </span>{</pre></div></div>
             
         </li>
         
@@ -606,13 +744,14 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
-              <p>“Addition” rows. Initialize null column.</p>
+              <p>“Deletion” columns</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> [<span class="hljs-number">0.</span>..rowCount]
-      distances[i] = <span class="hljs-keyword">new</span> Array(columnCount)
-      distances[i][<span class="hljs-number">0</span>] = i</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> rowCount = oldEnd - oldStart + <span class="hljs-number">1</span>;
+    <span class="hljs-keyword">var</span> columnCount = currentEnd - currentStart + <span class="hljs-number">1</span>;
+    <span class="hljs-keyword">var</span> distances = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(rowCount);
+    <span class="hljs-keyword">var</span> i, j;</pre></div></div>
             
         </li>
         
@@ -623,27 +762,47 @@ returned. Otherwise  <code>true</code> will be returned.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
+              <p>“Addition” rows. Initialize null column.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; rowCount; i++) {
+      distances[i] = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(columnCount);
+      distances[i][<span class="hljs-number">0</span>] = i;
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
               <p>Initialize null row</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> j <span class="hljs-keyword">in</span> [<span class="hljs-number">0.</span>..columnCount]
-      distances[<span class="hljs-number">0</span>][j] = j
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">for</span> (j = <span class="hljs-number">0</span>; j &lt; columnCount; j++) {
+      distances[<span class="hljs-number">0</span>][j] = j;
+    }
 
-    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> [<span class="hljs-number">1.</span>..rowCount]
-      <span class="hljs-keyword">for</span> j <span class="hljs-keyword">in</span> [<span class="hljs-number">1.</span>..columnCount]
-        <span class="hljs-keyword">unless</span> diff.basic current[currentStart + j - <span class="hljs-number">1</span>], old[oldStart + i - <span class="hljs-number">1</span>]
-          distances[i][j] = distances[i - <span class="hljs-number">1</span>][j - <span class="hljs-number">1</span>]
-        <span class="hljs-keyword">else</span>
-          north = distances[i - <span class="hljs-number">1</span>][j] + <span class="hljs-number">1</span>
-          west = distances[i][j - <span class="hljs-number">1</span>] + <span class="hljs-number">1</span>
-          distances[i][j] = <span class="hljs-keyword">if</span> north &lt; west <span class="hljs-keyword">then</span> north <span class="hljs-keyword">else</span> west
+    <span class="hljs-keyword">for</span> (i = <span class="hljs-number">1</span>; i &lt; rowCount; i++) {
+      <span class="hljs-keyword">for</span> (j = <span class="hljs-number">1</span>; j &lt; columnCount; j++) {
+        <span class="hljs-keyword">if</span> (!diffBasic(current[currentStart + j - <span class="hljs-number">1</span>], old[oldStart + i - <span class="hljs-number">1</span>])) {
+          distances[i][j] = distances[i - <span class="hljs-number">1</span>][j - <span class="hljs-number">1</span>];
+        } <span class="hljs-keyword">else</span> {
+          <span class="hljs-keyword">var</span> north = distances[i - <span class="hljs-number">1</span>][j] + <span class="hljs-number">1</span>;
+          <span class="hljs-keyword">var</span> west = distances[i][j - <span class="hljs-number">1</span>] + <span class="hljs-number">1</span>;
+          distances[i][j] = north &lt; west ? north : west;
+        }
+      }
+    }
 
-    distances
-
-).call(<span class="hljs-keyword">this</span>)
-
-chip.diff = diff</pre></div></div>
+    <span class="hljs-keyword">return</span> distances;
+  }
+})();</pre></div></div>
             
         </li>
         

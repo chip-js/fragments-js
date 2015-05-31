@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>Default Bindings</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              
+                
+                <a class="source" href="binder.html">
+                  binder.js
+                </a>
+              
+                
+                <a class="source" href="binders.html">
+                  binders.js
+                </a>
+              
+                
+                <a class="source" href="binding.html">
+                  binding.js
+                </a>
+              
+                
+                <a class="source" href="diff.html">
+                  diff.js
+                </a>
+              
+                
+                <a class="source" href="initBinding.html">
+                  initBinding.js
+                </a>
+              
+                
+                <a class="source" href="observer.html">
+                  observer.js
+                </a>
+              
+                
+                <a class="source" href="template.html">
+                  template.js
+                </a>
+              
+                
+                <a class="source" href="toFragment.html">
+                  toFragment.js
+                </a>
+              
+                
+                <a class="source" href="transition.html">
+                  transition.js
+                </a>
+              
+            </div>
+          </div>
+        </li>
+      </ul>
+    
+    <ul class="sections">
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> Binder = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./binder'</span>);
+<span class="hljs-keyword">var</span> Template = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./template'</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <h1 id="default-bindings">Default Bindings</h1>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+
+Binder.registerBinder(<span class="hljs-string">'bind-debug'</span>, {
+  priority: <span class="hljs-number">200</span>,
+  udpated: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value</span>) </span>{
+    <span class="hljs-built_in">console</span>.info(<span class="hljs-string">'Debug:'</span>, <span class="hljs-keyword">this</span>.expression, <span class="hljs-string">'='</span>, value);
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <h2 id="bind-text">bind-text</h2>
+<p>Adds a handler to display text inside an element.</p>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">h1</span> <span class="hljs-attribute">bind-text</span>=<span class="hljs-value">"post.title"</span>&gt;</span>Title<span class="hljs-tag">&lt;/<span class="hljs-title">h1</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"info"</span>&gt;</span>
+  Written by
+  <span class="hljs-tag">&lt;<span class="hljs-title">span</span> <span class="hljs-attribute">bind-text</span>=<span class="hljs-value">"post.author.name"</span>&gt;</span>author<span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span>
+  on
+  <span class="hljs-tag">&lt;<span class="hljs-title">span</span> <span class="hljs-attribute">bind-text</span>=<span class="hljs-value">"post.date.toLocaleDateString()"</span>&gt;</span>date<span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span>.
+<span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+</code></pre>
+<p><em>Result:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">h1</span>&gt;</span>Little Red<span class="hljs-tag">&lt;/<span class="hljs-title">h1</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"info"</span>&gt;</span>
+  Written by
+  <span class="hljs-tag">&lt;<span class="hljs-title">span</span>&gt;</span>Jacob Wright<span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span>
+  on
+  <span class="hljs-tag">&lt;<span class="hljs-title">span</span>&gt;</span>10/16/2013<span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span>.
+<span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'bind-text'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value</span>) </span>{
+  element.textContent = (value == <span class="hljs-literal">null</span>) ? <span class="hljs-string">''</span> <span class="hljs-keyword">else</span> value;
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <h2 id="bind-html">bind-html</h2>
+<p>Adds a handler to display unescaped HTML inside an element. Be sure it’s trusted!</p>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">h1</span> <span class="hljs-attribute">bind-text</span>=<span class="hljs-value">"post.title"</span>&gt;</span>Title<span class="hljs-tag">&lt;/<span class="hljs-title">h1</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">bind-html</span>=<span class="hljs-value">"post.body"</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+</code></pre>
+<p><em>Result:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">h1</span>&gt;</span>Little Red<span class="hljs-tag">&lt;/<span class="hljs-title">h1</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">div</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>Little Red Riding Hood is a story about a little girl.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>
+    More info can be found on
+    <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">"http://en.wikipedia.org/wiki/Little_Red_Riding_Hood"</span>&gt;</span>Wikipedia<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'bind-html'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value</span>) </span>{
+  element.innerHTML = value == <span class="hljs-literal">null</span> ? <span class="hljs-string">''</span> : value;
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <h2 id="bind-class">bind-class</h2>
+<p>Adds a handler to add classes to an element. If the value of the expression is a string, that string will be set as the
+class attribute. If the value is an array of strings, those will be set as the element classes. These two methods
+overwrite any existing classes. If the value is an object, each property of that object will be toggled on or off in
+the class list depending on whether the value of the property is truthy or falsey.</p>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">bind-class</span>=<span class="hljs-value">"theClasses"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">button</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"btn primary"</span> <span class="hljs-attribute">bind-class</span>=<span class="hljs-value">"{highlight:ready}"</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+</code></pre>
+<p><em>Result if <code>theClases</code> equals “red blue” and <code>ready</code> is <code>true</code>:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"red blue"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">button</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"btn primary highlight"</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'bind-class'</span>, {
+  compiled: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">options</span>) </span>{
+    <span class="hljs-keyword">this</span>.existingClasses = (options.element.getAttribute(<span class="hljs-string">'class'</span>) || <span class="hljs-string">''</span>).split(<span class="hljs-regexp">/\s+/</span>);
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.existingClasses[<span class="hljs-number">0</span>] === <span class="hljs-string">''</span>) <span class="hljs-keyword">this</span>.existingClasses.pop();
+  },
+  updated: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">Array</span>.isArray(value)) {
+      value = value.join(<span class="hljs-string">' '</span>);
+    }
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'string'</span>) {
+      <span class="hljs-keyword">this</span>.element.className = <span class="hljs-keyword">this</span>.existingClasses.concat(value.split(<span class="hljs-regexp">/\s+/</span>)).join(<span class="hljs-string">' '</span>);
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (value &amp;&amp; <span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'object'</span>) {
+      <span class="hljs-keyword">var</span> classList = <span class="hljs-keyword">this</span>.element.classList;
+      <span class="hljs-built_in">Object</span>.keys(value).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">className</span>) </span>{
+        <span class="hljs-keyword">if</span> (value[className]) {
+          classList.add(className);
+        } <span class="hljs-keyword">else</span> {
+          classList.remove(className);
+        }
+      });
+    }
+  }
+});
+
+
+Binder.registerBinder(<span class="hljs-string">'bind-attr'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value, oldValue, changes</span>) </span>{
+  <span class="hljs-keyword">if</span> (changes) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>use the change records to remove deleted properties which won’t show up</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    changes.forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">change</span>) </span>{
+      <span class="hljs-keyword">if</span> (change.type === <span class="hljs-string">'deleted'</span> || !value[change.name]) {
+        <span class="hljs-keyword">this</span>.element.removeAttribute(change.name);
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">this</span>.element.setAttribute(change.name, value[change.name]);
+      }
+    });
+  } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (value &amp;&amp; <span class="hljs-keyword">typeof</span> value === <span class="hljs-string">'object'</span>) {
+    <span class="hljs-built_in">Object</span>.keys(value).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">attrName</span>) </span>{
+      <span class="hljs-keyword">var</span> attrValue = value[attrName];
+      <span class="hljs-keyword">if</span> (attrValue) {
+        <span class="hljs-keyword">this</span>.element.setAttribute(attrName, attrValue);
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">this</span>.element.removeAttribute(attrName);
+      }
+    }, <span class="hljs-keyword">this</span>);
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <h2 id="bind-value">bind-value</h2>
+<p>Adds a handler which sets the value of an HTML form element. This handler also updates the data as it is changed in
+the form element, providing two way binding.</p>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">label</span>&gt;</span>First Name<span class="hljs-tag">&lt;/<span class="hljs-title">label</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">"text"</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"firstName"</span> <span class="hljs-attribute">bind-value</span>=<span class="hljs-value">"user.firstName"</span>&gt;</span>
+
+<span class="hljs-tag">&lt;<span class="hljs-title">label</span>&gt;</span>Last Name<span class="hljs-tag">&lt;/<span class="hljs-title">label</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">"text"</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"lastName"</span> <span class="hljs-attribute">bind-value</span>=<span class="hljs-value">"user.lastName"</span>&gt;</span>
+</code></pre>
+<p><em>Result:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">label</span>&gt;</span>First Name<span class="hljs-tag">&lt;/<span class="hljs-title">label</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">"text"</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"firstName"</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">"Jacob"</span>&gt;</span>
+
+<span class="hljs-tag">&lt;<span class="hljs-title">label</span>&gt;</span>Last Name<span class="hljs-tag">&lt;/<span class="hljs-title">label</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">"text"</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"lastName"</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">"Wright"</span>&gt;</span>
+</code></pre>
+<p>And when the user changes the text in the first input to “Jac”, <code>user.firstName</code> will be updated immediately with the
+value of <code>&#39;Jac&#39;</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'bind-value'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">element, attr, controller</span>) </span>{
+  expr = attr.value
+  watchExpr = expr
+
+  fieldExpr = element.attr(<span class="hljs-string">'bind-value-field'</span>)
+  element.removeAttr(<span class="hljs-string">'bind-value-field'</span>)
+
+  <span class="hljs-keyword">if</span> element.is(<span class="hljs-string">'select'</span>)
+    selectValueField = <span class="hljs-keyword">if</span> fieldExpr then controller.eval(fieldExpr) <span class="hljs-keyword">else</span> <span class="hljs-literal">null</span>
+    chip.lastSelectValueField = selectValueField
+
+  <span class="hljs-keyword">if</span> element.is(<span class="hljs-string">'option'</span>) and (fieldExpr or chip.lastSelectValueField)
+    <span class="hljs-keyword">if</span> fieldExpr
+      selectValueField = controller.eval(fieldExpr)
+    <span class="hljs-keyword">else</span>
+      selectValueField = chip.lastSelectValueField
+    watchExpr += <span class="hljs-string">'.'</span> + selectValueField
+
+  <span class="hljs-keyword">if</span> element.attr(<span class="hljs-string">'type'</span>) is <span class="hljs-string">'checkbox'</span>
+    checkedAttr = element.attr(<span class="hljs-string">'checked-value'</span>) or <span class="hljs-string">'true'</span>
+    uncheckedAttr = element.attr(<span class="hljs-string">'unchecked-value'</span>) or <span class="hljs-string">'false'</span>
+    element.removeAttr(<span class="hljs-string">'checked-value'</span>)
+    element.removeAttr(<span class="hljs-string">'unchecked-value'</span>)
+    checkedValue = controller.eval(checkedAttr)
+    uncheckedValue = controller.eval(uncheckedAttr)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Handles input (checkboxes, radios), select, textarea, option</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  getValue =
+    <span class="hljs-keyword">if</span> element.attr(<span class="hljs-string">'type'</span>) is <span class="hljs-string">'checkbox'</span> # Handles checkboxes
+      -&gt; element.prop(<span class="hljs-string">'checked'</span>) and checkedValue or uncheckedValue
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> element.attr(<span class="hljs-string">'type'</span>) is <span class="hljs-string">'file'</span>
+      -&gt; element.get(<span class="hljs-number">0</span>).files?[<span class="hljs-number">0</span>]
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> element.is(<span class="hljs-string">':not(input,select,textarea,option)'</span>) # Handles a group <span class="hljs-keyword">of</span> radio inputs
+      -&gt; element.find(<span class="hljs-string">'input:radio:checked'</span>).val()
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> selectValueField and element.is(<span class="hljs-string">'select'</span>)
+      (realValue) -&gt;
+        <span class="hljs-keyword">if</span> realValue
+          $(element.get(<span class="hljs-number">0</span>).options[element.get(<span class="hljs-number">0</span>).selectedIndex]).data(<span class="hljs-string">'value'</span>)
+        <span class="hljs-keyword">else</span>
+          element.val()
+    <span class="hljs-keyword">else</span> # Handles other form inputs
+      -&gt; element.val()
+
+  setValue =
+    <span class="hljs-keyword">if</span> element.attr(<span class="hljs-string">'type'</span>) is <span class="hljs-string">'checkbox'</span>
+      (value) -&gt; element.prop(<span class="hljs-string">'checked'</span>, value is checkedValue)
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> element.attr(<span class="hljs-string">'type'</span>) is <span class="hljs-string">'file'</span>
+      (value) -&gt; # <span class="hljs-string">"get"</span> only
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> element.is(<span class="hljs-string">':not(input,select,textarea,option)'</span>) <span class="hljs-comment">// Handles a group of radio inputs</span>
+      (value) -&gt;
+        element.find(<span class="hljs-string">'input:radio:checked'</span>).prop(<span class="hljs-string">'checked'</span>, <span class="hljs-literal">false</span>) <span class="hljs-comment">// in case the value isn't found in radios</span>
+        element.find(<span class="hljs-string">'input:radio[value="'</span> + value + <span class="hljs-string">'"]'</span>).prop(<span class="hljs-string">'checked'</span>, <span class="hljs-literal">true</span>)
+    <span class="hljs-keyword">else</span>
+      (value) -&gt;
+        strValue = selectValueField and value?[selectValueField] or value
+        strValue = <span class="hljs-string">''</span> + strValue <span class="hljs-keyword">if</span> strValue?
+        element.val(strValue)
+        element.data(<span class="hljs-string">'value'</span>, value) <span class="hljs-keyword">if</span> selectValueField
+
+  observer = controller.watch watchExpr, (value) -&gt;
+    <span class="hljs-keyword">if</span> getValue() isnt <span class="hljs-string">''</span> + value # Allows <span class="hljs-keyword">for</span> string/number equality
+      setValue controller.eval expr</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>Skips setting values on option elements since the user cannot change these with user input</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">return</span> <span class="hljs-keyword">if</span> element.is <span class="hljs-string">'option'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>Sets initial element value. For SELECT elements allows child option element values to be set first.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> element.is(<span class="hljs-string">'select'</span>)
+    element.one <span class="hljs-string">'processed'</span>, -&gt;
+      setValue controller.eval expr
+      unless element.is(<span class="hljs-string">'[readonly]'</span>)
+        controller.evalSetter expr, getValue(<span class="hljs-literal">true</span>)
+  <span class="hljs-keyword">else</span> unless element.is(<span class="hljs-string">'[readonly]'</span>)
+    controller.evalSetter expr, getValue()
+
+  events = element.attr(<span class="hljs-string">'bind-value-events'</span>) or <span class="hljs-string">'change'</span>
+  element.removeAttr(<span class="hljs-string">'bind-value-events'</span>)
+  <span class="hljs-keyword">if</span> element.is <span class="hljs-string">':text'</span>
+    element.on <span class="hljs-string">'keydown'</span>, (event) -&gt;
+      <span class="hljs-keyword">if</span> event.keyCode is <span class="hljs-number">13</span>
+        element.trigger <span class="hljs-string">'change'</span>
+
+  element.on events, -&gt;
+    <span class="hljs-keyword">if</span> getValue() isnt observer.oldValue and not element.is(<span class="hljs-string">'[readonly]'</span>)
+      controller.evalSetter expr, getValue(<span class="hljs-literal">true</span>)
+      observer.skipNextSync() <span class="hljs-comment">// don't update this observer, user changed it</span>
+      controller.sync() <span class="hljs-comment">// update other expressions looking at this data</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <h2 id="on-event-">on-[event]</h2>
+<p>Adds a handler for each event name in the array. When the event is triggered the expression will be run.</p>
+<p><strong>Example Events:</strong></p>
+<ul>
+<li>on-click</li>
+<li>on-dblclick</li>
+<li>on-submit</li>
+<li>on-change</li>
+<li>on-focus</li>
+<li>on-blur</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">form</span> <span class="hljs-attribute">on-submit</span>=<span class="hljs-value">"saveUser()"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"firstName"</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">"Jacob"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">button</span>&gt;</span>Save<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">form</span>&gt;</span>
+</code></pre>
+<p><em>Result (events don’t affect the HTML):</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">form</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"firstName"</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">"Jacob"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">button</span>&gt;</span>Save<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">form</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'on-*'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">element, attr, controller</span>) </span>{
+  eventName = attr.match
+  expr = attr.value
+  element.on eventName, (event) -&gt;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>prevent native events, let custom events use this mechanism</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> event.originalEvent
+      event.preventDefault()
+    unless element.attr(<span class="hljs-string">'disabled'</span>)
+      controller.eval expr, event: event, element: element</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <h2 id="native-event-">native-[event]</h2>
+<p>Adds a handler for each event name in the array. When the event is triggered the expression will be run.
+It will not call event.preventDefault() like on-* or withold when disabled.</p>
+<p><strong>Example Events:</strong></p>
+<ul>
+<li>native-click</li>
+<li>native-dblclick</li>
+<li>native-submit</li>
+<li>native-change</li>
+<li>native-focus</li>
+<li>native-blur</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">form</span> <span class="hljs-attribute">native-submit</span>=<span class="hljs-value">"saveUser(event)"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"firstName"</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">"Jacob"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">button</span>&gt;</span>Save<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">form</span>&gt;</span>
+</code></pre>
+<p><em>Result (events don’t affect the HTML):</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">form</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">"firstName"</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">"Jacob"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">button</span>&gt;</span>Save<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">form</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'native-*'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">element, attr, controller</span>) </span>{
+  eventName = attr.match
+  expr = attr.value
+  element.on eventName, (event) -&gt;
+    controller.eval expr, event: event, element: element</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <h2 id="on-key-event-">on-[key event]</h2>
+<p>Adds a handler which is triggered when the keydown event’s <code>keyCode</code> property matches.</p>
+<p><strong>Key Events:</strong></p>
+<ul>
+<li>on-enter</li>
+<li>on-esc</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">on-enter</span>=<span class="hljs-value">"window.alert(element.val())"</span>&gt;</span>
+</code></pre>
+<p><em>Result:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">input</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>keyCodes = { enter: <span class="hljs-number">13</span>, esc: <span class="hljs-number">27</span> }
+<span class="hljs-keyword">for</span> own name, keyCode <span class="hljs-keyword">of</span> keyCodes
+  chip.keyEventBinding(<span class="hljs-string">'on-'</span> + name, keyCode)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <h2 id="on-control-key-event-">on-[control key event]</h2>
+<p>Adds a handler which is triggered when the keydown event’s <code>keyCode</code> property matches and the ctrlKey or metaKey is
+pressed.</p>
+<p><strong>Key Events:</strong></p>
+<ul>
+<li>on-ctrl-enter</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">on-ctrl-enter</span>=<span class="hljs-value">"window.alert(element.val())"</span>&gt;</span>
+</code></pre>
+<p><em>Result:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">input</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>chip.keyEventBinding(<span class="hljs-string">'on-ctrl-enter'</span>, keyCodes.enter, <span class="hljs-literal">true</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <h2 id="attr-attribute-">attr-[attribute]</h2>
+<p>Adds a handler to set the attribute of element to the value of the expression.</p>
+<p><strong>Example Attributes:</strong></p>
+<ul>
+<li>attr-checked</li>
+<li>attr-disabled</li>
+<li>attr-multiple</li>
+<li>attr-readonly</li>
+<li>attr-selected</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">img</span> <span class="hljs-attribute">attr-src</span>=<span class="hljs-value">"user.avatarUrl"</span>&gt;</span>
+</code></pre>
+<p><em>Result:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">img</span> <span class="hljs-attribute">src</span>=<span class="hljs-value">"http://cdn.example.com/avatars/jacwright-small.png"</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'attr-*'</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">element, attr, controller</span>) </span>{
+  <span class="hljs-keyword">if</span> attr.name isnt attr.match # e.g. attr-href=<span class="hljs-string">"someUrl"</span>
+    attrName = attr.match
+    expr = attr.value
+  <span class="hljs-keyword">else</span> # e.g. href=<span class="hljs-string">"http://example.com{{someUrl}}"</span>
+    attrName = attr.name
+    expr = expression.revert attr.value
+
+  controller.watch expr, (value) -&gt;
+    <span class="hljs-keyword">if</span> value?
+      element.attr attrName, value
+      element.trigger attrName + <span class="hljs-string">'Changed'</span>
+    <span class="hljs-keyword">else</span>
+      element.removeAttr attrName</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <h2 id="attr-toggle-attribute-">attr-[toggle attribute]</h2>
+<p>Adds a handler to toggle an attribute on or off if the expression is truthy or falsey.</p>
+<p><strong>Attributes:</strong></p>
+<ul>
+<li>attr-checked</li>
+<li>attr-disabled</li>
+<li>attr-multiple</li>
+<li>attr-readonly</li>
+<li>attr-selected</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">label</span>&gt;</span>Is Administrator<span class="hljs-tag">&lt;/<span class="hljs-title">label</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">"checkbox"</span> <span class="hljs-attribute">attr-checked</span>=<span class="hljs-value">"user.isAdmin"</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">button</span> <span class="hljs-attribute">attr-disabled</span>=<span class="hljs-value">"isProcessing"</span>&gt;</span>Submit<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+</code></pre>
+<p><em>Result if <code>isProcessing</code> is <code>true</code> and <code>user.isAdmin</code> is false:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">label</span>&gt;</span>Is Administrator<span class="hljs-tag">&lt;/<span class="hljs-title">label</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">"checkbox"</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-title">button</span> <span class="hljs-attribute">disabled</span>&gt;</span>Submit<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>[ <span class="hljs-string">'attr-checked'</span>, <span class="hljs-string">'attr-disabled'</span>, <span class="hljs-string">'attr-multiple'</span>, <span class="hljs-string">'attr-readonly'</span>, <span class="hljs-string">'attr-selected'</span> ].forEach (name) -&gt;
+  chip.attributeToggleBinding(name)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <h2 id="bind-if">bind-if</h2>
+<p>Adds a handler to show or hide the element if the value is truthy or falsey. Actually removes the element from the DOM
+when hidden, replacing it with a non-visible placeholder and not needlessly executing bindings inside.</p>
+<p><strong>Example:</strong></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">ul</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"header-links"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">li</span> <span class="hljs-attribute">bind-if</span>=<span class="hljs-value">"user"</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">"/account"</span>&gt;</span>My Account<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">li</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">li</span> <span class="hljs-attribute">bind-if</span>=<span class="hljs-value">"user"</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">"/logout"</span>&gt;</span>Sign Out<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">li</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">li</span> <span class="hljs-attribute">bind-if</span>=<span class="hljs-value">"!user"</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">"/login"</span>&gt;</span>Sign In<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">li</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">ul</span>&gt;</span>
+</code></pre>
+<p><em>Result if <code>user</code> is null:</em></p>
+<pre><code class="lang-xml"><span class="hljs-tag">&lt;<span class="hljs-title">ul</span> <span class="hljs-attribute">class</span>=<span class="hljs-value">"header-links"</span>&gt;</span>
+  <span class="hljs-comment">&lt;!--bind-if="user"--&gt;</span>
+  <span class="hljs-comment">&lt;!--bind-if="user"--&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-title">li</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">"/login"</span>&gt;</span>Sign In<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">li</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-title">ul</span>&gt;</span>
+</code></pre>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>Binder.registerBinder(<span class="hljs-string">'bind-if'</span>, {
+  priority: <span class="hljs-number">50</span>,
+
+  compiled: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">options</span>) </span>{
+    <span class="hljs-keyword">var</span> element = options.element;
+    <span class="hljs-keyword">var</span> expressions = [ options.expression ];
+    <span class="hljs-keyword">var</span> placeholder = <span class="hljs-built_in">document</span>.createTextNode(<span class="hljs-string">''</span>);
+    <span class="hljs-keyword">var</span> node = element.nextElementSibling;
+    options.element = placeholder;
+    element.parentNode.replaceChild(placeholder, element);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>Convert the element into a template so we can reuse it</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    Template.createTemplate(element);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>Stores a template for all the elements that can go into this spot</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    options.template = [ element ];</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>Pull out any other elements that are chained with this one</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">while</span> (node) {
+      <span class="hljs-keyword">var</span> next = node.nextElementSibling;
+      <span class="hljs-keyword">if</span> (node.hasAttribute(<span class="hljs-string">'bind-else-if'</span>)) {
+        expressions.push(node.getAttribute(<span class="hljs-string">'bind-else-if'</span>));
+        node.removeAttribute(<span class="hljs-string">'bind-else-if'</span>);
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node.hasAttribute(<span class="hljs-string">'bind-else'</span>)) {
+        node.removeAttribute(<span class="hljs-string">'bind-else'</span>);
+        next = <span class="hljs-literal">null</span>;
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">break</span>;
+      }
+
+      node.remove();
+      Template.createTemplate(node);
+      options.templates.push(node);
+      node = next;
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>An expression that will return an index. Something like this <code>expr ? 0 : expr2 ? 1 : expr3 ? 2 : 3</code>. This will be
+used to know which section to show in the if/else-if/else grouping.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    options.expression = expressions.map(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">expr, index</span>) </span>{
+      <span class="hljs-string">'('</span> + expr + <span class="hljs-string">') ? '</span> + index + <span class="hljs-string">' : '</span>;
+    }).join(<span class="hljs-string">''</span>) + expressions.length;
+  },
+
+  updated: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">index</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.showing) {
+      <span class="hljs-keyword">this</span>.showing.dispose();
+      <span class="hljs-keyword">this</span>.showing = <span class="hljs-literal">null</span>;
+    }
+    <span class="hljs-keyword">var</span> template = <span class="hljs-keyword">this</span>.template[index];
+    <span class="hljs-keyword">if</span> (template) {
+      <span class="hljs-keyword">this</span>.showing = template.createView();
+      <span class="hljs-keyword">this</span>.showing.bind(<span class="hljs-keyword">this</span>.context);
+      <span class="hljs-keyword">this</span>.element.parentNode.insertBefore(<span class="hljs-keyword">this</span>.showing, <span class="hljs-keyword">this</span>.element.nextSibling);
+    }
+  }
+});
+
+
+
+<span class="hljs-keyword">var</span> binding = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./binding'</span>);
+
+binding.addBinding(<span class="hljs-string">'[text]'</span>);
+
+binding.addBinding(<span class="hljs-string">'[html]'</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>… etc …</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+
+binding.addBinding(<span class="hljs-string">'(enter)'</span>, enterKeyEvent);
+binding.addBinding(<span class="hljs-string">'(esc)'</span>, escapeKeyEvent);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <p>Listen on the provided event (e.g. <code>(click)=&quot;doSomething()&quot;</code>).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>binding.addBinding(<span class="hljs-string">'(*)'</span>, eventCatchAll);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>Set an attribute to the computed value (e.g. <code>[href]=&quot;member.websiteUrl&quot;</code>).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>binding.addBinding(<span class="hljs-string">'[*]'</span>, attributeCatchAll);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <p>Toggle an attribte to exist or not (e.g. checked, selected, hidden, disabled, etc).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>binding.addBinding(<span class="hljs-string">'*?'</span>, attributeToggle);</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

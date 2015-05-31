@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>transition.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              
+                
+                <a class="source" href="binder.html">
+                  binder.js
+                </a>
+              
+                
+                <a class="source" href="binders.html">
+                  binders.js
+                </a>
+              
+                
+                <a class="source" href="binding.html">
+                  binding.js
+                </a>
+              
+                
+                <a class="source" href="diff.html">
+                  diff.js
+                </a>
+              
+                
+                <a class="source" href="initBinding.html">
+                  initBinding.js
+                </a>
+              
+                
+                <a class="source" href="observer.html">
+                  observer.js
+                </a>
+              
+                
+                <a class="source" href="template.html">
+                  template.js
+                </a>
+              
+                
+                <a class="source" href="toFragment.html">
+                  toFragment.js
+                </a>
+              
+                
+                <a class="source" href="transition.html">
+                  transition.js
+                </a>
+              
+            </div>
+          </div>
+        </li>
+      </ul>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>transition.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <p>TODO update comment docs with new method. CSS transitions using <code>animate=&quot;fade&quot;</code>. Or JavaScript animations using
+hooks <code>willAnimateIn()</code>, <code>animateIn(callback)</code>, and <code>didAnimateIn()</code>.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>The following 5 methods are helper DOM methods that allow registered bindings to work with CSS transitions for
+animating elements. If an element has the <code>animate</code> attribute or a matching JavaScript method, these helper methods
+will set a class on the node to trigger the transition or call the JavaScript method to handle it.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>If using CSS transitions, classes are added and removed from node. When an element is inserted it will add the <code>will-
+animate-in</code> class before adding to the DOM then the <code>animate-in</code> then remove them after transitioning. When an
+element is being removed from the DOM it will add the <code>animate-out</code> class to apply a transition or animation and wait
+until it is done before removing the node. <code>animate-move-out</code> and <code>animate-move-in</code> are applied to an element when it
+is leaving the DOM and coming back into its new place.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>TODO cache by class-name (Angular)? Only support javascript-style (Ember)? Add a <code>will-animate-in</code> and
+<code>did-animate-in</code> etc.?
+IF has any classes, add the <code>will-animate-in|out</code> and get computed duration. If none, return. Cache.
+RULE is use unique class to define an animation. Or attribute <code>animate=&quot;fade&quot;</code> will add the class?
+<code>.fade.will-animate-in</code>, <code>.fade.animate-in</code>, <code>.fade.will-animate-out</code>, <code>.fade.animate-out</code></p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>Events will be triggered on the elements named the same as the class names (e.g. <code>animate-in</code>) which may be listened
+to in order to cancel an animation or respond to it.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>If the node has methods <code>animateIn(done)</code>, <code>animateOut(done)</code>, <code>animateMoveIn(done)</code>, or <code>animateMoveOut(done)</code>
+defined on them then the helpers will allow an animation in JavaScript to be run and wait for the <code>done</code> function to
+be called to know when the animation is complete.</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Be sure to actually have an animation defined for elements with the <code>animate</code> class/attribute because the helpers use
+the <code>transitionend</code> and <code>animationend</code> events to know when the animation is finished, and if there is no animation
+these events will never be triggered and the operation will never complete.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>exports.replaceNode = replaceNode;
+exports.removeNode = removeNode;
+exports.insertNodeBefore = insertNodeBefore;
+exports.insertNodeAfter = insertNodeAfter;
+exports.moveNode = moveNode;
+exports.addTransitionEndListener = addTransitionEndListener;
+exports.removeTransitionEndListener = removeTransitionEndListener;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Helper method to replace a node in the DOM with another node, allowing for animations to occure. <code>callback</code> will be
+called when finished.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">replaceNode</span>(<span class="hljs-params">node, withNode, callback</span>) </span>{
+  animate(<span class="hljs-string">'out'</span>, node, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    node.parentNode.replaceChild(withNode, node);
+    animate(<span class="hljs-string">'in'</span>, withNode, callback);
+  });
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>Helper method to remove a node from the DOM, allowing for animations to occure. <code>callback</code> will be called when
+finished.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">removeNode</span>(<span class="hljs-params">node, callback</span>) </span>{
+  animate(<span class="hljs-string">'out'</span>, node, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    node.parentNode.removeChild(node);
+    <span class="hljs-keyword">if</span> (callback) callback();
+  });
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>Helper method to insert a node in the DOM before another node, allowing for animations to occure. <code>callback</code> will be
+called when finished.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">insertNodeBefore</span>(<span class="hljs-params">node, before, callback</span>) </span>{
+  before.parentNode.insertBefore(node, before);
+  animate(<span class="hljs-string">'in'</span>, node, callback);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>Helper method to insert a node in the DOM after another node, allowing for animations to occure. <code>callback</code> will be
+called when finished.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">insertNodeAfter</span>(<span class="hljs-params">node, after, callback</span>) </span>{
+  after.parentNode.insertBefore(node, after.nextSibling);
+  animate(<span class="hljs-string">'in'</span>, node, callback);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>Helper method to move a node within its parent to the location before the given <code>before</code> node, or at the end if
+<code>before</code> is <code>null</code>, allowing for animations to occure. <code>callback</code> will be called when finished.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">moveNode</span>(<span class="hljs-params">node, index, callback</span>) </span>{
+  animate(<span class="hljs-string">'move-out'</span>, node, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    node.parentNode.insertBefore(node, before);
+    animate(<span class="hljs-string">'move-in'</span>, node, callback);
+  });
+};
+
+
+<span class="hljs-keyword">var</span> ANIMATIONS = [ <span class="hljs-string">'in'</span>, <span class="hljs-string">'out'</span>, <span class="hljs-string">'move-in'</span>, <span class="hljs-string">'move-out'</span> ];
+
+ANIMATIONS.forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">key</span>) </span>{
+  ANIMATIONS[<span class="hljs-string">'animate-'</span> + key] = camelize(<span class="hljs-string">'animate-'</span> + key);
+  ANIMATIONS[<span class="hljs-string">'will-animate-'</span> + key] = camelize(<span class="hljs-string">'will-animate-'</span> + key);
+  ANIMATIONS[<span class="hljs-string">'did-animate-'</span> + key] = camelize(<span class="hljs-string">'did-animate-'</span> + key);
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <h2 id="animate">animate</h2>
+<p>Allow an element to use CSS3 transitions or animations to animate in or out of the page.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">animate</span>(<span class="hljs-params">direction, node, callback</span>) </span>{
+  <span class="hljs-keyword">var</span> className = node.getAttribute(<span class="hljs-string">'animate'</span>);
+  <span class="hljs-keyword">var</span> name = <span class="hljs-string">'animate-'</span> + direction;
+  <span class="hljs-keyword">var</span> methodName = ANIMATIONS[name];
+
+  <span class="hljs-keyword">if</span> (!className &amp;&amp; !node[methodName]) {
+    <span class="hljs-keyword">if</span> (callback) callback();
+    <span class="hljs-keyword">return</span>;
+  }
+
+  <span class="hljs-keyword">var</span> event = <span class="hljs-keyword">new</span> CustomEvent(name, { cancelable: <span class="hljs-literal">true</span> });
+  node.dispatchEvent(event);
+
+  <span class="hljs-keyword">if</span> (node.defaultPrevented) {
+    <span class="hljs-keyword">if</span> (callback) callback();
+    <span class="hljs-keyword">return</span>;
+  }
+
+  <span class="hljs-keyword">var</span> willName = <span class="hljs-string">'will-animate-'</span> + direction;
+  <span class="hljs-keyword">var</span> didName = <span class="hljs-string">'did-animate-'</span> + direction;
+  <span class="hljs-keyword">if</span> (node[methodName]) {
+    <span class="hljs-keyword">var</span> willMethodName = ANIMATIONS[willName];
+    <span class="hljs-keyword">var</span> didMethodName = ANIMATIONS[didName];
+
+    <span class="hljs-keyword">if</span> (node[willMethodName]) {
+      node[willMethodName]();
+    }
+
+    node[methodName](<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+      <span class="hljs-keyword">if</span> (callback) callback();
+
+      <span class="hljs-keyword">if</span> (node[didMethodName]) {
+        node[didMethodName]();
+      }
+    });
+  } <span class="hljs-keyword">else</span> {
+    <span class="hljs-keyword">if</span> (!node.classList.has(className)) {
+      node.classList.add(className);
+    }
+
+    node.classList.add(willName);
+    <span class="hljs-keyword">var</span> duration = getDuration(node, className + <span class="hljs-string">' '</span> + willName);
+    <span class="hljs-keyword">if</span> (!duration) {
+      node.classList.remove(willName);
+      <span class="hljs-keyword">if</span> (callback) callback();
+      <span class="hljs-keyword">return</span>;
+    }
+
+    <span class="hljs-keyword">if</span> (name.indexOf(<span class="hljs-string">'-in'</span>) &gt; <span class="hljs-number">0</span>) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>reset the initial state so it doesn’t try to animate in (e.g. starts with opacity=0 instead of fades there)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">var</span> nextSibling = node.nextSibling;
+      parentNode.removeChild(node);
+      parentNode.insertBefore(node, nextSibling);
+    } <span class="hljs-keyword">else</span> {
+      node.classList.add(willName);
+    }
+
+    requestAnimationFrame(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+      node.classList.remove(willName);
+      node.classList.add(name);
+      afterAnimation(node, duration, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+        node.classList.remove(name);
+        <span class="hljs-keyword">if</span> (callback) callback();
+      });
+    });
+  }
+}
+
+<span class="hljs-keyword">var</span> transitionDurationName = <span class="hljs-string">'transitionDuration'</span>;
+<span class="hljs-keyword">var</span> transitionDelayName = <span class="hljs-string">'transitionDelay'</span>;
+<span class="hljs-keyword">var</span> style = <span class="hljs-built_in">document</span>.documentElement.style;
+<span class="hljs-keyword">if</span> (style.transitionDuration === <span class="hljs-literal">undefined</span> &amp;&amp; style.webkitTransitionDuration !== <span class="hljs-literal">undefined</span>) {
+  transitionDurationName = <span class="hljs-string">'webkitTransitionDuration'</span>;
+  transitionDelayName = <span class="hljs-string">'webkitTransitionDelay'</span>;
+}
+
+<span class="hljs-keyword">var</span> cache = {};
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">getDuration</span>(<span class="hljs-params">node, classes</span>) </span>{
+  <span class="hljs-keyword">var</span> milliseconds = cache[classes];
+  <span class="hljs-keyword">if</span> (milliseconds == <span class="hljs-literal">null</span>) {
+    <span class="hljs-keyword">var</span> styles = <span class="hljs-built_in">window</span>.getComputedStyle(node);
+    <span class="hljs-keyword">var</span> seconds = <span class="hljs-built_in">parseFloat</span>(styles[transitionDurationName]) + <span class="hljs-built_in">parseFloat</span>(styles[transitionDelayName]);
+    milliseconds = seconds * <span class="hljs-number">1000</span> || <span class="hljs-number">0</span>;
+    cache[classes] = milliseconds;
+  }
+  <span class="hljs-keyword">return</span> milliseconds;
+}
+
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">afterAnimation</span>(<span class="hljs-params">node, duration, callback</span>) </span>{
+  <span class="hljs-keyword">var</span> timeout;
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">done</span>(<span class="hljs-params"></span>) </span>{
+    clearTimeout(timeout);
+    callback();
+  }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>transitionend events don’t always fire (e.g. when the browser doesn’t have focus)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  timeout = setTimeout(done, duration);
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">camelize</span>(<span class="hljs-params">str</span>) </span>{
+  <span class="hljs-keyword">return</span> str.replace(<span class="hljs-regexp">/-(\w)/g</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">_, letter</span>) </span>{ <span class="hljs-keyword">return</span> letter.toUpperCase(); });
+}</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
