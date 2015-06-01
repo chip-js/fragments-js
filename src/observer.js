@@ -1,6 +1,6 @@
 module.exports = Observer;
 var expression = require('./expression');
-var filters = require('./filter').filters;
+var formatters = require('./formatter').formatters;
 var diff = require('./diff');
 
 // # Observer
@@ -40,14 +40,14 @@ Observer.prototype = {
   // Returns the current value of this observer
   get: function() {
     if (this.context) {
-      return this.getter.call(this.context, filters);
+      return this.getter.call(this.context, formatters);
     }
   },
 
   // Sets the value of this expression
   set: function(value) {
     if (this.context && this.setter) {
-      return this.setter.call(this.context, filters, value);
+      return this.setter.call(this.context, formatters, value);
     }
   },
 
@@ -77,8 +77,8 @@ Observer.prototype = {
     }
 
     // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
-    // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array filters in
-    // bind-each)
+    // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+    // in bind-each)
     this.oldValue = diff.clone(value);
   }
 };

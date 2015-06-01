@@ -2,7 +2,7 @@ var Binding = require('./binding');
 var binderMethods = [ 'created', 'updated', 'attached', 'detached' ];
 
 // All registered bindings are added to this array and assigned to it by name as well for lookup.
-var registeredBinders = [];
+var registeredBinders = {};
 
 // Wildcard bindings (i.e. bindings with a `*` in them) are also added here for quick iteration.
 var wildcards = [];
@@ -23,10 +23,10 @@ registerBinder('{{attribute}}', function(value) {
 
 
 // Public API for this module, functions found below.
-exports.registerBinder = registerBinder;
-exports.unregisterBinder = unregisterBinder;
-exports.getBinder = getBinder;
-exports.findBinder = findBinder;
+exports.register = registerBinder;
+exports.unregister = unregisterBinder;
+exports.get = getBinder;
+exports.find = findBinder;
 exports.createBinding = createBinding;
 
 // Registers a binder that will be used to create a binding with an element whose attribute name matches this binder's.
@@ -89,7 +89,6 @@ function registerBinder(name, binder) {
     wildcards.sort(binderSort);
   }
   registeredBinders[name] = binder;
-  registeredBinders.push(binder);
   return binder;
 };
 
@@ -107,11 +106,10 @@ function registerBinder(name, binder) {
 function unregisterBinder(name) {
   var binder = getBinder(name);
   if (!binder) return;
-  delete registeredBinders[name];
   if (name.indexOf('*') >= 0) {
-    wildcards.push(binder);
+    wildcards.splice(wildcards.indexOf(binder), 1);
   }
-  registeredBinders.splice(registeredBinders.indexOf(binder), 1);
+  delete registeredBinders[name];
   return binder;
 }
 

@@ -3,7 +3,7 @@ var Binding = require('./binding');
 var binderMethods = [ 'created', 'updated', 'attached', 'detached' ];
 
 // All registered bindings are added to this array and assigned to it by name as well for lookup.
-var registeredBinders = [];
+var registeredBinders = {};
 
 // Wildcard bindings (i.e. bindings with a `*` in them) are also added here for quick iteration.
 var wildcards = [];
@@ -24,10 +24,10 @@ registerBinder('{{attribute}}', function(value) {
 
 
 // Public API for this module, functions found below.
-exports.registerBinder = registerBinder;
-exports.unregisterBinder = unregisterBinder;
-exports.getBinder = getBinder;
-exports.findBinder = findBinder;
+exports.register = registerBinder;
+exports.unregister = unregisterBinder;
+exports.get = getBinder;
+exports.find = findBinder;
 exports.createBinding = createBinding;
 
 // Registers a binder that will be used to create a binding with an element whose attribute name matches this binder's.
@@ -90,7 +90,6 @@ function registerBinder(name, binder) {
     wildcards.sort(binderSort);
   }
   registeredBinders[name] = binder;
-  registeredBinders.push(binder);
   return binder;
 };
 
@@ -108,11 +107,10 @@ function registerBinder(name, binder) {
 function unregisterBinder(name) {
   var binder = getBinder(name);
   if (!binder) return;
-  delete registeredBinders[name];
   if (name.indexOf('*') >= 0) {
-    wildcards.push(binder);
+    wildcards.splice(wildcards.indexOf(binder), 1);
   }
-  registeredBinders.splice(registeredBinders.indexOf(binder), 1);
+  delete registeredBinders[name];
   return binder;
 }
 
@@ -678,7 +676,7 @@ expression.get = function(expr, options) {
   if (func) {
     return func;
   }
-  args.unshift('_filters_');
+  args.unshift('_formatters_');
   body = expression.parse(expr, options);
   try {
     func = expression.cache[cacheKey] = Function.apply(null, slice.call(args).concat([body]));
@@ -806,7 +804,7 @@ parseFilters = function(expr) {
     if (setter) {
       args.push(true);
     }
-    return value = "_filters_." + filterName + ".call(this, " + (args.join(', ')) + ")";
+    return value = "_formatters_." + filterName + ".call(this, " + (args.join(', ')) + ")";
   });
   return setter + value;
 };
@@ -981,70 +979,119 @@ parsePart = function(part, index) {
 
 
 },{}],5:[function(require,module,exports){
-var Filter;
+// # Formatter
 
-Filter = (function() {
-  function Filter(name1, filter1) {
-    this.name = name1;
-    this.filter = filter1;
-  }
+exports.register = registerFormatter;
+exports.unregister = unregisterFormatter;
+exports.get = getFormatter;
 
-  Filter.filters = {};
+// A Formatter is stored to process the value of an expression. This alters the value of what comes in with a function
+// that returns a new value. Formatters are added by using a single pipe character (`|`) followed by the name of the
+// formatter. Multiple formatters can be used by chaining pipes with formatter names. Formatters may also have arguments passed to
+// them by using the colon to separate arguments from the formatter name. The signature of a formatter should be `function
+// (controller, value, args...)` where args are extra parameters passed into the formatter after colons.
+//
+// *Example:*
+// ```js
+// Formatter.register('uppercase', function(controller, value) {
+//   if (typeof value != 'string') return ''
+//   return value.toUppercase()
+// })
+//
+// Formatter.register('replace', function(controller, value, replace, with) {
+//   if (typeof value != 'string') return ''
+//   return value.replace(replace, with)
+// })
+// ```xml
+// <h1 bind-text="title | uppercase | replace:'LETTER':'NUMBER'"></h1>
+// ```
+// *Result:*
+// ```xml
+// <h1>GETTING TO KNOW ALL ABOUT THE NUMBER A</h1>
+// ```
+//
+// A `valueFormatter` is like a formatter but used specifically with the `value` binding since it is a two-way binding. When
+// the value of the element is changed a `valueFormatter` can adjust the value from a string to the correct value type for
+// the controller expression. The signature for a `valueFormatter` includes the current value of the expression
+// before the optional arguments (if any). This allows dates to be adjusted and possibley other uses.
+//
+// *Example:*
+// ```js
+// Formatter.register('numeric', function(controller, value) {
+//   // value coming from the controller expression, to be set on the element
+//   if (value == null || isNaN(value)) return ''
+//   return value
+// })
+//
+// Formatter.register('date-hour', function(controller, value) {
+//   // value coming from the controller expression, to be set on the element
+//   if ( !(currentValue instanceof Date) ) return ''
+//   var hours = value.getHours()
+//   if (hours >= 12) hours -= 12
+//   if (hours == 0) hours = 12
+//   return hours
+// })
+// ```xml
+// <label>Number Attending:</label>
+// <input size="4" bind-value="event.attendeeCount | numeric">
+// <label>Time:</label>
+// <input size="2" bind-value="event.date | date-hour"> :
+// <input size="2" bind-value="event.date | date-minute">
+// <select bind-value="event.date | date-ampm">
+//   <option>AM</option>
+//   <option>PM</option>
+// </select>
+// ```
+var formatters = exports.formatters = {};
 
-  Filter.addFilter = function(name, filter) {
-    if (filter != null) {
-      this.filters[name] = filter;
-    }
-    return this;
-  };
+function registerFormatter(name, formatter) {
+  formatters[name] = formatter;
+}
 
-  Filter.getFilter = function(name) {
-    return this.filters[name];
-  };
+function unregisterFormatter(name, formatter) {
+  delete formatters[name];
+}
 
-  return Filter;
-
-})();
-
-module.exports = Filter;
-
+function getFormatter(name) {
+  return formatters[name];
+}
 
 },{}],6:[function(require,module,exports){
-var Filter, div, escape, urlExp,
-  hasProp = {}.hasOwnProperty;
+Formatter = require('./formatter');
 
-Filter = require('./filter');
+// # Default Formatters
 
-Filter.addFilter('filter', function(value, filterFunc) {
-  var func, i, key, len;
+// ## filter
+// Filters an array by the given filter function(s), may provide a function, an
+// array, or an object with filtering functions
+Formatter.register('filter', function(value, filterFunc) {
   if (!Array.isArray(value)) {
     return [];
-  }
-  if (!filterFunc) {
+  } else if (!filterFunc) {
     return value;
   }
+
   if (typeof filterFunc === 'function') {
-    return value.filter(filterFunc, this);
+    value = value.filter(filterFunc, this);
   } else if (Array.isArray(filterFunc)) {
-    for (i = 0, len = filterFunc.length; i < len; i++) {
-      func = filterFunc[i];
+    filterFunc.forEach(function(func) {
       value = value.filter(func, this);
-    }
-    return value;
+    });
   } else if (typeof filterFunc === 'object') {
-    for (key in filterFunc) {
-      if (!hasProp.call(filterFunc, key)) continue;
-      func = filterFunc[key];
+    Object.keys(filterFunc).forEach(function(key) {
+      var func = filterFunc[key];
       if (typeof func === 'function') {
         value = value.filter(func, this);
       }
-    }
-    return value;
+    });
   }
+  return value;
 });
 
-Filter.addFilter('map', function(value, mapFunc) {
-  if (!((value != null) && mapFunc)) {
+// ## map
+// Adds a formatter to map an array or value by the given mapping function
+Formatter.register('map', function(value, mapFunc) {
+  if (value == null || typeof mapFunc !== 'function') {
     return value;
   }
   if (Array.isArray(value)) {
@@ -1054,8 +1101,10 @@ Filter.addFilter('map', function(value, mapFunc) {
   }
 });
 
-Filter.addFilter('reduce', function(value, reduceFunc, initialValue) {
-  if (!((value != null) && reduceFunc)) {
+// ## reduce
+// Adds a formatter to reduce an array or value by the given reduce function
+Formatter.register('reduce', function(value, reduceFunc, initialValue) {
+  if (value == null || typeof mapFunc !== 'function') {
     return value;
   }
   if (Array.isArray(value)) {
@@ -1069,7 +1118,9 @@ Filter.addFilter('reduce', function(value, reduceFunc, initialValue) {
   }
 });
 
-Filter.addFilter('slice', function(value, index, endIndex) {
+// ## reduce
+// Adds a formatter to reduce an array or value by the given reduce function
+Formatter.register('slice', function(value, index, endIndex) {
   if (Array.isArray(value)) {
     return value.slice(index, endIndex);
   } else {
@@ -1077,77 +1128,91 @@ Filter.addFilter('slice', function(value, index, endIndex) {
   }
 });
 
-Filter.addFilter('date', function(value) {
+
+// ## date
+// Adds a formatter to format dates and strings
+Formatter.register('date', function(value) {
   if (!value) {
     return '';
   }
+
   if (!(value instanceof Date)) {
     value = new Date(value);
   }
+
   if (isNaN(value.getTime())) {
     return '';
   }
+
   return value.toLocaleString();
 });
 
-Filter.addFilter('log', function(value, prefix) {
-  if (prefix == null) {
-    prefix = 'Log';
-  }
-  console.log(prefix + ':', value);
+
+// ## log
+// Adds a formatter to log the value of the expression, useful for debugging
+Formatter.register('log', function(value, prefix) {
+  if (prefix == null) prefix = 'Log:';
+  console.log(prefix, value);
   return value;
 });
 
-Filter.addFilter('limit', function(value, limit) {
+
+// ## limit
+// Adds a formatter to limit the length of an array or string
+Formatter.register('limit', function(value, limit) {
   if (value && typeof value.slice === 'function') {
     if (limit < 0) {
       return value.slice(limit);
     } else {
-      return value.slice(0, limit);
+      value.slice(0, limit);
     }
   } else {
     return value;
   }
 });
 
-Filter.addFilter('sort', function(value, sortFunc, dir) {
-  var dir2, origFunc, prop, ref;
-  if (!(sortFunc && Array.isArray(value))) {
+
+// ## sort
+// Sorts an array given a field name or sort function, and a direction
+Formatter.register('sort', function(value, sortFunc, dir) {
+  if (!sortFunc || !Array.isArray(value)) {
     return value;
   }
-  dir = dir === 'desc' ? -1 : 1;
+  dir = (dir === 'desc') ? -1 : 1;
   if (typeof sortFunc === 'string') {
-    ref = sortFunc.split(':'), prop = ref[0], dir2 = ref[1];
-    dir2 = dir2 === 'desc' ? -1 : 1;
+    var parts = sortFunc.split(':');
+    var prop = parts[0];
+    var dir2 = parts[1];
+    dir2 = (dir2 === 'desc') ? -1 : 1;
     dir = dir || dir2;
-    sortFunc = function(a, b) {
-      if (a[prop] > b[prop]) {
-        return dir;
-      }
-      if (a[prop] < b[prop]) {
-        return -dir;
-      }
+    var sortFunc = function(a, b) {
+      if (a[prop] > b[prop]) return dir;
+      if (a[prop] < b[prop]) return -dir;
       return 0;
     };
   } else if (dir === -1) {
-    origFunc = sortFunc;
-    sortFunc = function(a, b) {
-      return -origFunc(a, b);
-    };
+    var origFunc = sortFunc;
+    sortFunc = function(a, b) { return -origFunc(a, b); };
   }
+
   return value.slice().sort(sortFunc);
 });
 
-Filter.addFilter('addQuery', function(value, queryField, queryValue) {
-  var addedQuery, expr, query, ref, url;
-  url = value || location.href;
-  ref = url.split('?'), url = ref[0], query = ref[1];
-  addedQuery = '';
+
+// ## addQuery
+// Takes the input URL and adds (or replaces) the field in the query
+Formatter.register('addQuery', function(value, queryField, queryValue) {
+  var url = value || location.href;
+  var parts = url.split('?');
+  url = parts[0];
+  var query = parts[1];
+  var addedQuery = '';
   if (queryValue != null) {
     addedQuery = queryField + '=' + encodeURIComponent(queryValue);
   }
+
   if (query) {
-    expr = new RegExp('\\b' + queryField + '=[^&]*');
+    var expr = new RegExp('\\b' + queryField + '=[^&]*');
     if (expr.test(query)) {
       query = query.replace(expr, addedQuery);
     } else if (addedQuery) {
@@ -1157,99 +1222,108 @@ Filter.addFilter('addQuery', function(value, queryField, queryValue) {
     query = addedQuery;
   }
   if (query) {
-    url = [url, query].join('?');
+    url += '?' + query;
   }
   return url;
 });
 
-Filter.addFilter('paginate', function(value, pageSize, defaultPage, name) {
-  var begin, currentPage, end, index, pageCount, pagination, ref;
-  if (defaultPage == null) {
-    defaultPage = 1;
-  }
-  if (name == null) {
-    name = 'pagination';
-  }
-  if (!(pageSize && Array.isArray(value))) {
-    delete this.app.rootController[name];
-    this.trigger('paginated');
-    return value;
-  } else {
-    pageCount = Math.ceil(value.length / pageSize);
-    if (defaultPage < 0) {
-      defaultPage = pageCount + defaultPage + 1;
-    } else if (typeof defaultPage === 'function') {
-      defaultPage = defaultPage(value, pageSize, pageCount) || 1;
-    }
-    currentPage = Math.min(pageCount, Math.max(1, ((ref = this.query) != null ? ref.page : void 0) || defaultPage));
-    index = currentPage - 1;
-    begin = index * pageSize;
-    end = Math.min(begin + pageSize, value.length);
-    if (!this.app.rootController[name]) {
-      this.app.rootController[name] = {};
-    }
-    pagination = this.app.rootController[name];
-    pagination.array = value;
-    pagination.page = value.slice(begin, end);
-    pagination.pageSize = pageSize;
-    pagination.pageCount = pageCount;
-    pagination.defaultPage = defaultPage;
-    pagination.currentPage = currentPage;
-    pagination.beginIndex = begin;
-    pagination.endIndex = end;
-    this.trigger('paginated');
-    return pagination.page;
-  }
-});
 
-div = document.createElement('div');
-
-escape = function(value) {
+var div = document.createElement('div')
+function escapeHTML(value) {
   div.textContent = value || '';
   return div.innerHTML;
-};
+}
 
-Filter.addFilter('escape', escape);
+// ## escape
+// HTML escapes content. For use with other HTML-adding formatters such as autolink.
+//
+// **Example:**
+// ```xml
+// <div bind-html="tweet.content | escape | autolink:true"></div>
+// ```
+// *Result:*
+// ```xml
+// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
+// ```
+Formatter.register('escape', escapeHTML);
 
-Filter.addFilter('p', function(value) {
-  var escaped, lines;
-  lines = (value || '').split(/\r?\n/);
-  escaped = lines.map(function(line) {
-    return escape(line) || '<br>';
+
+// ## p
+// HTML escapes content wrapping paragraphs in <p> tags.
+//
+// **Example:**
+// ```xml
+// <div bind-html="tweet.content | p | autolink:true"></div>
+// ```
+// *Result:*
+// ```xml
+// <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</p>
+// <p>It's great</p></div>
+// ```
+Formatter.register('p', function(value) {
+  var lines = (value || '').split(/\r?\n/);
+  var escaped = lines.map(function(line) { return escapeHTML(line) || '<br>'; });
+  return '<p>' + escaped.join('</p><p>') + '</p>';
+});
+
+
+// ## br
+// HTML escapes content adding <br> tags in place of newlines characters.
+//
+// **Example:**
+// ```xml
+// <div bind-html="tweet.content | br | autolink:true"></div>
+// ```
+// *Result:*
+// ```xml
+// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
+// It's great</div>
+// ```
+Formatter.register('br', function(value) {
+  var lines = (value || '').split(/\r?\n/);
+  return lines.map(escapeHTML).join('<br>');
+});
+
+
+// ## newline
+// HTML escapes content adding <p> tags at double newlines and <br> tags in place of single newline characters.
+//
+// **Example:**
+// ```xml
+// <div bind-html="tweet.content | newline | autolink:true"></div>
+// ```
+// *Result:*
+// ```xml
+// <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
+// It's great</p></div>
+// ```
+Formatter.register('newline', function(value) {
+  var paragraphs = (value || '').split(/\r?\n\s*\r?\n/);
+  var escaped = paragraphs.map(function(paragraph) {
+    var lines = paragraph.split(/\r?\n/);
+    return lines.map(escapeHTML).join('<br>');
   });
   return '<p>' + escaped.join('</p><p>') + '</p>';
 });
 
-Filter.addFilter('br', function(value) {
-  var escaped, lines;
-  lines = (value || '').split(/\r?\n/);
-  escaped = lines.map(function(line) {
-    return escape(line);
-  });
-  return escaped.join('<br>');
-});
 
-Filter.addFilter('newline', function(value) {
-  var escaped, paragraphs;
-  if (!div) {
-    div = $('<div></div>');
-  }
-  paragraphs = (value || '').split(/\r?\n\s*\r?\n/);
-  escaped = paragraphs.map(function(paragraph) {
-    var lines;
-    lines = paragraph.split(/\r?\n/);
-    escaped = lines.map(function(line) {
-      return escape(line);
-    });
-    return escaped.join('<br>');
-  });
-  return '<p>' + escaped.join('</p><p>') + '</p>';
-});
+// ## autolink
+// Adds automatic links to escaped content (be sure to escape user content). Can be used on existing HTML content as it
+// will skip URLs within HTML tags. Passing true in the second parameter will set the target to `_blank`.
+//
+// **Example:**
+// ```xml
+// <div bind-html="tweet.content | escape | autolink:true"></div>
+// ```
+// *Result:*
+// ```xml
+// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
+// ```
+var urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
 
-urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
+Formatter.register('autolink', function(value, target) {
+  target = (target) ? ' target="_blank"' : '';
 
-Filter.addFilter('autolink', function(value, target) {
-  target = target ? ' target="_blank"' : '';
   return ('' + value).replace(/<[^>]+>|[^<]+/g, function(match) {
     if (match.charAt(0) === '<') {
       return match;
@@ -1258,30 +1332,24 @@ Filter.addFilter('autolink', function(value, target) {
   });
 });
 
-Filter.addFilter('int', function(value) {
+
+Formatter.register('int', function(value) {
   value = parseInt(value);
-  if (isNaN(value)) {
-    return null;
-  } else {
-    return value;
-  }
+  return isNaN(value) ? null : value;
 });
 
-Filter.addFilter('float', function(value) {
+
+Formatter.register('float', function(value) {
   value = parseFloat(value);
-  if (isNaN(value)) {
-    return null;
-  } else {
-    return value;
-  }
+  return isNaN(value) ? null : value;
 });
 
-Filter.addFilter('bool', function(value) {
+
+Formatter.register('bool', function(value) {
   return value && value !== '0' && value !== 'false';
 });
 
-
-},{"./filter":5}],7:[function(require,module,exports){
+},{"./formatter":5}],7:[function(require,module,exports){
 var Template = require('./template');
 var Binder = require('./binder');
 var Binding = require('./binding');
@@ -1376,7 +1444,7 @@ function getBindingsForNode(node, view) {
   if (node.nodeType === Node.TEXT_NODE) {
     splitTextNode(node);
     if (isBound(node.nodeValue)) {
-      var binder = Binder.findBinder('{{text}}');
+      var binder = Binder.find('{{text}}');
       var expr = codifyExpression(node.nodeValue);
       var binding = createBinding(binder, { expression: expr });
       bindings.push(binding);
@@ -1389,7 +1457,7 @@ function getBindingsForNode(node, view) {
     var attributes = slice.call(node.attributes);
     for (i = 0, l = attributes.length; i < l; i++) {
       var attr = attributes[i];
-      var binder = Binder.findBinder(attr.name);
+      var binder = Binder.find(attr.name);
       if (binder) {
         bound.push({ binder: binder, attr: attr });
       }
@@ -1490,7 +1558,7 @@ function notEmpty(value) {
 },{"./binder":1,"./binding":2,"./template":9}],8:[function(require,module,exports){
 module.exports = Observer;
 var expression = require('./expression');
-var filters = require('./filter').filters;
+var formatters = require('./formatter').formatters;
 var diff = require('./diff');
 
 // # Observer
@@ -1530,14 +1598,14 @@ Observer.prototype = {
   // Returns the current value of this observer
   get: function() {
     if (this.context) {
-      return this.getter.call(this.context, filters);
+      return this.getter.call(this.context, formatters);
     }
   },
 
   // Sets the value of this expression
   set: function(value) {
     if (this.context && this.setter) {
-      return this.setter.call(this.context, filters, value);
+      return this.setter.call(this.context, formatters, value);
     }
   },
 
@@ -1567,8 +1635,8 @@ Observer.prototype = {
     }
 
     // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
-    // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array filters in
-    // bind-each)
+    // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+    // in bind-each)
     this.oldValue = diff.clone(value);
   }
 };
@@ -1686,7 +1754,7 @@ Observer.removeOnSync = function(listener) {
   }
 };
 
-},{"./diff":3,"./expression":4,"./filter":5}],9:[function(require,module,exports){
+},{"./diff":3,"./expression":4,"./formatter":5}],9:[function(require,module,exports){
 var toFragment = require('./toFragment');
 
 // ## Template
@@ -1960,9 +2028,9 @@ exports.Template = require('./src/template');
 exports.expression = require('./src/expression');
 exports.Binding = require('./src/binding');
 exports.Binder = require('./src/binder');
-exports.Filter = require('./src/filter');
-exports.filters = require('./src/filters');
+exports.Formatter = require('./src/formatter');
+exports.formatters = require('./src/formatters');
 require('./src/initBinding');
 
-},{"./src/binder":1,"./src/binding":2,"./src/diff":3,"./src/expression":4,"./src/filter":5,"./src/filters":6,"./src/initBinding":7,"./src/observer":8,"./src/template":9}]},{},[11])(11)
+},{"./src/binder":1,"./src/binding":2,"./src/diff":3,"./src/expression":4,"./src/formatter":5,"./src/formatters":6,"./src/initBinding":7,"./src/observer":8,"./src/template":9}]},{},[11])(11)
 });
