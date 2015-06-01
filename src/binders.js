@@ -4,7 +4,7 @@ var Template = require('./template');
 // # Default Bindings
 
 
-Binder.registerBinder('bind-debug', {
+Binder.register('bind-debug', {
   priority: 200,
   udpated: function(value) {
     console.info('Debug:', this.expression, '=', value);
@@ -36,7 +36,7 @@ Binder.registerBinder('bind-debug', {
 //   <span>10/16/2013</span>.
 // </div>
 // ```
-Binder.registerBinder('bind-text', function(value) {
+Binder.register('bind-text', function(value) {
   element.textContent = (value == null) ? '' else value;
 });
 
@@ -60,7 +60,7 @@ Binder.registerBinder('bind-text', function(value) {
 //   </p>
 // </div>
 // ```
-Binder.registerBinder('bind-html', function(value) {
+Binder.register('bind-html', function(value) {
   element.innerHTML = value == null ? '' : value;
 });
 
@@ -84,7 +84,7 @@ Binder.registerBinder('bind-html', function(value) {
 //   <button class="btn primary highlight"></button>
 // </div>
 // ```
-Binder.registerBinder('bind-class', {
+Binder.register('bind-class', {
   compiled: function(options) {
     this.existingClasses = (options.element.getAttribute('class') || '').split(/\s+/);
     if (this.existingClasses[0] === '') this.existingClasses.pop();
@@ -110,7 +110,7 @@ Binder.registerBinder('bind-class', {
 });
 
 
-Binder.registerBinder('bind-attr', function(value, oldValue, changes) {
+Binder.register('bind-attr', function(value, oldValue, changes) {
   if (changes) {
     // use the change records to remove deleted properties which won't show up
     changes.forEach(function(change) {
@@ -155,7 +155,7 @@ Binder.registerBinder('bind-attr', function(value, oldValue, changes) {
 // ```
 // And when the user changes the text in the first input to "Jac", `user.firstName` will be updated immediately with the
 // value of `'Jac'`.
-Binder.registerBinder('bind-value', function(element, attr, controller) {
+Binder.register('bind-value', function(element, attr, controller) {
   expr = attr.value
   watchExpr = expr
 
@@ -271,7 +271,7 @@ Binder.registerBinder('bind-value', function(element, attr, controller) {
 //   <button>Save</button>
 // </form>
 // ```
-Binder.registerBinder('on-*', function(element, attr, controller) {
+Binder.register('on-*', function(element, attr, controller) {
   eventName = attr.match
   expr = attr.value
   element.on eventName, (event) ->
@@ -310,7 +310,7 @@ Binder.registerBinder('on-*', function(element, attr, controller) {
 //   <button>Save</button>
 // </form>
 // ```
-Binder.registerBinder('native-*', function(element, attr, controller) {
+Binder.register('native-*', function(element, attr, controller) {
   eventName = attr.match
   expr = attr.value
   element.on eventName, (event) ->
@@ -374,7 +374,7 @@ chip.keyEventBinding('on-ctrl-enter', keyCodes.enter, true)
 // ```xml
 // <img src="http://cdn.example.com/avatars/jacwright-small.png">
 // ```
-Binder.registerBinder('attr-*', function(element, attr, controller) {
+Binder.register('attr-*', function(element, attr, controller) {
   if attr.name isnt attr.match # e.g. attr-href="someUrl"
     attrName = attr.match
     expr = attr.value
@@ -462,7 +462,7 @@ Binder.registerBinder('attr-*', function(element, attr, controller) {
 //   <li><a href="/login">Sign In</a></li>
 // </ul>
 // ```
-Binder.registerBinder('bind-if', {
+Binder.register('bind-if', {
   priority: 50,
 
   compiled: function(options) {

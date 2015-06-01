@@ -29,7 +29,7 @@ expression.get = (expr, options = {}) ->
   func = expression.cache[cacheKey]
   return func if func
 
-  args.unshift('_filters_');
+  args.unshift('_formatters_');
 
   # Prefix all property lookups with the `this` keyword. Ignores keywords
   # (window, true, false) and extra args
@@ -160,7 +160,7 @@ parseFilters = (expr) ->
     filterName = args.shift()
     args.unshift(value)
     args.push(true) if setter
-    value = "_filters_.#{filterName}.call(this, #{args.join(', ')})"
+    value = "_formatters_.#{filterName}.call(this, #{args.join(', ')})"
 
   setter + value
 

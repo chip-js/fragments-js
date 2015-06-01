@@ -92,7 +92,7 @@ function getBindingsForNode(node, view) {
   if (node.nodeType === Node.TEXT_NODE) {
     splitTextNode(node);
     if (isBound(node.nodeValue)) {
-      var binder = Binder.findBinder('{{text}}');
+      var binder = Binder.find('{{text}}');
       var expr = codifyExpression(node.nodeValue);
       var binding = createBinding(binder, { expression: expr });
       bindings.push(binding);
@@ -105,7 +105,7 @@ function getBindingsForNode(node, view) {
     var attributes = slice.call(node.attributes);
     for (i = 0, l = attributes.length; i < l; i++) {
       var attr = attributes[i];
-      var binder = Binder.findBinder(attr.name);
+      var binder = Binder.find(attr.name);
       if (binder) {
         bound.push({ binder: binder, attr: attr });
       }
