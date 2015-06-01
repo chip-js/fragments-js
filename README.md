@@ -1,5 +1,4 @@
-Chip Binding
+Fragments
 ============
 
-Chip Binding is a small JavaScript data-binding library that provides data-binding to HTML like Angular.js and Ember.js.
-
+Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.
