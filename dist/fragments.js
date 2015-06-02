@@ -653,167 +653,201 @@ var diff = exports;
 })();
 
 },{}],4:[function(require,module,exports){
-var addReferences, addThis, argSeparator, chainLink, chainLinks, continuation, currentIndex, currentReference, emptyQuoteExpr, expression, finishedChain, getFunctionCall, ignore, initParse, nextChain, parens, parseChain, parseExpr, parseFilters, parseFunction, parsePart, parsePropertyChains, pipeExpr, propExpr, pullOutStrings, putInStrings, quoteExpr, referenceCount, setterExpr, splitLinks, strings,
-  slice = [].slice;
+// # Chip Expression
 
+// Parses a string of JavaScript into a function which can be bound to a scope.
+//
+// Allows undefined or null values to return undefined rather than throwing
+// errors, allows for formatters on data, and provides detailed error reporting.
+
+// The expression object with its expression cache.
 expression = exports;
-
 expression.cache = {};
-
 expression.globals = ['true', 'false', 'null', 'undefined', 'window', 'this'];
+expression.get = getExpression;
+expression.getSetter = getSetter;
+expression.bind = bindExpression;
 
-expression.get = function(expr, options) {
-  var args, body, cacheKey, e, func;
-  if (options == null) {
-    options = {};
-  }
-  if (!options.args) {
-    options.args = [];
-  }
-  args = options.args;
-  cacheKey = expr + '|' + args.join(',');
-  func = expression.cache[cacheKey];
+
+// Creates a function from the given expression. An `options` object may be
+// provided with the following options:
+// * `args` is an array of strings which will be the function's argument names
+// * `globals` is an array of strings which define globals available to the
+// function (these will not be prefixed with `this.`). `'true'`, `'false'`,
+// `'null'`, and `'window'` are included by default.
+//
+// This function will be cached so subsequent calls with the same expression will
+// return the same function. E.g. the expression "name" will always return a
+// single function with the body `return this.name`.
+function getExpression(expr, options) {
+  if (!options) options = {};
+  if (!options.args) options.args = [];
+  var cacheKey = expr + '|' + options.args.join(',');
+  // Returns the cached function for this expression if it exists.
+  var func = expression.cache[cacheKey];
   if (func) {
     return func;
   }
-  args.unshift('_formatters_');
-  body = expression.parse(expr, options);
+
+  options.args.unshift('_formatters_');
+
+  // Prefix all property lookups with the `this` keyword. Ignores keywords
+  // (window, true, false) and extra args
+  var body = parseExpression(expr, options);
+
   try {
-    func = expression.cache[cacheKey] = Function.apply(null, slice.call(args).concat([body]));
-  } catch (_error) {
-    e = _error;
-    if (console) {
-      console.error('Bad expression:\n`' + expr + '`\n' + 'Compiled expression:\n' + body);
-    }
+    func = expression.cache[cacheKey] = Function.apply(null, options.args.concat(body));
+  } catch (e) {
+    // Throws an error if the expression was not valid JavaScript
+    console.error('Bad expression:\n`' + expr + '`\n' + 'Compiled expression:\n' + body);
     throw new Error(e.message);
   }
   return func;
-};
+}
 
-expression.getSetter = function(expr, options) {
-  if (options == null) {
-    options = {};
-  }
+
+// Creates a setter function from the given expression.
+function getSetter(expr, options) {
+  if (!options) options = {};
   options.args = ['value'];
   expr = expr.replace(/(\s*\||$)/, ' = value$1');
-  return expression.get(expr, options);
-};
+  return getExpression(expr, options);
+}
 
-expression.bind = function(expr, scope, options) {
-  return expression.get(expr, options).bind(scope);
-};
 
-quoteExpr = /(['"\/])(\\\1|[^\1])*?\1/g;
 
-emptyQuoteExpr = /(['"\/])\1/g;
+// Compiles an expression and binds it in the given scope. This allows it to be
+// called from anywhere (e.g. event listeners) while retaining the scope.
+function bindExpression(expr, scope, options) {
+  return getExpression(expr, options).bind(scope);
+}
 
-pipeExpr = /\|(\|)?/g;
+// finds all quoted strings
+var quoteExpr = /(['"\/])(\\\1|[^\1])*?\1/g;
 
-argSeparator = /\s*:\s*/g;
+// finds all empty quoted strings
+var emptyQuoteExpr = /(['"\/])\1/g;
 
-propExpr = /((\{|,|\.)?\s*)([a-z$_\$](?:[a-z_\$0-9\.-]|\[['"\d]+\])*)(\s*(:|\(|\[)?)/gi;
+// finds pipes that aren't ORs (` | ` not ` || `) for formatters
+var pipeExpr = /\|(\|)?/g;
 
-chainLinks = /\.|\[/g;
+// finds argument separators for formatters (`arg1:arg2`)
+var argSeparator = /\s*:\s*/g;
 
-chainLink = /\.|\[|\(/;
+// matches property chains (e.g. `name`, `user.name`, and `user.fullName().capitalize()`)
+var propExpr = /((\{|,|\.)?\s*)([a-z$_\$](?:[a-z_\$0-9\.-]|\[['"\d]+\])*)(\s*(:|\(|\[)?)/gi;
 
-setterExpr = /\s=\s/;
+// links in a property chain
+var chainLinks = /\.|\[/g;
 
-ignore = null;
+// the property name part of links
+var chainLink = /\.|\[|\(/;
 
-strings = [];
+// determines whether an expression is a setter or getter (`name` vs
+// `name = 'bob'`)
+var setterExpr = /\s=\s/;
 
-referenceCount = 0;
+var ignore = null;
+var strings = [];
+var referenceCount = 0;
+var currentReference = 0;
+var currentIndex = 0;
+var finishedChain = false;
+var continuation = false;
 
-currentReference = 0;
-
-currentIndex = 0;
-
-finishedChain = false;
-
-continuation = false;
-
-expression.parse = function(expr, options) {
+// Adds `this.` to the beginning of each valid property in an expression,
+// processes formatters, and provides null-termination in property chains
+function parseExpression(expr, options) {
   initParse(expr, options);
   expr = pullOutStrings(expr);
-  expr = parseFilters(expr);
+  expr = parseFormatters(expr);
   expr = parseExpr(expr);
   expr = 'return ' + expr;
   expr = putInStrings(expr);
   expr = addReferences(expr);
   return expr;
-};
+}
 
-initParse = function(expr, options) {
+
+function initParse(expr, options) {
   referenceCount = currentReference = 0;
-  ignore = expression.globals.concat((options != null ? options.globals : void 0) || [], (options != null ? options.args : void 0) || []);
-  return strings.length = 0;
-};
+  // Ignores keywords and provided argument names
+  ignore = expression.globals.concat(options.globals || [], options.args || []);
+  strings.length = 0;
+}
 
-pullOutStrings = function(expr) {
-  var javascript;
-  return javascript = expr.replace(quoteExpr, function(str, quote) {
+
+// Adds placeholders for strings so we can process the rest without their content
+// messing us up.
+function pullOutStrings(expr) {
+  return expr.replace(quoteExpr, function(str, quote) {
     strings.push(str);
-    return quote + quote;
+    return quote + quote; // placeholder for the string
   });
-};
+}
 
-putInStrings = function(expr) {
-  return expr = expr.replace(emptyQuoteExpr, function() {
+
+// Replaces string placeholders.
+function putInStrings(expr) {
+  return expr.replace(emptyQuoteExpr, function() {
     return strings.shift();
   });
-};
+}
 
-addReferences = function(expr) {
-  var i, j, ref1, refs;
+
+// Prepends reference variable definitions
+function addReferences(expr) {
   if (referenceCount) {
-    refs = [];
-    for (i = j = 1, ref1 = referenceCount; 1 <= ref1 ? j <= ref1 : j >= ref1; i = 1 <= ref1 ? ++j : --j) {
+    var refs = [];
+    for (var i = 1; i <= referenceCount; i++) {
       refs.push('_ref' + i);
     }
     expr = 'var ' + refs.join(', ') + ';\n' + expr;
   }
   return expr;
-};
+}
 
-parseFilters = function(expr) {
-  var filters, ref1, setter, value;
+
+function parseFormatters(expr) {
+  // Removes formatters from expression string
   expr = expr.replace(pipeExpr, function(match, orIndicator) {
-    if (orIndicator) {
-      return match;
-    }
+    if (orIndicator) return match;
     return '@@@';
   });
-  filters = expr.split(/\s*@@@\s*/);
-  expr = filters.shift();
-  if (!filters.length) {
-    return expr;
-  }
-  if (setterExpr.test(expr)) {
-    ref1 = expr.split(setterExpr), setter = ref1[0], value = ref1[1];
-    setter += ' = ';
-  } else {
-    setter = '';
-    value = expr;
-  }
-  filters.forEach(function(filter) {
-    var args, filterName;
-    args = filter.split(argSeparator);
-    filterName = args.shift();
-    args.unshift(value);
-    if (setter) {
-      args.push(true);
-    }
-    return value = "_formatters_." + filterName + ".call(this, " + (args.join(', ')) + ")";
-  });
-  return setter + value;
-};
 
-parseExpr = function(expr) {
-  var negate, ref1, setter, value;
+  formatters = expr.split(/\s*@@@\s*/);
+  expr = formatters.shift();
+  if (!formatters.length) return expr;
+
+  // Processes the formatters
+  // If the expression is a setter the value will be run through the formatters
+  var setter = '';
+  value = expr;
+
   if (setterExpr.test(expr)) {
-    ref1 = expr.split(' = '), setter = ref1[0], value = ref1[1];
-    negate = '';
+    var parts = expr.split(setterExpr);
+    setter = parts[0] + ' = ';
+    value = parts[1];
+  }
+
+  formatters.forEach(function(formatter) {
+    var args = formatter.split(argSeparator);
+    var formatterName = args.shift();
+    args.unshift(value);
+    if (setter) args.push(true);
+    value = '_formatters_.' + formatterName + '.call(this, ' + args.join(', ') + ')';
+  });
+
+  return setter + value;
+}
+
+
+function parseExpr(expr) {
+  if (setterExpr.test(expr)) {
+    var parts = expr.split(' = ');
+    var setter = parts[0];
+    var value = parts[1];
+    var negate = '';
     if (setter.charAt(0) === '!') {
       negate = '!';
       setter = setter.slice(1);
@@ -824,73 +858,100 @@ parseExpr = function(expr) {
   } else {
     return parsePropertyChains(expr);
   }
-};
+}
 
-parsePropertyChains = function(expr) {
-  var javascript, js, previousIndexes;
-  javascript = '';
-  previousIndexes = [currentIndex, propExpr.lastIndex];
+
+function parsePropertyChains(expr) {
+  var javascript = '', js;
+  // allow recursion into function args by resetting propExpr
+  var previousIndexes = [currentIndex, propExpr.lastIndex];
   currentIndex = 0;
   propExpr.lastIndex = 0;
   while ((js = nextChain(expr)) !== false) {
     javascript += js;
   }
-  propExpr.lastIndex = previousIndexes.pop();
-  currentIndex = previousIndexes.pop();
+  currentIndex = previousIndexes[0];
+  propExpr.lastIndex = previousIndexes[1];
   return javascript;
-};
+}
 
-nextChain = function(expr) {
-  var colonOrParen, match, objIndicator, postfix, prefix, propChain, ref1, skipped;
+
+function nextChain(expr) {
   if (finishedChain) {
     return (finishedChain = false);
   }
-  match = propExpr.exec(expr);
+  var match = propExpr.exec(expr);
   if (!match) {
-    finishedChain = true;
+    finishedChain = true // make sure next call we return false
     return expr.slice(currentIndex);
   }
-  ref1 = match, match = ref1[0], prefix = ref1[1], objIndicator = ref1[2], propChain = ref1[3], postfix = ref1[4], colonOrParen = ref1[5];
-  skipped = expr.slice(currentIndex, propExpr.lastIndex - match.length);
+
+  // `prefix` is `objIndicator` with the whitespace that may come after it.
+  var prefix = match[1];
+
+  // `objIndicator` is `{` or `,` and let's us know this is an object property
+  // name (e.g. prop in `{prop:false}`).
+  var objIndicator = match[2];
+
+  // `propChain` is the chain of properties matched (e.g. `this.user.email`).
+  var propChain = match[3];
+
+  // `postfix` is the `colonOrParen` with whitespace before it.
+  var postfix = match[4];
+
+  // `colonOrParen` matches the colon (:) after the property (if it is an object)
+  // or parenthesis if it is a function. We use `colonOrParen` and `objIndicator`
+  // to know if it is an object.
+  var colonOrParen = match[5];
+
+  match = match[0];
+
+  var skipped = expr.slice(currentIndex, propExpr.lastIndex - match.length);
   currentIndex = propExpr.lastIndex;
+
+  // skips object keys e.g. test in `{test:true}`.
   if (objIndicator && colonOrParen === ':') {
     return skipped + match;
   }
-  return skipped + parseChain(prefix, propChain, postfix, colonOrParen, expr);
-};
 
-splitLinks = function(chain) {
-  var index, match, parts;
-  index = 0;
-  parts = [];
-  while ((match = chainLinks.exec(chain))) {
-    if (chainLinks.lastIndex === 1) {
-      continue;
-    }
+  return skipped + parseChain(prefix, propChain, postfix, colonOrParen, expr);
+}
+
+
+function splitLinks(chain) {
+  var index = 0;
+  var parts = [];
+  var match;
+  while (match = chainLinks.exec(chain)) {
+    if (chainLinks.lastIndex === 1) continue;
     parts.push(chain.slice(index, chainLinks.lastIndex - 1));
     index = chainLinks.lastIndex - 1;
   }
   parts.push(chain.slice(index));
   return parts;
-};
+}
 
-addThis = function(chain) {
+
+function addThis(chain) {
   if (ignore.indexOf(chain.split(chainLink).shift()) === -1) {
-    return "this." + chain;
+    return 'this.' + chain;
   } else {
     return chain;
   }
-};
+}
 
-parseChain = function(prefix, propChain, postfix, paren, expr) {
-  var link, links, newChain;
+
+function parseChain(prefix, propChain, postfix, paren, expr) {
+  // continuations after a function (e.g. `getUser(12).firstName`).
   continuation = prefix === '.';
   if (continuation) {
     propChain = '.' + propChain;
     prefix = '';
   }
-  links = splitLinks(propChain);
-  newChain = '';
+
+  var links = splitLinks(propChain);
+  var newChain = '';
+
   if (links.length === 1 && !continuation && !paren) {
     link = links[0];
     newChain = addThis(link);
@@ -898,12 +959,13 @@ parseChain = function(prefix, propChain, postfix, paren, expr) {
     if (!continuation) {
       newChain = '(';
     }
+
     links.forEach(function(link, index) {
       if (index !== links.length - 1) {
         newChain += parsePart(link, index);
       } else {
         if (!parens[paren]) {
-          newChain += "_ref" + currentReference + link + ")";
+          newChain += '_ref' + currentReference + link + ')';
         } else {
           postfix = postfix.replace(paren, '');
           newChain += parseFunction(link, index, expr);
@@ -911,72 +973,72 @@ parseChain = function(prefix, propChain, postfix, paren, expr) {
       }
     });
   }
-  return prefix + newChain + postfix;
-};
 
-parens = {
+  return prefix + newChain + postfix;
+}
+
+
+var parens = {
   '(': ')',
   '[': ']'
 };
 
-parseFunction = function(link, index, expr) {
-  var call, insideParens, ref;
-  call = getFunctionCall(expr);
+// Handles a function to be called in its correct scope
+// Finds the end of the function and processes the arguments
+function parseFunction(link, index, expr) {
+  var call = getFunctionCall(expr);
   link += call.slice(0, 1) + '~~insideParens~~' + call.slice(-1);
-  insideParens = call.slice(1, -1);
+  var insideParens = call.slice(1, -1);
+
   if (expr.charAt(propExpr.lastIndex) === '.') {
-    link = parsePart(link, index);
+    link = parsePart(link, index)
   } else if (index === 0) {
     link = parsePart(link, index);
-    link += "_ref" + currentReference + ")";
+    link += '_ref' + currentReference + ')';
   } else {
-    link = "_ref" + currentReference + link + ")";
+    link = '_ref' + currentReference + link + ')';
   }
-  ref = currentReference;
+
+  var ref = currentReference;
   link = link.replace('~~insideParens~~', parsePropertyChains(insideParens));
   currentReference = ref;
   return link;
-};
+}
 
-getFunctionCall = function(expr) {
-  var close, endIndex, open, parenCount, startIndex;
-  startIndex = propExpr.lastIndex;
-  open = expr.charAt(startIndex - 1);
-  close = parens[open];
-  endIndex = startIndex - 1;
-  parenCount = 1;
+
+// returns the call part of a function (e.g. `test(123)` would return `(123)`)
+function getFunctionCall(expr) {
+  var startIndex = propExpr.lastIndex;
+  var open = expr.charAt(startIndex - 1);
+  var close = parens[open];
+  var endIndex = startIndex - 1;
+  var parenCount = 1;
   while (endIndex++ < expr.length) {
-    switch (expr.charAt(endIndex)) {
-      case open:
-        parenCount++;
-        break;
-      case close:
-        parenCount--;
-    }
-    if (parenCount === 0) {
-      break;
-    }
+    var ch = expr.charAt(endIndex);
+    if (ch === open) parenCount++;
+    else if (ch === close) parenCount--;
+    if (parenCount === 0) break;
   }
   currentIndex = propExpr.lastIndex = endIndex + 1;
   return open + expr.slice(startIndex, endIndex) + close;
-};
+}
 
-parsePart = function(part, index) {
-  var ref;
+
+
+function parsePart(part, index) {
+  // if the first
   if (index === 0 && !continuation) {
     if (ignore.indexOf(part.split(/\.|\(|\[/).shift()) === -1) {
-      part = "this." + part;
-    } else {
-      part = "" + part;
+      part = 'this.' + part;
     }
   } else {
-    part = "_ref" + currentReference + part;
+    part = '_ref' + currentReference + part;
   }
-  currentReference = ++referenceCount;
-  ref = "_ref" + currentReference;
-  return "(" + ref + " = " + part + ") == null ? undefined : ";
-};
 
+  currentReference = ++referenceCount;
+  var ref = '_ref' + currentReference;
+  return '(' + ref + ' = ' + part + ') == null ? undefined : ';
+}
 
 },{}],5:[function(require,module,exports){
 // # Formatter
