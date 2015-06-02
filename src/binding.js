@@ -1,5 +1,5 @@
 module.exports = Binding;
-var Observer = require('./observer');
+Binding.Observer = require('./observer');
 
 
 function Binding(options, isTemplate) {
@@ -46,7 +46,7 @@ function Binding(options, isTemplate) {
 
   if (this.expression) {
     // An observer to observe value changes to the expression within a context
-    this.observer = new Observer(this.expression, this.updated ? this.updated.bind(this) : null);
+    this.observer = new Binding.Observer(this.expression, this.updated ? this.updated.bind(this) : null);
   }
 
   if (this.created && !isTemplate) this.created();
