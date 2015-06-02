@@ -1,9 +1,16 @@
 {
   "name": "fragments-js",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chip-js/fragments-js.git"
+  },
+  "bugs": {
+    "url" : "https://github.com/chip-js/fragments-js/issues"
+  },
   "scripts": {
-    "build": "browserify -t coffeeify --extension='.coffee' --standalone fragments index.js -o dist/fragments.js",
-    "watch": "watchify -t coffeeify --extension='.coffee' --standalone fragments index.js -o dist/fragments.js",
+    "build": "browserify --standalone fragments index.js -o dist/fragments.js",
+    "watch": "watchify --standalone fragments index.js -o dist/fragments.js",
     "compress": "uglifyjs dist/fragments.js -c -o dist/fragments.min.js",
     "docs": "docco -o docs src/*.js",
     "prepublish": "npm run build",
@@ -12,7 +19,6 @@
   "devDependencies": {
     "browserify": "^10.2.1",
     "chai": "^2.3.0",
-    "coffeeify": "^1.1.0",
     "docco": "^0.7.0",
     "mocha": "^2.2.5",
     "mocha-phantomjs": "^3.5.3",
