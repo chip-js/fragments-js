@@ -419,11 +419,8 @@ Binder.register('if', {
     this.element = placeholder;
     element.parentNode.replaceChild(placeholder, element);
 
-    // Convert the element into a template so we can reuse it
-    Template.createTemplate(element);
-
     // Stores a template for all the elements that can go into this spot
-    this.templates = [ element ];
+    this.templates = [ Template.createTemplate(element) ];
 
     // Pull out any other elements that are chained with this one
     while (node) {
@@ -445,8 +442,7 @@ Binder.register('if', {
       }
 
       node.remove();
-      Template.createTemplate(node);
-      this.templates.push(node);
+      this.templates.push(Template.createTemplate(node));
       node = next;
     }
 
@@ -519,9 +515,8 @@ Binder.register('each', {
     var parent = this.element.parentNode;
     var placeholder = document.createTextNode('');
     parent.insertBefore(placeholder, this.element);
-    this.template = this.element;
+    this.template = Template.createTemplate(this.element);
     this.element = placeholder;
-    Template.createTemplate(this.template);
 
     var parts = this.expression.split(/\s+in\s+/);
     this.expression = parts.pop();

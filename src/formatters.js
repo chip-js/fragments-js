@@ -224,7 +224,7 @@ function escapeHTML(value) {
 // ```
 // *Result:*
 // ```xml
-// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
+// <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</div>
 // ```
 Formatter.register('escape', escapeHTML);
 
@@ -238,7 +238,7 @@ Formatter.register('escape', escapeHTML);
 // ```
 // *Result:*
 // ```xml
-// <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</p>
+// <div><p>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</p>
 // <p>It's great</p></div>
 // ```
 Formatter.register('p', function(value) {
@@ -257,7 +257,7 @@ Formatter.register('p', function(value) {
 // ```
 // *Result:*
 // ```xml
-// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
+// <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!<br>
 // It's great</div>
 // ```
 Formatter.register('br', function(value) {
@@ -275,7 +275,7 @@ Formatter.register('br', function(value) {
 // ```
 // *Result:*
 // ```xml
-// <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
+// <div><p>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!<br>
 // It's great</p></div>
 // ```
 Formatter.register('newline', function(value) {
@@ -298,7 +298,7 @@ Formatter.register('newline', function(value) {
 // ```
 // *Result:*
 // ```xml
-// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
+// <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</div>
 // ```
 var urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
 
