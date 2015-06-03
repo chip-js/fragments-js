@@ -4,7 +4,7 @@ var Template = require('./template');
 // # Default Bindings
 
 
-Binder.register('bind-debug', {
+Binder.register('debug', {
   priority: 200,
   udpated: function(value) {
     console.info('Debug:', this.expression, '=', value);
@@ -12,45 +12,17 @@ Binder.register('bind-debug', {
 });
 
 
-
-// ## bind-text
-// Adds a handler to display text inside an element.
+// ## html
+// Adds a binder to display unescaped HTML inside an element. Be sure it's trusted! This should be used with filters
+// which create HTML from something safe.
 //
 // **Example:**
-// ```xml
-// <h1 bind-text="post.title">Title</h1>
-// <div class="info">
-//   Written by
-//   <span bind-text="post.author.name">author</span>
-//   on
-//   <span bind-text="post.date.toLocaleDateString()">date</span>.
-// </div>
+// ```html
+// <h1>{{post.title}}</h1>
+// <div html="{{post.body | markdown}}"></div>
 // ```
 // *Result:*
-// ```xml
-// <h1>Little Red</h1>
-// <div class="info">
-//   Written by
-//   <span>Jacob Wright</span>
-//   on
-//   <span>10/16/2013</span>.
-// </div>
-// ```
-Binder.register('bind-text', function(value) {
-  element.textContent = (value == null) ? '' else value;
-});
-
-
-// ## bind-html
-// Adds a handler to display unescaped HTML inside an element. Be sure it's trusted!
-//
-// **Example:**
-// ```xml
-// <h1 bind-text="post.title">Title</h1>
-// <div bind-html="post.body"></div>
-// ```
-// *Result:*
-// ```xml
+// ```html
 // <h1>Little Red</h1>
 // <div>
 //   <p>Little Red Riding Hood is a story about a little girl.</p>
@@ -60,93 +32,51 @@ Binder.register('bind-text', function(value) {
 //   </p>
 // </div>
 // ```
-Binder.register('bind-html', function(value) {
+Binder.register('html', function(value) {
   element.innerHTML = value == null ? '' : value;
 });
 
 
 
-// ## bind-class
-// Adds a handler to add classes to an element. If the value of the expression is a string, that string will be set as the
-// class attribute. If the value is an array of strings, those will be set as the element classes. These two methods
-// overwrite any existing classes. If the value is an object, each property of that object will be toggled on or off in
-// the class list depending on whether the value of the property is truthy or falsey.
+// ## class-[className]
+// Adds a binder to add classes to an element dependent on whether the expression is true or false.
 //
 // **Example:**
-// ```xml
-// <div bind-class="theClasses">
-//   <button class="btn primary" bind-class="{highlight:ready}"></button>
+// ```html
+// <div class="user-item" class-selected-user="{{selected === user}}">
+//   <button class="btn primary" class-highlight="{{ready}}"></button>
 // </div>
 // ```
-// *Result if `theClases` equals "red blue" and `ready` is `true`:*
-// ```xml
-// <div class="red blue">
+// *Result if `selected` equals the `user` and `ready` is `true`:*
+// ```html
+// <div class="user-item selected-user">
 //   <button class="btn primary highlight"></button>
 // </div>
 // ```
-Binder.register('bind-class', {
-  compiled: function(options) {
-    this.existingClasses = (options.element.getAttribute('class') || '').split(/\s+/);
-    if (this.existingClasses[0] === '') this.existingClasses.pop();
-  },
-  updated: function(value) {
-    if (Array.isArray(value)) {
-      value = value.join(' ');
-    }
-
-    if (typeof value === 'string') {
-      this.element.className = this.existingClasses.concat(value.split(/\s+/)).join(' ');
-    } else if (value && typeof value === 'object') {
-      var classList = this.element.classList;
-      Object.keys(value).forEach(function(className) {
-        if (value[className]) {
-          classList.add(className);
-        } else {
-          classList.remove(className);
-        }
-      });
-    }
+Binder.register('class-*', function(value) {
+  if (value) {
+    this.element.classList.add(this.match);
+  } else {
+    this.element.classList.remove(this.match);
   }
 });
 
 
-Binder.register('bind-attr', function(value, oldValue, changes) {
-  if (changes) {
-    // use the change records to remove deleted properties which won't show up
-    changes.forEach(function(change) {
-      if (change.type === 'deleted' || !value[change.name]) {
-        this.element.removeAttribute(change.name);
-      } else {
-        this.element.setAttribute(change.name, value[change.name]);
-      }
-    });
-  } else if (value && typeof value === 'object') {
-    Object.keys(value).forEach(function(attrName) {
-      var attrValue = value[attrName];
-      if (attrValue) {
-        this.element.setAttribute(attrName, attrValue);
-      } else {
-        this.element.removeAttribute(attrName);
-      }
-    }, this);
-  }
-});
 
-
-// ## bind-value
-// Adds a handler which sets the value of an HTML form element. This handler also updates the data as it is changed in
+// ## value
+// Adds a binder which sets the value of an HTML form element. This binder also updates the data as it is changed in
 // the form element, providing two way binding.
 //
 // **Example:**
-// ```xml
+// ```html
 // <label>First Name</label>
-// <input type="text" name="firstName" bind-value="user.firstName">
+// <input type="text" name="firstName" value="user.firstName">
 //
 // <label>Last Name</label>
-// <input type="text" name="lastName" bind-value="user.lastName">
+// <input type="text" name="lastName" value="user.lastName">
 // ```
 // *Result:*
-// ```xml
+// ```html
 // <label>First Name</label>
 // <input type="text" name="firstName" value="Jacob">
 //
@@ -155,98 +85,124 @@ Binder.register('bind-attr', function(value, oldValue, changes) {
 // ```
 // And when the user changes the text in the first input to "Jac", `user.firstName` will be updated immediately with the
 // value of `'Jac'`.
-Binder.register('bind-value', function(element, attr, controller) {
-  expr = attr.value
-  watchExpr = expr
+Binder.register('value', {
+  onlyWhenBound: true,
 
-  fieldExpr = element.attr('bind-value-field')
-  element.removeAttr('bind-value-field')
+  compiled: function() {
+    var name = this.element.tagName.toLowerCase();
+    var type = this.element.type;
+    this.input = inputMethods[type] || inputMethods[name] || inputMethods.radiogroup;
 
-  if element.is('select')
-    selectValueField = if fieldExpr then controller.eval(fieldExpr) else null
-    chip.lastSelectValueField = selectValueField
+    if (this.element.hasAttribute('value-events')) {
+      this.events = this.element.getAttribute('value-events').split(' ');
+      this.element.removeAttribute('value-events');
+    } else if (name !== 'option') {
+      this.events = ['change'];
+    }
 
-  if element.is('option') and (fieldExpr or chip.lastSelectValueField)
-    if fieldExpr
-      selectValueField = controller.eval(fieldExpr)
-    else
-      selectValueField = chip.lastSelectValueField
-    watchExpr += '.' + selectValueField
+    if (this.element.hasAttribute('value-field')) {
+      this.valueField = this.element.getAttribute('value-field');
+      this.element.removeAttribute('value-field');
+    }
 
-  if element.attr('type') is 'checkbox'
-    checkedAttr = element.attr('checked-value') or 'true'
-    uncheckedAttr = element.attr('unchecked-value') or 'false'
-    element.removeAttr('checked-value')
-    element.removeAttr('unchecked-value')
-    checkedValue = controller.eval(checkedAttr)
-    uncheckedValue = controller.eval(uncheckedAttr)
+    if (type === 'option') {
+      this.valueField = this.element.parentNode.valueField;
+    }
+  },
 
-  // Handles input (checkboxes, radios), select, textarea, option
-  getValue =
-    if element.attr('type') is 'checkbox' # Handles checkboxes
-      -> element.prop('checked') and checkedValue or uncheckedValue
-    else if element.attr('type') is 'file'
-      -> element.get(0).files?[0]
-    else if element.is(':not(input,select,textarea,option)') # Handles a group of radio inputs
-      -> element.find('input:radio:checked').val()
-    else if selectValueField and element.is('select')
-      (realValue) ->
-        if realValue
-          $(element.get(0).options[element.get(0).selectedIndex]).data('value')
-        else
-          element.val()
-    else # Handles other form inputs
-      -> element.val()
+  created: function() {
+    if (!this.events) return; // nothing for <option> here
+    var element = this.element;
+    var observer = this.observer;
+    var input = this.input;
+    var valueField = this.valueField;
 
-  setValue =
-    if element.attr('type') is 'checkbox'
-      (value) -> element.prop('checked', value is checkedValue)
-    else if element.attr('type') is 'file'
-      (value) -> # "get" only
-    else if element.is(':not(input,select,textarea,option)') // Handles a group of radio inputs
-      (value) ->
-        element.find('input:radio:checked').prop('checked', false) // in case the value isn't found in radios
-        element.find('input:radio[value="' + value + '"]').prop('checked', true)
-    else
-      (value) ->
-        strValue = selectValueField and value?[selectValueField] or value
-        strValue = '' + strValue if strValue?
-        element.val(strValue)
-        element.data('value', value) if selectValueField
+    // The 2-way binding part is setting values on certain events
+    function onChange() {
+      if (input.get(valueField) !== observer.oldValue && !element.readOnly) {
+        observer.set(input.get(valueField));
+      }
+    }
 
-  observer = controller.watch watchExpr, (value) ->
-    if getValue() isnt '' + value # Allows for string/number equality
-      setValue controller.eval expr
+    if (element.type === 'text') {
+      element.addEventListener('keydown', function(event) {
+        if (event.keyCode === 13) onChange();
+      });
+    }
 
-  // Skips setting values on option elements since the user cannot change these with user input
-  return if element.is 'option'
+    this.events.forEach(function(event) {
+      element.addEventListener(event, onChange);
+    });
+  },
 
-  // Sets initial element value. For SELECT elements allows child option element values to be set first.
-  if element.is('select')
-    element.one 'processed', ->
-      setValue controller.eval expr
-      unless element.is('[readonly]')
-        controller.evalSetter expr, getValue(true)
-  else unless element.is('[readonly]')
-    controller.evalSetter expr, getValue()
+  updated: function(value) {
+    if (this.input.get(this.valueField) != value) {
+      this.input.set(value, this.valueField);
+    }
+  }
+});
 
-  events = element.attr('bind-value-events') or 'change'
-  element.removeAttr('bind-value-events')
-  if element.is ':text'
-    element.on 'keydown', (event) ->
-      if event.keyCode is 13
-        element.trigger 'change'
+// Handle the different form types
+var defaultInputMethod = {
+  get: function() { return this.value; },
+  set: function(value) { this.value = value; }
+};
 
-  element.on events, ->
-    if getValue() isnt observer.oldValue and not element.is('[readonly]')
-      controller.evalSetter expr, getValue(true)
-      observer.skipNextSync() // don't update this observer, user changed it
-      controller.sync() // update other expressions looking at this data
-
+var inputMethods = {
+  checkbox: {
+    get: function() { return this.checked; },
+    set: function(value) { this.checked = !!value; }
+  },
+  file: {
+    get: function() { return this.files && this.files[0]; },
+    set: function(value) {}
+  },
+  select: {
+    get: function(valueField) {
+      if (valueField) {
+        return this.options[this.selectedIndex].valueObject;
+      } else {
+        return this.value;
+      }
+    },
+    set: function(value, valueField) {
+      if (valueField) {
+        this.valueObject = value;
+        this.value = value[valueField];
+      } else {
+        this.value = value;
+      }
+    }
+  },
+  option: {
+    get: function(valueField) {
+      return valueField ? this.valueObject[valueField] : this.value;
+    },
+    set: function(value, valueField) {
+      if (valueField) {
+        this.valueObject = value;
+        this.value = value[valueField];
+      } else {
+        this.value = value;
+      }
+    }
+  },
+  input: defaultInputMethod,
+  textarea: defaultInputMethod,
+  radiogroup: { // Handles a group of radio inputs, assigned to anything that isn't a a form input
+    get: function() { return this.find('input[type="radio"][checked]').value },
+    set: function(value) {
+      // in case the value isn't found in radios
+      this.querySelector('input[type="radio"][checked]').checked = false;
+      var radio = this.querySelector('input[type="radio"][value="' + value.replace(/"/g, '\\"') + '"]');
+      if (radio) radio.checked = true;
+    }
+  }
+};
 
 
 // ## on-[event]
-// Adds a handler for each event name in the array. When the event is triggered the expression will be run.
+// Adds a binder for each event name in the array. When the event is triggered the expression will be run.
 //
 // **Example Events:**
 //
@@ -258,34 +214,43 @@ Binder.register('bind-value', function(element, attr, controller) {
 // * on-blur
 //
 // **Example:**
-// ```xml
-// <form on-submit="saveUser()">
+// ```html
+// <form on-submit="{{saveUser()}}">
 //   <input name="firstName" value="Jacob">
 //   <button>Save</button>
 // </form>
 // ```
 // *Result (events don't affect the HTML):*
-// ```xml
+// ```html
 // <form>
 //   <input name="firstName" value="Jacob">
 //   <button>Save</button>
 // </form>
 // ```
-Binder.register('on-*', function(element, attr, controller) {
-  eventName = attr.match
-  expr = attr.value
-  element.on eventName, (event) ->
-    // prevent native events, let custom events use this mechanism
-    if event.originalEvent
-      event.preventDefault()
-    unless element.attr('disabled')
-      controller.eval expr, event: event, element: element
+Binder.register('on-*', {
+  created: function() {
+    var eventName = this.match;
+    var _this = this;
+    this.element.addEventListener(eventName, function(event) {
+      // prevent native events, let custom events use the "defaultCanceled" mechanism
+      if (!(event instanceof CustomEvent)) {
+        event.preventDefault();
+      }
+      if (!element.hasAttribute('disabled')) {
+        // Let an on-[event] make the function call with its own arguments
+        var listener = _this.observer.get();
 
+        // Or just return a function which will be called with the event object
+        if (listener) listener.call(this, event);
+      }
+    });
+  }
+});
 
 
 // ## native-[event]
-// Adds a handler for each event name in the array. When the event is triggered the expression will be run.
-// It will not call event.preventDefault() like on-* or withold when disabled.
+// Adds a binder for each event name in the array. When the event is triggered the expression will be run.
+// It will not call event.preventDefault() like on-* or withhold when disabled.
 //
 // **Example Events:**
 //
@@ -297,196 +262,183 @@ Binder.register('on-*', function(element, attr, controller) {
 // * native-blur
 //
 // **Example:**
-// ```xml
-// <form native-submit="saveUser(event)">
+// ```html
+// <form native-submit="{{saveUser(event)}}">
 //   <input name="firstName" value="Jacob">
 //   <button>Save</button>
 // </form>
 // ```
 // *Result (events don't affect the HTML):*
-// ```xml
+// ```html
 // <form>
 //   <input name="firstName" value="Jacob">
 //   <button>Save</button>
 // </form>
 // ```
-Binder.register('native-*', function(element, attr, controller) {
-  eventName = attr.match
-  expr = attr.value
-  element.on eventName, (event) ->
-    controller.eval expr, event: event, element: element
+Binder.register('native-*', {
+  created: function() {
+    var eventName = this.match;
+    var _this = this;
+    this.element.addEventListener(eventName, function(event) {
+      // Let an on-[event] make the function call with its own arguments
+      var listener = _this.observer.get();
+
+      // Or just return a function which will be called with the event object
+      if (listener) listener.call(this, event);
+    });
+  }
+});
 
 
 // ## on-[key event]
-// Adds a handler which is triggered when the keydown event's `keyCode` property matches.
+// Adds a binder which is triggered when the keydown event's `keyCode` property matches. If the name includes ctrl then
+// it will only fire when the key plus the ctrlKey or metaKey is pressed.
 //
 // **Key Events:**
 //
 // * on-enter
+// * on-ctrl-enter
 // * on-esc
 //
 // **Example:**
-// ```xml
-// <input on-enter="window.alert(element.val())">
+// ```html
+// <input on-enter="{{save()}}" on-esc="{{cancel()}}">
 // ```
 // *Result:*
-// ```xml
+// ```html
 // <input>
 // ```
-keyCodes = { enter: 13, esc: 27 }
-for own name, keyCode of keyCodes
-  chip.keyEventBinding('on-' + name, keyCode)
+var keyCodes = { enter: 13, esc: 27, 'ctrl-enter': 13 };
 
-// ## on-[control key event]
-// Adds a handler which is triggered when the keydown event's `keyCode` property matches and the ctrlKey or metaKey is
-// pressed.
-//
-// **Key Events:**
-//
-// * on-ctrl-enter
-//
-// **Example:**
-// ```xml
-// <input on-ctrl-enter="window.alert(element.val())">
-// ```
-// *Result:*
-// ```xml
-// <input>
-// ```
-chip.keyEventBinding('on-ctrl-enter', keyCodes.enter, true)
+Object.keys(keyCodes).forEach(function(name) {
+  var keyCode = keyCodes[name];
 
-// ## attr-[attribute]
-// Adds a handler to set the attribute of element to the value of the expression.
+  Binder.register('on-' + name, {
+    created: function() {
+      var useCtrlKey = this.match.indexOf('ctrl-') === 0;
+      var _this = this;
+      this.element.addEventListener('keydown', function(event) {
+        if (useCtrlKey && !(event.ctrlKey || event.metaKey)) return;
+        if (event.keyCode !== keyCode) return;
+        event.preventDefault();
+
+        if (!element.hasAttribute('disabled')) {
+          // Let an on-[event] make the function call with its own arguments
+          var listener = _this.observer.get();
+
+          // Or just return a function which will be called with the event object
+          if (listener) listener.call(this, event);
+        }
+      });
+    }
+  })
+});
+
+
+// ## [attribute]$
+// Adds a binder to set the attribute of element to the value of the expression. Use this when you don't want an
+// `<img>` to try and load its `src` before being evaluated. This is only needed on the index.html page as template will
+// be processed before being inserted into the DOM. Generally you can just use `attr="{{expr}}"`.
 //
 // **Example Attributes:**
 //
-// * attr-checked
-// * attr-disabled
-// * attr-multiple
-// * attr-readonly
-// * attr-selected
-//
 // **Example:**
-// ```xml
-// <img attr-src="user.avatarUrl">
+// ```html
+// <img src$="{{user.avatarUrl}}">
 // ```
 // *Result:*
-// ```xml
+// ```html
 // <img src="http://cdn.example.com/avatars/jacwright-small.png">
 // ```
-Binder.register('attr-*', function(element, attr, controller) {
-  if attr.name isnt attr.match # e.g. attr-href="someUrl"
-    attrName = attr.match
-    expr = attr.value
-  else # e.g. href="http://example.com{{someUrl}}"
-    attrName = attr.name
-    expr = expression.revert attr.value
+Binder.register('*$', function(value) {
+  var attrName = this.match;
+  if (!value) {
+    this.element.removeAttribute(attrName);
+  } else {
+    this.element.setAttribute(attrName, value);
+  }
+});
 
-  controller.watch expr, (value) ->
-    if value?
-      element.attr attrName, value
-      element.trigger attrName + 'Changed'
-    else
-      element.removeAttr attrName
 
-// ## attr-[toggle attribute]
-// Adds a handler to toggle an attribute on or off if the expression is truthy or falsey.
-//
-// **Attributes:**
-//
-// * attr-checked
-// * attr-disabled
-// * attr-multiple
-// * attr-readonly
-// * attr-selected
+// ## [attribute]?
+// Adds a binder to toggle an attribute on or off if the expression is truthy or falsey. Use for attributes without
+// values such as `selected`, `disabled`, or `readonly`. `checked?` will use 2-way databinding.
 //
 // **Example:**
-// ```xml
+// ```html
 // <label>Is Administrator</label>
-// <input type="checkbox" attr-checked="user.isAdmin">
-// <button attr-disabled="isProcessing">Submit</button>
+// <input type="checkbox" checked?="{{user.isAdmin}}">
+// <button disabled?="{{isProcessing}}">Submit</button>
 // ```
 // *Result if `isProcessing` is `true` and `user.isAdmin` is false:*
-// ```xml
+// ```html
 // <label>Is Administrator</label>
 // <input type="checkbox">
 // <button disabled>Submit</button>
 // ```
-[ 'attr-checked', 'attr-disabled', 'attr-multiple', 'attr-readonly', 'attr-selected' ].forEach (name) ->
-  chip.attributeToggleBinding(name)
+Binder.register('*?', function(value) {
+  var attrName = this.match;
+  if (!value) {
+    this.element.removeAttribute(attrName);
+  } else {
+    this.element.setAttribute(attrName, value);
+  }
+});
+
+// Add a clone of the `value` binder for `checked?` so checkboxes can have two-way binding using `checked?`.
+Binder.register('checked?', Binder.get('value'));
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ## bind-if
-// Adds a handler to show or hide the element if the value is truthy or falsey. Actually removes the element from the DOM
+// ## if, unless, else-if, else-unless, else
+// Adds a binder to show or hide the element if the value is truthy or falsey. Actually removes the element from the DOM
 // when hidden, replacing it with a non-visible placeholder and not needlessly executing bindings inside.
 //
 // **Example:**
-// ```xml
+// ```html
 // <ul class="header-links">
-//   <li bind-if="user"><a href="/account">My Account</a></li>
-//   <li bind-if="user"><a href="/logout">Sign Out</a></li>
-//   <li bind-if="!user"><a href="/login">Sign In</a></li>
+//   <li if="user"><a href="/account">My Account</a></li>
+//   <li unless="user"><a href="/login">Sign In</a></li>
+//   <li else><a href="/logout">Sign Out</a></li>
 // </ul>
 // ```
 // *Result if `user` is null:*
-// ```xml
+// ```html
 // <ul class="header-links">
-//   <!--bind-if="user"-->
-//   <!--bind-if="user"-->
 //   <li><a href="/login">Sign In</a></li>
 // </ul>
 // ```
-Binder.register('bind-if', {
+Binder.register('if', {
   priority: 50,
 
-  compiled: function(options) {
-    var element = options.element;
-    var expressions = [ options.expression ];
+  compiled: function() {
+    var element = this.element;
+    var expressions = [ wrapIfExp(this.expression, this.name === 'unless') ];
     var placeholder = document.createTextNode('');
     var node = element.nextElementSibling;
-    options.element = placeholder;
+    this.element = placeholder;
     element.parentNode.replaceChild(placeholder, element);
 
     // Convert the element into a template so we can reuse it
     Template.createTemplate(element);
 
     // Stores a template for all the elements that can go into this spot
-    options.template = [ element ];
+    this.templates = [ element ];
 
     // Pull out any other elements that are chained with this one
     while (node) {
       var next = node.nextElementSibling;
-      if (node.hasAttribute('bind-else-if')) {
-        expressions.push(node.getAttribute('bind-else-if'));
-        node.removeAttribute('bind-else-if');
-      } else if (node.hasAttribute('bind-else')) {
-        node.removeAttribute('bind-else');
+      var expression;
+      if (node.hasAttribute('else-if')) {
+        expression = this.codify(node.getAttribute('else-if'));
+        expressions.push(wrapIfExp(expression, false));
+        node.removeAttribute('else-if');
+      } else if (node.hasAttribute('else-unless')) {
+        expression = this.codify(node.getAttribute('else-unless'));
+        expressions.push(wrapIfExp(expression, true));
+        node.removeAttribute('else-unless');
+      } else if (node.hasAttribute('else')) {
+        node.removeAttribute('else');
         next = null;
       } else {
         break;
@@ -494,14 +446,14 @@ Binder.register('bind-if', {
 
       node.remove();
       Template.createTemplate(node);
-      options.templates.push(node);
+      this.templates.push(node);
       node = next;
     }
 
     // An expression that will return an index. Something like this `expr ? 0 : expr2 ? 1 : expr3 ? 2 : 3`. This will be
     // used to know which section to show in the if/else-if/else grouping.
-    options.expression = expressions.map(function(expr, index) {
-      '(' + expr + ') ? ' + index + ' : ';
+    this.expression = expressions.map(function(expr, index) {
+      return expr + ' ? ' + index + ' : ';
     }).join('') + expressions.length;
   },
 
@@ -510,7 +462,7 @@ Binder.register('bind-if', {
       this.showing.dispose();
       this.showing = null;
     }
-    var template = this.template[index];
+    var template = this.templates[index];
     if (template) {
       this.showing = template.createView();
       this.showing.bind(this.context);
@@ -519,29 +471,169 @@ Binder.register('bind-if', {
   }
 });
 
+Binder.register('unless', Binder.get('if'));
+
+function wrapIfExp(expr, isUnless) {
+  return (isUnless ? '!' : '') + expr;
+}
 
 
-var binding = require('./binding');
+// ## each
+// Adds a binder to duplicate an element for each item in an array. The expression may be of the format `epxr` or
+// `itemName in expr` where `itemName` is the name each item inside the array will be referenced by within bindings
+// inside the element.
+//
+// **Example:**
+// ```html
+// <div each="{{post in posts}}" class-featured="{{post.isFeatured}}">
+//   <h1>{{post.title}}</h1>
+//   <div html="{{post.body | markdown}}"></div>
+// </div>
+// ```
+// *Result if there are 2 posts and the first one is featured:*
+// ```html
+// <div class="featured">
+//   <h1>Little Red</h1>
+//   <div>
+//     <p>Little Red Riding Hood is a story about a little girl.</p>
+//     <p>
+//       More info can be found on
+//       <a href="http://en.wikipedia.org/wiki/Little_Red_Riding_Hood">Wikipedia</a>
+//     </p>
+//   </div>
+// </div>
+// <div>
+//   <h1>Big Blue</h1>
+//   <div>
+//     <p>Some thoughts on the New York Giants.</p>
+//     <p>
+//       More info can be found on
+//       <a href="http://en.wikipedia.org/wiki/New_York_Giants">Wikipedia</a>
+//     </p>
+//   </div>
+// </div>
+// ```
+Binder.register('each', {
+  priority: 100,
+  compiled: function() {
+    var parent = this.element.parentNode;
+    var placeholder = document.createTextNode('');
+    parent.insertBefore(placeholder, this.element);
+    this.template = this.element;
+    this.element = placeholder;
+    Template.createTemplate(this.template);
 
-binding.addBinding('[text]');
+    var parts = this.expression.split(/\s+in\s+/);
+    this.expression = parts.pop();
+    var key = parts.pop();
+    if (key) {
+      parts = key.split(/\s*,\s*/);
+      this.valueName = parts.pop();
+      this.keyName = parts.pop();
+    }
+  },
 
-binding.addBinding('[html]');
+  created: function() {
+    this.views = [];
+  },
 
-// ... etc ...
+  updated: function(value, oldValue, changes) {
+    if (!changes) {
+      this.populate(value);
+    } else {
+      this.updateChanges(value, changes);
+    }
+  },
 
+  // Method for creating and setting up new views for our list
+  createView: function(key, value) {
+    var view = this.template.createView();
+    var context = value;
+    if (this.valueName) {
+      context = Object.create(this.context);
+      if (this.keyName) context[this.keyName] = key;
+      context[this.valueName] = value;
+    }
+    view.bind(context);
+    view._eachItem_ = value;
+    return view;
+  },
 
-binding.addBinding('(enter)', enterKeyEvent);
-binding.addBinding('(esc)', escapeKeyEvent);
+  populate: function(value) {
+    if (this.views.length) {
+      this.views.forEach(function(node) {
+        node.dispose();
+      });
+      this.views.length = 0;
+    }
 
+    if (Array.isArray(value) && value.length) {
+      value.forEach(function(item, index) {
+        this.views.push(this.createView(index, item));
+      }, this);
+    }
 
-// Listen on the provided event (e.g. `(click)="doSomething()"`).
-binding.addBinding('(*)', eventCatchAll);
+    if (this.views.length) {
+      var frag = document.createDocumentFragment();
+      this.views.forEach(function(elem) {
+        frag.appendChild(elem);
+      });
+      this.element.parentNode.insertBefore(frag, this.element.nextSibling);
+    }
+  },
 
-// Set an attribute to the computed value (e.g. `[href]="member.websiteUrl"`).
-binding.addBinding('[*]', attributeCatchAll);
+  updateChanges: function(value, changes) {
+    // Remove everything first, then add again, allowing for element reuse from the pool
+    var removedCount = 0;
+    var removedMap = new Map();
 
-// Toggle an attribte to exist or not (e.g. checked, selected, hidden, disabled, etc).
-binding.addBinding('*?', attributeToggle);
+    changes.forEach(function(splice) {
+      if (!splice.removed.length) return;
+      var removed = this.views.splice(splice.index - removedCount, splice.removed.length);
+      // Save for reuse if items moved (e.g. on a sort update) instead of just getting removed
+      removed.forEach(function(view) {
+        removedMap.set(view._eachItem_, view);
+        view.remove();
+      });
+      removedCount += removed.length;
+    }, this);
 
+    // Add the new/moved views
+    changes.forEach(function(splice) {
+      if (!splice.addedCount) return;
+      var newViews = []
+      var frag = document.createDocumentFragment();
+      var index = splice.index;
+      var count = splice.addedCount;
 
+      for (var i = index; i < addedCount; i++) {
+        var item = value[i];
 
+        var view = removedMap.get(item);
+        if (view) {
+          // If the node was just removed, reuse it
+          removedMap.delete(item);
+          if (this.keyName) {
+            view.context[this.keyName] = i;
+          }
+        } else {
+          // Otherwise create a new one
+          view = this.createView(i, item);
+        }
+        newViews.push(view);
+        frag.appendChild(view);
+      }
+      this.views.splice.apply(this.views, [ index, 0 ].concat(newViews));
+      var previousView = this.views[index - 1];
+      var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
+      nextSibling.parentNode.insertBefore(frag, nextSibling);
+    }, this);
+
+    // Cleanup any views that were removed (not moved)
+    removedMap.forEach(function(value) {
+      value._eachItem_ = null;
+      value.dispose();
+    });
+    removedMap.clear();
+  }
+});

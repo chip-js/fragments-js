@@ -11,12 +11,11 @@ var diff = require('./diff');
 // If the old and new values were either an array or an object, the `callback` also
 // receives an array of splices (for an array), or an array of change objects (for an object) which are the same
 // format that `Array.observe` and `Object.observe` return <http://wiki.ecmascript.org/doku.php?id=harmony:observe>.
-function Observer(expr, callback) {
+function Observer(expr, callback, callbackContext) {
   this.getter = expression.get(expr);
-  if (!/['"']$/.test(expr)) {
-    this.setter = expression.getSetter(expr);
-  }
+  this.setter = expression.getSetter(expr, { ignoreErrors: true });
   this.callback = callback;
+  this.callbackContext = callbackContext;
   this.skip = false;
   this.context = null;
   this.oldValue = undefined;
@@ -27,7 +26,9 @@ Observer.prototype = {
   // Binds this expression to a given context
   bind: function(context, skipUpdate) {
     this.context = context;
-    Observer.add(this, skipUpdate);
+    if (this.callback) {
+      Observer.add(this, skipUpdate);
+    }
   },
 
   // Unbinds this expression
@@ -70,9 +71,9 @@ Observer.prototype = {
       var changed = diff.values(value, this.oldValue);
       if (!changed) return;
       if (Array.isArray(changed)) {
-        this.callback(value, this.oldValue, changed)
+        this.callback.call(this.callbackContext, value, this.oldValue, changed)
       } else {
-        this.callback(value, this.oldValue);
+        this.callback.call(this.callbackContext, value, this.oldValue);
       }
     }
 

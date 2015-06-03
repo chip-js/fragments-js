@@ -6,12 +6,28 @@
 // errors, allows for formatters on data, and provides detailed error reporting.
 
 // The expression object with its expression cache.
-expression = exports;
+var expression = exports;
 expression.cache = {};
 expression.globals = ['true', 'false', 'null', 'undefined', 'window', 'this'];
+expression.codify = codifyExpression;
 expression.get = getExpression;
 expression.getSetter = getSetter;
 expression.bind = bindExpression;
+
+var oneBoundExpr = /^{{(.*?)}}$/;
+var boundExpr = /{{(.*?)}}/g;
+
+// Converts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
+function codifyExpression(text) {
+  if (oneBoundExpr.test(text)) {
+    return text.replace(oneBoundExpr, '$1');
+  } else {
+    text = '"' + text.replace(boundExpr, function(match, text) {
+      return '" + (' + text + ') + "';
+    }) + '"';
+    return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
+  }
+}
 
 
 // Creates a function from the given expression. An `options` object may be
@@ -43,6 +59,7 @@ function getExpression(expr, options) {
   try {
     func = expression.cache[cacheKey] = Function.apply(null, options.args.concat(body));
   } catch (e) {
+    if (options.ignoreErrors) return;
     // Throws an error if the expression was not valid JavaScript
     console.error('Bad expression:\n`' + expr + '`\n' + 'Compiled expression:\n' + body);
     throw new Error(e.message);
@@ -76,8 +93,11 @@ var emptyQuoteExpr = /(['"\/])\1/g;
 // finds pipes that aren't ORs (` | ` not ` || `) for formatters
 var pipeExpr = /\|(\|)?/g;
 
+// finds the parts of a formatter (name and args)
+var formatterExpr = /^([^\(]+)(?:\((.*)\))?$/;
+
 // finds argument separators for formatters (`arg1:arg2`)
-var argSeparator = /\s*:\s*/g;
+var argSeparator = /\s*,\s*/g;
 
 // matches property chains (e.g. `name`, `user.name`, and `user.fullName().capitalize()`)
 var propExpr = /((\{|,|\.)?\s*)([a-z$_\$](?:[a-z_\$0-9\.-]|\[['"\d]+\])*)(\s*(:|\(|\[)?)/gi;
@@ -176,8 +196,10 @@ function parseFormatters(expr) {
   }
 
   formatters.forEach(function(formatter) {
-    var args = formatter.split(argSeparator);
-    var formatterName = args.shift();
+    var match = formatter.trim().match(formatterExpr);
+    if (!match) throw new Error('Formatter is invalid: ' + formatter);
+    var formatterName = match[1];
+    var args = match[2].split(argSeparator);
     args.unshift(value);
     if (setter) args.push(true);
     value = '_formatters_.' + formatterName + '.call(this, ' + args.join(', ') + ')';

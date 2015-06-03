@@ -2,6 +2,46 @@ Formatter = require('./formatter');
 
 // # Default Formatters
 
+Formatter.register('tokenList', function(value) {
+
+  if (Array.isArray(value)) {
+    return value.join(' ');
+  }
+
+  if (value && typeof value === 'object') {
+    var classes = [];
+    Object.keys(value).forEach(function(className) {
+      if (value[className]) {
+        classes.push(className);
+      }
+    });
+    return classes.join(' ');
+  }
+
+  return value || '';
+});
+
+// v TODO v
+Formatter.register('styles', function(value) {
+
+  if (Array.isArray(value)) {
+    return value.join(' ');
+  }
+
+  if (value && typeof value === 'object') {
+    var classes = [];
+    Object.keys(value).forEach(function(className) {
+      if (value[className]) {
+        classes.push(className);
+      }
+    });
+    return classes.join(' ');
+  }
+
+  return value || '';
+});
+
+
 // ## filter
 // Filters an array by the given filter function(s), may provide a function, an
 // array, or an object with filtering functions
