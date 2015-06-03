@@ -1,4 +1,3 @@
-Fragments
-============
+# Fragments.js
 
-Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.
+Fragments.js is an ultra-fast templating and data-binding library for front-end JavaScript applications.

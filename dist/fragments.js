@@ -598,11 +598,8 @@ Binder.register('if', {
     this.element = placeholder;
     element.parentNode.replaceChild(placeholder, element);
 
-    // Convert the element into a template so we can reuse it
-    Template.createTemplate(element);
-
     // Stores a template for all the elements that can go into this spot
-    this.templates = [ element ];
+    this.templates = [ Template.createTemplate(element) ];
 
     // Pull out any other elements that are chained with this one
     while (node) {
@@ -624,8 +621,7 @@ Binder.register('if', {
       }
 
       node.remove();
-      Template.createTemplate(node);
-      this.templates.push(node);
+      this.templates.push(Template.createTemplate(node));
       node = next;
     }
 
@@ -698,9 +694,8 @@ Binder.register('each', {
     var parent = this.element.parentNode;
     var placeholder = document.createTextNode('');
     parent.insertBefore(placeholder, this.element);
-    this.template = this.element;
+    this.template = Template.createTemplate(this.element);
     this.element = placeholder;
-    Template.createTemplate(this.template);
 
     var parts = this.expression.split(/\s+in\s+/);
     this.expression = parts.pop();
@@ -2019,7 +2014,7 @@ function escapeHTML(value) {
 // ```
 // *Result:*
 // ```xml
-// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
+// <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</div>
 // ```
 Formatter.register('escape', escapeHTML);
 
@@ -2033,7 +2028,7 @@ Formatter.register('escape', escapeHTML);
 // ```
 // *Result:*
 // ```xml
-// <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</p>
+// <div><p>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</p>
 // <p>It's great</p></div>
 // ```
 Formatter.register('p', function(value) {
@@ -2052,7 +2047,7 @@ Formatter.register('p', function(value) {
 // ```
 // *Result:*
 // ```xml
-// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
+// <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!<br>
 // It's great</div>
 // ```
 Formatter.register('br', function(value) {
@@ -2070,7 +2065,7 @@ Formatter.register('br', function(value) {
 // ```
 // *Result:*
 // ```xml
-// <div><p>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!<br>
+// <div><p>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!<br>
 // It's great</p></div>
 // ```
 Formatter.register('newline', function(value) {
@@ -2093,7 +2088,7 @@ Formatter.register('newline', function(value) {
 // ```
 // *Result:*
 // ```xml
-// <div>Check out <a href="https://github.com/teamsnap/chip" target="_blank">https://github.com/teamsnap/chip</a>!</div>
+// <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</div>
 // ```
 var urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
 
@@ -2270,12 +2265,13 @@ function getBindingsForNode(node, view) {
 }
 
 
-// Splits text nodes with expressions in them so they can be bound individually
+// Splits text nodes with expressions in them so they can be bound individually, has parentNode passed in since it may
+// be a document fragment which appears as null on node.parentNode.
 function splitTextNode(node) {
   if (!node.processed) {
     node.processed = true;
     var content = node.nodeValue;
-    if (boundExpr.test(content)) {
+    if (content.match(boundExpr)) {
       var expr, lastIndex = 0, parts = [], fragment = document.createDocumentFragment();
       while (expr = boundExpr.exec(content)) {
         parts.push(content.slice(lastIndex, boundExpr.lastIndex - expr[0].length));
@@ -2601,21 +2597,19 @@ function removeHook(type, hook) {
 
 
 function createTemplate(html) {
-  var node = fragment = toFragment(html);
-  if (fragment.childNodes.length === 1) {
-    node = fragment.removeChild(fragment.firstChild);
-  } else if (fragment.childNodes.length === 0) {
+  var fragment = toFragment(html);
+  if (fragment.childNodes.length === 0) {
     throw new Error('Cannot create a template from ' + html);
   }
 
   Object.keys(exports.templateMethods).forEach(function(key) {
-    node[key] = exports.templateMethods[key];
+    fragment[key] = exports.templateMethods[key];
   });
 
-  node.pool = [];
-  runHooks('compile', node);
+  fragment.pool = [];
+  runHooks('compile', fragment);
 
-  return node;
+  return fragment;
 }
 
 
@@ -2624,47 +2618,42 @@ function templateCreateView() {
 }
 
 
-function createView(node, template) {
-  if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-    node.firstViewNode = node.firstChild;
-    node.lastViewNode = node.lastChild;
-  } else if (node instanceof Node) {
-    node.firstViewNode = node.lastViewNode = node;
-  } else {
+function createView(fragment, template) {
+  if (!(fragment instanceof Node)) {
     throw new TypeError('A view must be created from an HTML Node');
   }
 
+  if (fragment.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+    var node = fragment;
+    fragment = document.createDocumentFragment();
+    fragment.firstViewNode = fragment.lastViewNode = node;
+  } else {
+    fragment.firstViewNode = fragment.firstChild;
+    fragment.lastViewNode = fragment.lastChild;
+  }
+
   Object.keys(exports.viewMethods).forEach(function(key) {
-    node[key] = exports.viewMethods[key];
+    fragment[key] = exports.viewMethods[key];
   });
 
-  node.template = template;
+  fragment.template = template;
 
-  runHooks('view', node);
+  runHooks('view', fragment);
 
-  return node;
+  return fragment;
 }
 
 
 function removeView() {
-  if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-    var node = this.firstViewNode;
-    var next;
+  var node = this.firstViewNode;
+  var next;
 
-    if (node.parentNode !== this) {
-      // Remove all the nodes and put them back into this fragment
-      while (node) {
-        next = (node === this.lastViewNode) ? null : node.nextSibling;
-        this.appendChild(node);
-        node = next;
-      }
-    }
-
-  } else {
-
-    if (this.parentNode) {
-      // Remove this node
-      this.parentNode.removeChild(this);
+  if (node.parentNode !== this) {
+    // Remove all the nodes and put them back into this fragment
+    while (node) {
+      next = (node === this.lastViewNode) ? null : node.nextSibling;
+      this.appendChild(node);
+      node = next;
     }
   }
 
@@ -2795,11 +2784,10 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
 exports.Observer = require('./src/observer');
 exports.diff = require('./src/diff');
 exports.Template = require('./src/template');
-exports.expression = require('./src/expression');
+exports.Expression = require('./src/expression');
 exports.Binding = require('./src/binding');
 exports.Binder = require('./src/binder');
 exports.Formatter = require('./src/formatter');
-exports.formatters = require('./src/formatters');
 require('./src/binders');
 require('./src/formatters');
 require('./src/initBinding');

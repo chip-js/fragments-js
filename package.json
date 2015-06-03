@@ -1,12 +1,24 @@
 {
   "name": "fragments-js",
-  "version": "0.1.2",
+  "version": "0.1.3",
+  "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
+  "keywords": ["templates", "data-binding", "front-end", "DocumentFragment"],
+  "homepage": "http://github.com/chip-js/fragments-js",
+  "author": {
+    "name": "Jacob Wright",
+    "email": "jacwright@gmail.com",
+    "url": "http://github.com/jacwright"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/chip-js/fragments-js.git"
   },
   "bugs": {
     "url" : "https://github.com/chip-js/fragments-js/issues"
+  },
+  "licenses": {
+    "type": "MIT",
+    "url": "git://github.com/chip-js/fragments-js/LICENSE"
   },
   "scripts": {
     "build": "browserify --standalone fragments index.js -o dist/fragments.js",

@@ -74,21 +74,19 @@ function removeHook(type, hook) {
 
 
 function createTemplate(html) {
-  var node = fragment = toFragment(html);
-  if (fragment.childNodes.length === 1) {
-    node = fragment.removeChild(fragment.firstChild);
-  } else if (fragment.childNodes.length === 0) {
+  var fragment = toFragment(html);
+  if (fragment.childNodes.length === 0) {
     throw new Error('Cannot create a template from ' + html);
   }
 
   Object.keys(exports.templateMethods).forEach(function(key) {
-    node[key] = exports.templateMethods[key];
+    fragment[key] = exports.templateMethods[key];
   });
 
-  node.pool = [];
-  runHooks('compile', node);
+  fragment.pool = [];
+  runHooks('compile', fragment);
 
-  return node;
+  return fragment;
 }
 
 
@@ -97,47 +95,42 @@ function templateCreateView() {
 }
 
 
-function createView(node, template) {
-  if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-    node.firstViewNode = node.firstChild;
-    node.lastViewNode = node.lastChild;
-  } else if (node instanceof Node) {
-    node.firstViewNode = node.lastViewNode = node;
-  } else {
+function createView(fragment, template) {
+  if (!(fragment instanceof Node)) {
     throw new TypeError('A view must be created from an HTML Node');
   }
 
+  if (fragment.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+    var node = fragment;
+    fragment = document.createDocumentFragment();
+    fragment.firstViewNode = fragment.lastViewNode = node;
+  } else {
+    fragment.firstViewNode = fragment.firstChild;
+    fragment.lastViewNode = fragment.lastChild;
+  }
+
   Object.keys(exports.viewMethods).forEach(function(key) {
-    node[key] = exports.viewMethods[key];
+    fragment[key] = exports.viewMethods[key];
   });
 
-  node.template = template;
+  fragment.template = template;
 
-  runHooks('view', node);
+  runHooks('view', fragment);
 
-  return node;
+  return fragment;
 }
 
 
 function removeView() {
-  if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-    var node = this.firstViewNode;
-    var next;
+  var node = this.firstViewNode;
+  var next;
 
-    if (node.parentNode !== this) {
-      // Remove all the nodes and put them back into this fragment
-      while (node) {
-        next = (node === this.lastViewNode) ? null : node.nextSibling;
-        this.appendChild(node);
-        node = next;
-      }
-    }
-
-  } else {
-
-    if (this.parentNode) {
-      // Remove this node
-      this.parentNode.removeChild(this);
+  if (node.parentNode !== this) {
+    // Remove all the nodes and put them back into this fragment
+    while (node) {
+      next = (node === this.lastViewNode) ? null : node.nextSibling;
+      this.appendChild(node);
+      node = next;
     }
   }
 

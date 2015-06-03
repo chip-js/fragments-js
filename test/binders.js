@@ -46,11 +46,11 @@ describe('Default Binders', function() {
 			var view = template.createView()
 			view.bind(obj)
 
-			expect(view.children.length).to.equal(1)
+			expect(view.firstChild.children.length).to.equal(1)
 			obj.value = false
-			expect(view.children.length).to.equal(1)
+			expect(view.firstChild.children.length).to.equal(1)
 			fragments.Observer.sync()
-			expect(view.children.length).to.equal(0)
+			expect(view.firstChild.children.length).to.equal(0)
 		})
 
 		it('should show the correct element in a set', function() {
@@ -87,11 +87,11 @@ describe('Default Binders', function() {
 			var view = template.createView()
 			view.bind(obj)
 
-			expect(view.children.length).to.equal(3)
+			expect(view.firstChild.children.length).to.equal(3)
 			expect(view.textContent).to.equal('test1test2test3')
 			obj.items.splice(1, 1)
 			fragments.Observer.sync()
-			expect(view.children.length).to.equal(2)
+			expect(view.firstChild.children.length).to.equal(2)
 			expect(view.textContent).to.equal('test1test3')
 		})
 	})

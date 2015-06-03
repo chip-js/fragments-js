@@ -142,12 +142,13 @@ function getBindingsForNode(node, view) {
 }
 
 
-// Splits text nodes with expressions in them so they can be bound individually
+// Splits text nodes with expressions in them so they can be bound individually, has parentNode passed in since it may
+// be a document fragment which appears as null on node.parentNode.
 function splitTextNode(node) {
   if (!node.processed) {
     node.processed = true;
     var content = node.nodeValue;
-    if (boundExpr.test(content)) {
+    if (content.match(boundExpr)) {
       var expr, lastIndex = 0, parts = [], fragment = document.createDocumentFragment();
       while (expr = boundExpr.exec(content)) {
         parts.push(content.slice(lastIndex, boundExpr.lastIndex - expr[0].length));
