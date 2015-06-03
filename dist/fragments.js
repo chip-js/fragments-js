@@ -59,6 +59,9 @@ exports.createBinding = createBinding;
 // `detached()` is called on the binding when the view is unbound to a given context and removed from the DOM. This can
 // be used to clean up anything done in `attached()` or in `updated()` before being removed.
 //
+// Add `onlyWhenBound` when a binder only applies to attributes when an expression is used in them. Otherwise the binder
+// will apply and the value of the attribute will simply be a string.
+//
 // **Example:** This binding handler adds pirateized text to an element.
 // ```javascript
 // registerBinder('my-pirate', function(value) {
@@ -82,7 +85,6 @@ function registerBinder(name, binder) {
   if (typeof binder === 'function') {
     binder = { updated: binder };
   }
-  binder.name = name;
 
   if (name.indexOf('*') >= 0) {
     binder.expr = new RegExp('^' + escapeRegExp(name).replace('\\*', '(.*)') + '$');
@@ -125,32 +127,34 @@ function getBinder(name) {
 
 // Returns a binding object that matches the given attribute name.
 function findBinder(name) {
-  var binding = getBinder(name);
+  var binder = getBinder(name);
 
-  if (!binding) {
+  if (!binder) {
     wildcards.some(function(binder) {
-      if (binding = binder.expr.test(name)) {
+      if (binder = binder.expr.test(name)) {
         return true;
       }
     });
   }
 
-  if (!binding && isBound(value)) {
-    // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
-    binding = getBinder('{{attribute}}');
+  // E.g. don't use the `value` binder if there is no expression as in `value="some text"`
+  if (binder && binder.onlyWhenBound && !isBound(value)) {
+    return;
   }
 
-  return binding;
+  if (!binder && isBound(value)) {
+    // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
+    binder = getBinder('{{attribute}}');
+  }
+
+  return binder;
 }
 
 // Creates a binding
 function createBinding(binder, options) {
-  binderMethods.forEach(function(key) {
-    if (binder[key]) {
-      options[key] = binder[key];
-    }
+  Object.keys(binder).forEach(function(key) {
+    options[key] = binder[key];
   });
-  if (binder.compiled) binder.compiled.call(options);
   return new Binding(options, true);
 }
 
@@ -172,59 +176,688 @@ function binderSort(a, b) {
   return b.priority - a.priority;
 }
 
-},{"./binding":2}],2:[function(require,module,exports){
+},{"./binding":3}],2:[function(require,module,exports){
+var Binder = require('./binder');
+var Template = require('./template');
+
+// # Default Bindings
+
+
+Binder.register('debug', {
+  priority: 200,
+  udpated: function(value) {
+    console.info('Debug:', this.expression, '=', value);
+  }
+});
+
+
+// ## html
+// Adds a binder to display unescaped HTML inside an element. Be sure it's trusted! This should be used with filters
+// which create HTML from something safe.
+//
+// **Example:**
+// ```html
+// <h1>{{post.title}}</h1>
+// <div html="{{post.body | markdown}}"></div>
+// ```
+// *Result:*
+// ```html
+// <h1>Little Red</h1>
+// <div>
+//   <p>Little Red Riding Hood is a story about a little girl.</p>
+//   <p>
+//     More info can be found on
+//     <a href="http://en.wikipedia.org/wiki/Little_Red_Riding_Hood">Wikipedia</a>
+//   </p>
+// </div>
+// ```
+Binder.register('html', function(value) {
+  element.innerHTML = value == null ? '' : value;
+});
+
+
+
+// ## class-[className]
+// Adds a binder to add classes to an element dependent on whether the expression is true or false.
+//
+// **Example:**
+// ```html
+// <div class="user-item" class-selected-user="{{selected === user}}">
+//   <button class="btn primary" class-highlight="{{ready}}"></button>
+// </div>
+// ```
+// *Result if `selected` equals the `user` and `ready` is `true`:*
+// ```html
+// <div class="user-item selected-user">
+//   <button class="btn primary highlight"></button>
+// </div>
+// ```
+Binder.register('class-*', function(value) {
+  if (value) {
+    this.element.classList.add(this.match);
+  } else {
+    this.element.classList.remove(this.match);
+  }
+});
+
+
+
+// ## value
+// Adds a binder which sets the value of an HTML form element. This binder also updates the data as it is changed in
+// the form element, providing two way binding.
+//
+// **Example:**
+// ```html
+// <label>First Name</label>
+// <input type="text" name="firstName" value="user.firstName">
+//
+// <label>Last Name</label>
+// <input type="text" name="lastName" value="user.lastName">
+// ```
+// *Result:*
+// ```html
+// <label>First Name</label>
+// <input type="text" name="firstName" value="Jacob">
+//
+// <label>Last Name</label>
+// <input type="text" name="lastName" value="Wright">
+// ```
+// And when the user changes the text in the first input to "Jac", `user.firstName` will be updated immediately with the
+// value of `'Jac'`.
+Binder.register('value', {
+  onlyWhenBound: true,
+
+  compiled: function() {
+    var name = this.element.tagName.toLowerCase();
+    var type = this.element.type;
+    this.input = inputMethods[type] || inputMethods[name] || inputMethods.radiogroup;
+
+    if (this.element.hasAttribute('value-events')) {
+      this.events = this.element.getAttribute('value-events').split(' ');
+      this.element.removeAttribute('value-events');
+    } else if (name !== 'option') {
+      this.events = ['change'];
+    }
+
+    if (this.element.hasAttribute('value-field')) {
+      this.valueField = this.element.getAttribute('value-field');
+      this.element.removeAttribute('value-field');
+    }
+
+    if (type === 'option') {
+      this.valueField = this.element.parentNode.valueField;
+    }
+  },
+
+  created: function() {
+    if (!this.events) return; // nothing for <option> here
+    var element = this.element;
+    var observer = this.observer;
+    var input = this.input;
+    var valueField = this.valueField;
+
+    // The 2-way binding part is setting values on certain events
+    function onChange() {
+      if (input.get(valueField) !== observer.oldValue && !element.readOnly) {
+        observer.set(input.get(valueField));
+      }
+    }
+
+    if (element.type === 'text') {
+      element.addEventListener('keydown', function(event) {
+        if (event.keyCode === 13) onChange();
+      });
+    }
+
+    this.events.forEach(function(event) {
+      element.addEventListener(event, onChange);
+    });
+  },
+
+  updated: function(value) {
+    if (this.input.get(this.valueField) != value) {
+      this.input.set(value, this.valueField);
+    }
+  }
+});
+
+// Handle the different form types
+var defaultInputMethod = {
+  get: function() { return this.value; },
+  set: function(value) { this.value = value; }
+};
+
+var inputMethods = {
+  checkbox: {
+    get: function() { return this.checked; },
+    set: function(value) { this.checked = !!value; }
+  },
+  file: {
+    get: function() { return this.files && this.files[0]; },
+    set: function(value) {}
+  },
+  select: {
+    get: function(valueField) {
+      if (valueField) {
+        return this.options[this.selectedIndex].valueObject;
+      } else {
+        return this.value;
+      }
+    },
+    set: function(value, valueField) {
+      if (valueField) {
+        this.valueObject = value;
+        this.value = value[valueField];
+      } else {
+        this.value = value;
+      }
+    }
+  },
+  option: {
+    get: function(valueField) {
+      return valueField ? this.valueObject[valueField] : this.value;
+    },
+    set: function(value, valueField) {
+      if (valueField) {
+        this.valueObject = value;
+        this.value = value[valueField];
+      } else {
+        this.value = value;
+      }
+    }
+  },
+  input: defaultInputMethod,
+  textarea: defaultInputMethod,
+  radiogroup: { // Handles a group of radio inputs, assigned to anything that isn't a a form input
+    get: function() { return this.find('input[type="radio"][checked]').value },
+    set: function(value) {
+      // in case the value isn't found in radios
+      this.querySelector('input[type="radio"][checked]').checked = false;
+      var radio = this.querySelector('input[type="radio"][value="' + value.replace(/"/g, '\\"') + '"]');
+      if (radio) radio.checked = true;
+    }
+  }
+};
+
+
+// ## on-[event]
+// Adds a binder for each event name in the array. When the event is triggered the expression will be run.
+//
+// **Example Events:**
+//
+// * on-click
+// * on-dblclick
+// * on-submit
+// * on-change
+// * on-focus
+// * on-blur
+//
+// **Example:**
+// ```html
+// <form on-submit="{{saveUser()}}">
+//   <input name="firstName" value="Jacob">
+//   <button>Save</button>
+// </form>
+// ```
+// *Result (events don't affect the HTML):*
+// ```html
+// <form>
+//   <input name="firstName" value="Jacob">
+//   <button>Save</button>
+// </form>
+// ```
+Binder.register('on-*', {
+  created: function() {
+    var eventName = this.match;
+    var _this = this;
+    this.element.addEventListener(eventName, function(event) {
+      // prevent native events, let custom events use the "defaultCanceled" mechanism
+      if (!(event instanceof CustomEvent)) {
+        event.preventDefault();
+      }
+      if (!element.hasAttribute('disabled')) {
+        // Let an on-[event] make the function call with its own arguments
+        var listener = _this.observer.get();
+
+        // Or just return a function which will be called with the event object
+        if (listener) listener.call(this, event);
+      }
+    });
+  }
+});
+
+
+// ## native-[event]
+// Adds a binder for each event name in the array. When the event is triggered the expression will be run.
+// It will not call event.preventDefault() like on-* or withhold when disabled.
+//
+// **Example Events:**
+//
+// * native-click
+// * native-dblclick
+// * native-submit
+// * native-change
+// * native-focus
+// * native-blur
+//
+// **Example:**
+// ```html
+// <form native-submit="{{saveUser(event)}}">
+//   <input name="firstName" value="Jacob">
+//   <button>Save</button>
+// </form>
+// ```
+// *Result (events don't affect the HTML):*
+// ```html
+// <form>
+//   <input name="firstName" value="Jacob">
+//   <button>Save</button>
+// </form>
+// ```
+Binder.register('native-*', {
+  created: function() {
+    var eventName = this.match;
+    var _this = this;
+    this.element.addEventListener(eventName, function(event) {
+      // Let an on-[event] make the function call with its own arguments
+      var listener = _this.observer.get();
+
+      // Or just return a function which will be called with the event object
+      if (listener) listener.call(this, event);
+    });
+  }
+});
+
+
+// ## on-[key event]
+// Adds a binder which is triggered when the keydown event's `keyCode` property matches. If the name includes ctrl then
+// it will only fire when the key plus the ctrlKey or metaKey is pressed.
+//
+// **Key Events:**
+//
+// * on-enter
+// * on-ctrl-enter
+// * on-esc
+//
+// **Example:**
+// ```html
+// <input on-enter="{{save()}}" on-esc="{{cancel()}}">
+// ```
+// *Result:*
+// ```html
+// <input>
+// ```
+var keyCodes = { enter: 13, esc: 27, 'ctrl-enter': 13 };
+
+Object.keys(keyCodes).forEach(function(name) {
+  var keyCode = keyCodes[name];
+
+  Binder.register('on-' + name, {
+    created: function() {
+      var useCtrlKey = this.match.indexOf('ctrl-') === 0;
+      var _this = this;
+      this.element.addEventListener('keydown', function(event) {
+        if (useCtrlKey && !(event.ctrlKey || event.metaKey)) return;
+        if (event.keyCode !== keyCode) return;
+        event.preventDefault();
+
+        if (!element.hasAttribute('disabled')) {
+          // Let an on-[event] make the function call with its own arguments
+          var listener = _this.observer.get();
+
+          // Or just return a function which will be called with the event object
+          if (listener) listener.call(this, event);
+        }
+      });
+    }
+  })
+});
+
+
+// ## [attribute]$
+// Adds a binder to set the attribute of element to the value of the expression. Use this when you don't want an
+// `<img>` to try and load its `src` before being evaluated. This is only needed on the index.html page as template will
+// be processed before being inserted into the DOM. Generally you can just use `attr="{{expr}}"`.
+//
+// **Example Attributes:**
+//
+// **Example:**
+// ```html
+// <img src$="{{user.avatarUrl}}">
+// ```
+// *Result:*
+// ```html
+// <img src="http://cdn.example.com/avatars/jacwright-small.png">
+// ```
+Binder.register('*$', function(value) {
+  var attrName = this.match;
+  if (!value) {
+    this.element.removeAttribute(attrName);
+  } else {
+    this.element.setAttribute(attrName, value);
+  }
+});
+
+
+// ## [attribute]?
+// Adds a binder to toggle an attribute on or off if the expression is truthy or falsey. Use for attributes without
+// values such as `selected`, `disabled`, or `readonly`. `checked?` will use 2-way databinding.
+//
+// **Example:**
+// ```html
+// <label>Is Administrator</label>
+// <input type="checkbox" checked?="{{user.isAdmin}}">
+// <button disabled?="{{isProcessing}}">Submit</button>
+// ```
+// *Result if `isProcessing` is `true` and `user.isAdmin` is false:*
+// ```html
+// <label>Is Administrator</label>
+// <input type="checkbox">
+// <button disabled>Submit</button>
+// ```
+Binder.register('*?', function(value) {
+  var attrName = this.match;
+  if (!value) {
+    this.element.removeAttribute(attrName);
+  } else {
+    this.element.setAttribute(attrName, value);
+  }
+});
+
+// Add a clone of the `value` binder for `checked?` so checkboxes can have two-way binding using `checked?`.
+Binder.register('checked?', Binder.get('value'));
+
+
+
+// ## if, unless, else-if, else-unless, else
+// Adds a binder to show or hide the element if the value is truthy or falsey. Actually removes the element from the DOM
+// when hidden, replacing it with a non-visible placeholder and not needlessly executing bindings inside.
+//
+// **Example:**
+// ```html
+// <ul class="header-links">
+//   <li if="user"><a href="/account">My Account</a></li>
+//   <li unless="user"><a href="/login">Sign In</a></li>
+//   <li else><a href="/logout">Sign Out</a></li>
+// </ul>
+// ```
+// *Result if `user` is null:*
+// ```html
+// <ul class="header-links">
+//   <li><a href="/login">Sign In</a></li>
+// </ul>
+// ```
+Binder.register('if', {
+  priority: 50,
+
+  compiled: function() {
+    var element = this.element;
+    var expressions = [ wrapIfExp(this.expression, this.name === 'unless') ];
+    var placeholder = document.createTextNode('');
+    var node = element.nextElementSibling;
+    this.element = placeholder;
+    element.parentNode.replaceChild(placeholder, element);
+
+    // Convert the element into a template so we can reuse it
+    Template.createTemplate(element);
+
+    // Stores a template for all the elements that can go into this spot
+    this.templates = [ element ];
+
+    // Pull out any other elements that are chained with this one
+    while (node) {
+      var next = node.nextElementSibling;
+      var expression;
+      if (node.hasAttribute('else-if')) {
+        expression = this.codify(node.getAttribute('else-if'));
+        expressions.push(wrapIfExp(expression, false));
+        node.removeAttribute('else-if');
+      } else if (node.hasAttribute('else-unless')) {
+        expression = this.codify(node.getAttribute('else-unless'));
+        expressions.push(wrapIfExp(expression, true));
+        node.removeAttribute('else-unless');
+      } else if (node.hasAttribute('else')) {
+        node.removeAttribute('else');
+        next = null;
+      } else {
+        break;
+      }
+
+      node.remove();
+      Template.createTemplate(node);
+      this.templates.push(node);
+      node = next;
+    }
+
+    // An expression that will return an index. Something like this `expr ? 0 : expr2 ? 1 : expr3 ? 2 : 3`. This will be
+    // used to know which section to show in the if/else-if/else grouping.
+    this.expression = expressions.map(function(expr, index) {
+      return expr + ' ? ' + index + ' : ';
+    }).join('') + expressions.length;
+  },
+
+  updated: function(index) {
+    if (this.showing) {
+      this.showing.dispose();
+      this.showing = null;
+    }
+    var template = this.templates[index];
+    if (template) {
+      this.showing = template.createView();
+      this.showing.bind(this.context);
+      this.element.parentNode.insertBefore(this.showing, this.element.nextSibling);
+    }
+  }
+});
+
+Binder.register('unless', Binder.get('if'));
+
+function wrapIfExp(expr, isUnless) {
+  return (isUnless ? '!' : '') + expr;
+}
+
+
+// ## each
+// Adds a binder to duplicate an element for each item in an array. The expression may be of the format `epxr` or
+// `itemName in expr` where `itemName` is the name each item inside the array will be referenced by within bindings
+// inside the element.
+//
+// **Example:**
+// ```html
+// <div each="{{post in posts}}" class-featured="{{post.isFeatured}}">
+//   <h1>{{post.title}}</h1>
+//   <div html="{{post.body | markdown}}"></div>
+// </div>
+// ```
+// *Result if there are 2 posts and the first one is featured:*
+// ```html
+// <div class="featured">
+//   <h1>Little Red</h1>
+//   <div>
+//     <p>Little Red Riding Hood is a story about a little girl.</p>
+//     <p>
+//       More info can be found on
+//       <a href="http://en.wikipedia.org/wiki/Little_Red_Riding_Hood">Wikipedia</a>
+//     </p>
+//   </div>
+// </div>
+// <div>
+//   <h1>Big Blue</h1>
+//   <div>
+//     <p>Some thoughts on the New York Giants.</p>
+//     <p>
+//       More info can be found on
+//       <a href="http://en.wikipedia.org/wiki/New_York_Giants">Wikipedia</a>
+//     </p>
+//   </div>
+// </div>
+// ```
+Binder.register('each', {
+  priority: 100,
+  compiled: function() {
+    var parent = this.element.parentNode;
+    var placeholder = document.createTextNode('');
+    parent.insertBefore(placeholder, this.element);
+    this.template = this.element;
+    this.element = placeholder;
+    Template.createTemplate(this.template);
+
+    var parts = this.expression.split(/\s+in\s+/);
+    this.expression = parts.pop();
+    var key = parts.pop();
+    if (key) {
+      parts = key.split(/\s*,\s*/);
+      this.valueName = parts.pop();
+      this.keyName = parts.pop();
+    }
+  },
+
+  created: function() {
+    this.views = [];
+  },
+
+  updated: function(value, oldValue, changes) {
+    if (!changes) {
+      this.populate(value);
+    } else {
+      this.updateChanges(value, changes);
+    }
+  },
+
+  // Method for creating and setting up new views for our list
+  createView: function(key, value) {
+    var view = this.template.createView();
+    var context = value;
+    if (this.valueName) {
+      context = Object.create(this.context);
+      if (this.keyName) context[this.keyName] = key;
+      context[this.valueName] = value;
+    }
+    view.bind(context);
+    view._eachItem_ = value;
+    return view;
+  },
+
+  populate: function(value) {
+    if (this.views.length) {
+      this.views.forEach(function(node) {
+        node.dispose();
+      });
+      this.views.length = 0;
+    }
+
+    if (Array.isArray(value) && value.length) {
+      value.forEach(function(item, index) {
+        this.views.push(this.createView(index, item));
+      }, this);
+    }
+
+    if (this.views.length) {
+      var frag = document.createDocumentFragment();
+      this.views.forEach(function(elem) {
+        frag.appendChild(elem);
+      });
+      this.element.parentNode.insertBefore(frag, this.element.nextSibling);
+    }
+  },
+
+  updateChanges: function(value, changes) {
+    // Remove everything first, then add again, allowing for element reuse from the pool
+    var removedCount = 0;
+    var removedMap = new Map();
+
+    changes.forEach(function(splice) {
+      if (!splice.removed.length) return;
+      var removed = this.views.splice(splice.index - removedCount, splice.removed.length);
+      // Save for reuse if items moved (e.g. on a sort update) instead of just getting removed
+      removed.forEach(function(view) {
+        removedMap.set(view._eachItem_, view);
+        view.remove();
+      });
+      removedCount += removed.length;
+    }, this);
+
+    // Add the new/moved views
+    changes.forEach(function(splice) {
+      if (!splice.addedCount) return;
+      var newViews = []
+      var frag = document.createDocumentFragment();
+      var index = splice.index;
+      var count = splice.addedCount;
+
+      for (var i = index; i < addedCount; i++) {
+        var item = value[i];
+
+        var view = removedMap.get(item);
+        if (view) {
+          // If the node was just removed, reuse it
+          removedMap.delete(item);
+          if (this.keyName) {
+            view.context[this.keyName] = i;
+          }
+        } else {
+          // Otherwise create a new one
+          view = this.createView(i, item);
+        }
+        newViews.push(view);
+        frag.appendChild(view);
+      }
+      this.views.splice.apply(this.views, [ index, 0 ].concat(newViews));
+      var previousView = this.views[index - 1];
+      var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
+      nextSibling.parentNode.insertBefore(frag, nextSibling);
+    }, this);
+
+    // Cleanup any views that were removed (not moved)
+    removedMap.forEach(function(value) {
+      value._eachItem_ = null;
+      value.dispose();
+    });
+    removedMap.clear();
+  }
+});
+
+},{"./binder":1,"./template":10}],3:[function(require,module,exports){
 module.exports = Binding;
 Binding.Observer = require('./observer');
+Expression = require('./expression');
 
-
+// Properties on a Binding
+// binder: The binder for this binding
+// element: The element (or text node) this binding is bound to
+// view: The view this binding belongs to
+// elementPath: The path from the view to the element, used on cloning (it is an array of node indexes)
+// name: The attribute or element name
+// match: The matched part of the name for wildcard attributes (e.g. `on-*` matching against `on-click` would have a match of
+//   `click`). Use `this.camelCase` to get the match camelCased.
+// expression: The expression this binding will use for its updates
+// context: The context the exression operates within
 function Binding(options, isTemplate) {
   if (!options.element || !options.view) {
     throw new TypeError('A binding must receive an element and a view');
   }
 
-  // The element (or text node) this binding is bound to
-  this.element = options.element;
+  Object.keys(options).forEach(function(key) {
+    this[key] = options[key];
+  }, this);
 
-  // The view this binding belongs to
-  this.view = options.view;
-
-  // The path from the view to the element, used on cloning (it is an array of node indexes)
-  this.elementPath = options.elementPath || initNodePath(this.element, this.view);
-
-  // The attribute or element name
-  this.name = options.name;
-
-  // The matched part of the name for wildcard attributes (e.g. `on-*` matching against `on-click` would have a match of
-  // `click`). Use `this.camelCase` to get the match camelCased.
-  this.match = options.match;
-
-  // The expression this binding will use for its updates
-  this.expression = options.expression;
-
-  // The function to run when the element is created
-  this.created = options.created;
-
-  // The function to run when the expression's value changes
-  this.updated = options.updated;
-
-  // The function to run when the element is inserted into the DOM
-  this.attached = options.attached;
-
-  // The function to run when the element is removed from the DOM
-  this.detached = options.detached;
-
-  // The context the exression operates within
-  this.context = null;
-
-  // A template which this binding may use to stamp out views
-  this.template = options.template;
-
-  if (this.expression) {
-    // An observer to observe value changes to the expression within a context
-    this.observer = new Binding.Observer(this.expression, this.updated ? this.updated.bind(this) : null);
+  if (!this.elementPath) {
+    this.elementPath = initNodePath(this.element, this.view);
   }
 
-  if (this.created && !isTemplate) this.created();
+  this.context = null;
+
+  if (isTemplate) {
+    this.compiled();
+  } else {
+
+    if (this.expression) {
+      // An observer to observe value changes to the expression within a context
+      this.observer = new Binding.Observer(this.expression, this.updated, this);
+    }
+
+    this.created();
+  }
 }
 
 Binding.prototype = {
@@ -237,13 +870,32 @@ Binding.prototype = {
   bind: function(context) {
     this.context = context;
     if (this.observer) this.observer.bind(context);
-    if (this.attached) this.attached();
+    this.attached();
   },
 
   unbind: function() {
     this.context = null;
-    if (this.observer) this.observer.ubind();
-    if (this.detached) this.detached();
+    if (this.observer) this.observer.unbind();
+    this.detached();
+  },
+
+  // The function to run when the element is compiled within a template
+  compiled: function() {},
+
+  // The function to run when the element is created
+  created: function() {},
+
+  // The function to run when the expression's value changes
+  updated: function() {},
+
+  // The function to run when the element is inserted into the DOM
+  attached: function() {},
+
+  // The function to run when the element is removed from the DOM
+  detached: function() {},
+
+  codify: function(text) {
+    return Expression.codify(text);
   }
 };
 
@@ -260,7 +912,7 @@ function initNodePath(node, view) {
   return path;
 }
 
-},{"./observer":8}],3:[function(require,module,exports){
+},{"./expression":5,"./observer":9}],4:[function(require,module,exports){
 /*
 Copyright (c) 2015 Jacob Wright <jacwright@gmail.com>
 
@@ -652,7 +1304,7 @@ var diff = exports;
   }
 })();
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 // # Chip Expression
 
 // Parses a string of JavaScript into a function which can be bound to a scope.
@@ -661,12 +1313,28 @@ var diff = exports;
 // errors, allows for formatters on data, and provides detailed error reporting.
 
 // The expression object with its expression cache.
-expression = exports;
+var expression = exports;
 expression.cache = {};
 expression.globals = ['true', 'false', 'null', 'undefined', 'window', 'this'];
+expression.codify = codifyExpression;
 expression.get = getExpression;
 expression.getSetter = getSetter;
 expression.bind = bindExpression;
+
+var oneBoundExpr = /^{{(.*?)}}$/;
+var boundExpr = /{{(.*?)}}/g;
+
+// Converts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
+function codifyExpression(text) {
+  if (oneBoundExpr.test(text)) {
+    return text.replace(oneBoundExpr, '$1');
+  } else {
+    text = '"' + text.replace(boundExpr, function(match, text) {
+      return '" + (' + text + ') + "';
+    }) + '"';
+    return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
+  }
+}
 
 
 // Creates a function from the given expression. An `options` object may be
@@ -698,6 +1366,7 @@ function getExpression(expr, options) {
   try {
     func = expression.cache[cacheKey] = Function.apply(null, options.args.concat(body));
   } catch (e) {
+    if (options.ignoreErrors) return;
     // Throws an error if the expression was not valid JavaScript
     console.error('Bad expression:\n`' + expr + '`\n' + 'Compiled expression:\n' + body);
     throw new Error(e.message);
@@ -731,8 +1400,11 @@ var emptyQuoteExpr = /(['"\/])\1/g;
 // finds pipes that aren't ORs (` | ` not ` || `) for formatters
 var pipeExpr = /\|(\|)?/g;
 
+// finds the parts of a formatter (name and args)
+var formatterExpr = /^([^\(]+)(?:\((.*)\))?$/;
+
 // finds argument separators for formatters (`arg1:arg2`)
-var argSeparator = /\s*:\s*/g;
+var argSeparator = /\s*,\s*/g;
 
 // matches property chains (e.g. `name`, `user.name`, and `user.fullName().capitalize()`)
 var propExpr = /((\{|,|\.)?\s*)([a-z$_\$](?:[a-z_\$0-9\.-]|\[['"\d]+\])*)(\s*(:|\(|\[)?)/gi;
@@ -831,8 +1503,10 @@ function parseFormatters(expr) {
   }
 
   formatters.forEach(function(formatter) {
-    var args = formatter.split(argSeparator);
-    var formatterName = args.shift();
+    var match = formatter.trim().match(formatterExpr);
+    if (!match) throw new Error('Formatter is invalid: ' + formatter);
+    var formatterName = match[1];
+    var args = match[2].split(argSeparator);
     args.unshift(value);
     if (setter) args.push(true);
     value = '_formatters_.' + formatterName + '.call(this, ' + args.join(', ') + ')';
@@ -1040,7 +1714,7 @@ function parsePart(part, index) {
   return '(' + ref + ' = ' + part + ') == null ? undefined : ';
 }
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 // # Formatter
 
 exports.register = registerFormatter;
@@ -1118,10 +1792,50 @@ function getFormatter(name) {
   return formatters[name];
 }
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 Formatter = require('./formatter');
 
 // # Default Formatters
+
+Formatter.register('tokenList', function(value) {
+
+  if (Array.isArray(value)) {
+    return value.join(' ');
+  }
+
+  if (value && typeof value === 'object') {
+    var classes = [];
+    Object.keys(value).forEach(function(className) {
+      if (value[className]) {
+        classes.push(className);
+      }
+    });
+    return classes.join(' ');
+  }
+
+  return value || '';
+});
+
+// v TODO v
+Formatter.register('styles', function(value) {
+
+  if (Array.isArray(value)) {
+    return value.join(' ');
+  }
+
+  if (value && typeof value === 'object') {
+    var classes = [];
+    Object.keys(value).forEach(function(className) {
+      if (value[className]) {
+        classes.push(className);
+      }
+    });
+    return classes.join(' ');
+  }
+
+  return value || '';
+});
+
 
 // ## filter
 // Filters an array by the given filter function(s), may provide a function, an
@@ -1411,10 +2125,11 @@ Formatter.register('bool', function(value) {
   return value && value !== '0' && value !== 'false';
 });
 
-},{"./formatter":5}],7:[function(require,module,exports){
+},{"./formatter":6}],8:[function(require,module,exports){
 var Template = require('./template');
 var Binder = require('./binder');
 var Binding = require('./binding');
+var Expression = require('./expression');
 var slice = Array.prototype.slice;
 
 
@@ -1507,7 +2222,7 @@ function getBindingsForNode(node, view) {
     splitTextNode(node);
     if (isBound(node.nodeValue)) {
       var binder = Binder.find('{{text}}');
-      var expr = codifyExpression(node.nodeValue);
+      var expr = Expression.codify(node.nodeValue);
       var binding = createBinding(binder, { expression: expr });
       bindings.push(binding);
       node.nodeValue = '';
@@ -1540,7 +2255,7 @@ function getBindingsForNode(node, view) {
 
       var binding = createBinding(binder, {
         name: name,
-        expression: codifyExpression(value),
+        expression: Expression.codify(value),
         match: binder.expr ? name.match(binder.expr)[1] : undefined
       });
       bindings.push(binding);
@@ -1601,14 +2316,6 @@ function isBound(text) {
   return boundExpr.test(text);
 }
 
-// Reverts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
-function codifyExpression(text) {
-  text = '"' + text.replace(boundExpr, function(match, text) {
-    return '" + (' + text + ') + "';
-  }) + '"';
-  return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
-}
-
 function sortAttributes(a, b) {
   return b.binder.priority - a.binder.priority;
 }
@@ -1617,7 +2324,7 @@ function notEmpty(value) {
   return !!value;
 }
 
-},{"./binder":1,"./binding":2,"./template":9}],8:[function(require,module,exports){
+},{"./binder":1,"./binding":3,"./expression":5,"./template":10}],9:[function(require,module,exports){
 module.exports = Observer;
 var expression = require('./expression');
 var formatters = require('./formatter').formatters;
@@ -1631,12 +2338,11 @@ var diff = require('./diff');
 // If the old and new values were either an array or an object, the `callback` also
 // receives an array of splices (for an array), or an array of change objects (for an object) which are the same
 // format that `Array.observe` and `Object.observe` return <http://wiki.ecmascript.org/doku.php?id=harmony:observe>.
-function Observer(expr, callback) {
+function Observer(expr, callback, callbackContext) {
   this.getter = expression.get(expr);
-  if (!/['"']$/.test(expr)) {
-    this.setter = expression.getSetter(expr);
-  }
+  this.setter = expression.getSetter(expr, { ignoreErrors: true });
   this.callback = callback;
+  this.callbackContext = callbackContext;
   this.skip = false;
   this.context = null;
   this.oldValue = undefined;
@@ -1647,7 +2353,9 @@ Observer.prototype = {
   // Binds this expression to a given context
   bind: function(context, skipUpdate) {
     this.context = context;
-    Observer.add(this, skipUpdate);
+    if (this.callback) {
+      Observer.add(this, skipUpdate);
+    }
   },
 
   // Unbinds this expression
@@ -1690,9 +2398,9 @@ Observer.prototype = {
       var changed = diff.values(value, this.oldValue);
       if (!changed) return;
       if (Array.isArray(changed)) {
-        this.callback(value, this.oldValue, changed)
+        this.callback.call(this.callbackContext, value, this.oldValue, changed)
       } else {
-        this.callback(value, this.oldValue);
+        this.callback.call(this.callbackContext, value, this.oldValue);
       }
     }
 
@@ -1816,7 +2524,7 @@ Observer.removeOnSync = function(listener) {
   }
 };
 
-},{"./diff":3,"./expression":4,"./formatter":5}],9:[function(require,module,exports){
+},{"./diff":4,"./expression":5,"./formatter":6}],10:[function(require,module,exports){
 var toFragment = require('./toFragment');
 
 // ## Template
@@ -1939,7 +2647,7 @@ function createView(node, template) {
 
 
 function removeView() {
-  if (this.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+  if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
     var node = this.firstViewNode;
     var next;
 
@@ -1980,7 +2688,7 @@ function runHooks(type, value) {
   });
 }
 
-},{"./toFragment":10}],10:[function(require,module,exports){
+},{"./toFragment":11}],11:[function(require,module,exports){
 module.exports = toFragment;
 
 // Convert stuff into document fragments. Stuff can be:
@@ -2083,7 +2791,7 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
   })();
 }
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 exports.Observer = require('./src/observer');
 exports.diff = require('./src/diff');
 exports.Template = require('./src/template');
@@ -2092,7 +2800,9 @@ exports.Binding = require('./src/binding');
 exports.Binder = require('./src/binder');
 exports.Formatter = require('./src/formatter');
 exports.formatters = require('./src/formatters');
+require('./src/binders');
+require('./src/formatters');
 require('./src/initBinding');
 
-},{"./src/binder":1,"./src/binding":2,"./src/diff":3,"./src/expression":4,"./src/formatter":5,"./src/formatters":6,"./src/initBinding":7,"./src/observer":8,"./src/template":9}]},{},[11])(11)
+},{"./src/binder":1,"./src/binders":2,"./src/binding":3,"./src/diff":4,"./src/expression":5,"./src/formatter":6,"./src/formatters":7,"./src/initBinding":8,"./src/observer":9,"./src/template":10}]},{},[12])(12)
 });

@@ -120,7 +120,7 @@ function createView(node, template) {
 
 
 function removeView() {
-  if (this.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+  if (this.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
     var node = this.firstViewNode;
     var next;
 

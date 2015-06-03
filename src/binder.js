@@ -58,6 +58,9 @@ exports.createBinding = createBinding;
 // `detached()` is called on the binding when the view is unbound to a given context and removed from the DOM. This can
 // be used to clean up anything done in `attached()` or in `updated()` before being removed.
 //
+// Add `onlyWhenBound` when a binder only applies to attributes when an expression is used in them. Otherwise the binder
+// will apply and the value of the attribute will simply be a string.
+//
 // **Example:** This binding handler adds pirateized text to an element.
 // ```javascript
 // registerBinder('my-pirate', function(value) {
@@ -81,7 +84,6 @@ function registerBinder(name, binder) {
   if (typeof binder === 'function') {
     binder = { updated: binder };
   }
-  binder.name = name;
 
   if (name.indexOf('*') >= 0) {
     binder.expr = new RegExp('^' + escapeRegExp(name).replace('\\*', '(.*)') + '$');
@@ -124,32 +126,34 @@ function getBinder(name) {
 
 // Returns a binding object that matches the given attribute name.
 function findBinder(name) {
-  var binding = getBinder(name);
+  var binder = getBinder(name);
 
-  if (!binding) {
+  if (!binder) {
     wildcards.some(function(binder) {
-      if (binding = binder.expr.test(name)) {
+      if (binder = binder.expr.test(name)) {
         return true;
       }
     });
   }
 
-  if (!binding && isBound(value)) {
-    // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
-    binding = getBinder('{{attribute}}');
+  // E.g. don't use the `value` binder if there is no expression as in `value="some text"`
+  if (binder && binder.onlyWhenBound && !isBound(value)) {
+    return;
   }
 
-  return binding;
+  if (!binder && isBound(value)) {
+    // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
+    binder = getBinder('{{attribute}}');
+  }
+
+  return binder;
 }
 
 // Creates a binding
 function createBinding(binder, options) {
-  binderMethods.forEach(function(key) {
-    if (binder[key]) {
-      options[key] = binder[key];
-    }
+  Object.keys(binder).forEach(function(key) {
+    options[key] = binder[key];
   });
-  if (binder.compiled) binder.compiled.call(options);
   return new Binding(options, true);
 }
 

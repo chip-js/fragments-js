@@ -1,6 +1,7 @@
 var Template = require('./template');
 var Binder = require('./binder');
 var Binding = require('./binding');
+var Expression = require('./expression');
 var slice = Array.prototype.slice;
 
 
@@ -93,7 +94,7 @@ function getBindingsForNode(node, view) {
     splitTextNode(node);
     if (isBound(node.nodeValue)) {
       var binder = Binder.find('{{text}}');
-      var expr = codifyExpression(node.nodeValue);
+      var expr = Expression.codify(node.nodeValue);
       var binding = createBinding(binder, { expression: expr });
       bindings.push(binding);
       node.nodeValue = '';
@@ -126,7 +127,7 @@ function getBindingsForNode(node, view) {
 
       var binding = createBinding(binder, {
         name: name,
-        expression: codifyExpression(value),
+        expression: Expression.codify(value),
         match: binder.expr ? name.match(binder.expr)[1] : undefined
       });
       bindings.push(binding);
@@ -185,14 +186,6 @@ var boundExpr = /{{(.*?)}}/g;
 // Tests whether some text has an expression in it. Something like `/user/{{user.id}}`.
 function isBound(text) {
   return boundExpr.test(text);
-}
-
-// Reverts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
-function codifyExpression(text) {
-  text = '"' + text.replace(boundExpr, function(match, text) {
-    return '" + (' + text + ') + "';
-  }) + '"';
-  return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
 }
 
 function sortAttributes(a, b) {

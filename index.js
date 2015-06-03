@@ -6,4 +6,6 @@ exports.Binding = require('./src/binding');
 exports.Binder = require('./src/binder');
 exports.Formatter = require('./src/formatter');
 exports.formatters = require('./src/formatters');
+require('./src/binders');
+require('./src/formatters');
 require('./src/initBinding');
