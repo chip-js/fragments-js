@@ -16,9 +16,9 @@ registerBinder('{{text}}', function(value) {
 // Catchall attribute binder for regular attributes with expressions in them
 registerBinder('{{attribute}}', function(value) {
   if (value != null) {
-    element.setAttribute(this.name, value);
+    this.element.setAttribute(this.name, value);
   } else {
-    element.removeAttribute(this.name);
+    this.element.removeAttribute(this.name);
   }
 });
 
@@ -126,23 +126,26 @@ function getBinder(name) {
 
 
 // Returns a binding object that matches the given attribute name.
-function findBinder(name) {
+function findBinder(name, value) {
   var binder = getBinder(name);
 
   if (!binder) {
-    wildcards.some(function(binder) {
-      if (binder = binder.expr.test(name)) {
+    wildcards.some(function(wildcardBinder) {
+      if (wildcardBinder.expr.test(name)) {
+        binder = wildcardBinder;
         return true;
       }
     });
   }
 
+  var bound = isBound(value);
+
   // E.g. don't use the `value` binder if there is no expression as in `value="some text"`
-  if (binder && binder.onlyWhenBound && !isBound(value)) {
+  if (binder && binder.onlyWhenBound && !bound) {
     return;
   }
 
-  if (!binder && isBound(value)) {
+  if (!binder && bound) {
     // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
     binder = getBinder('{{attribute}}');
   }
@@ -169,7 +172,8 @@ var boundExpr = /{{(.*?)}}/g;
 
 // Tests whether some text has an expression in it. Something like `/user/{{user.id}}`.
 function isBound(text) {
-  return boundExpr.test(text);
+  if (!text) return false;
+  return !!text.match(boundExpr);
 }
 
 function binderSort(a, b) {
@@ -415,7 +419,7 @@ Binder.register('on-*', {
       if (!(event instanceof CustomEvent)) {
         event.preventDefault();
       }
-      if (!element.hasAttribute('disabled')) {
+      if (!this.hasAttribute('disabled')) {
         // Let an on-[event] make the function call with its own arguments
         var listener = _this.observer.get();
 
@@ -501,7 +505,7 @@ Object.keys(keyCodes).forEach(function(name) {
         if (event.keyCode !== keyCode) return;
         event.preventDefault();
 
-        if (!element.hasAttribute('disabled')) {
+        if (!this.hasAttribute('disabled')) {
           // Let an on-[event] make the function call with its own arguments
           var listener = _this.observer.get();
 
@@ -844,14 +848,9 @@ function Binding(options, isTemplate) {
 
   if (isTemplate) {
     this.compiled();
-  } else {
-
-    if (this.expression) {
-      // An observer to observe value changes to the expression within a context
-      this.observer = new Binding.Observer(this.expression, this.updated, this);
-    }
-
-    this.created();
+  } else if (this.expression) {
+    // An observer to observe value changes to the expression within a context
+    this.observer = new Binding.Observer(this.expression, this.updated, this);
   }
 }
 
@@ -862,9 +861,20 @@ Binding.prototype = {
     });
   },
 
+  observe: function(expression, callback, callbackContext) {
+    return new Binding.Observer(expression, callback, callbackContext);
+  },
+
   bind: function(context) {
     this.context = context;
-    if (this.observer) this.observer.bind(context);
+    if (this.observer) {
+      if (this.hasOwnProperty('updated')) {
+        this.observer.bind(context);
+      } else {
+        // set the contect but don't actually bind it
+        this.observer.context = context;
+      }
+    }
     this.attached();
   },
 
@@ -1325,7 +1335,7 @@ function codifyExpression(text) {
     return text.replace(oneBoundExpr, '$1');
   } else {
     text = '"' + text.replace(boundExpr, function(match, text) {
-      return '" + (' + text + ') + "';
+      return '" + (' + text + ' || "") + "';
     }) + '"';
     return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
   }
@@ -2229,7 +2239,7 @@ function getBindingsForNode(node, view) {
     var attributes = slice.call(node.attributes);
     for (i = 0, l = attributes.length; i < l; i++) {
       var attr = attributes[i];
-      var binder = Binder.find(attr.name);
+      var binder = Binder.find(attr.name, attr.value);
       if (binder) {
         bound.push({ binder: binder, attr: attr });
       }
@@ -2301,6 +2311,7 @@ function cloneBinding(binding, view) {
   var binding = new Binding(binding);
   binding.element = node;
   binding.view = view;
+  binding.created();
   return binding;
 }
 
@@ -2309,7 +2320,7 @@ var boundExpr = /{{(.*?)}}/g;
 
 // Tests whether some text has an expression in it. Something like `/user/{{user.id}}`.
 function isBound(text) {
-  return boundExpr.test(text);
+  return !!text.match(boundExpr);
 }
 
 function sortAttributes(a, b) {
@@ -2614,7 +2625,7 @@ function createTemplate(html) {
 
 
 function templateCreateView() {
-  return this.pool.pop() || createView(this.cloneNode(true), this);
+  return this.pool.pop() || createView(document.importNode(this, true), this);
 }
 
 
