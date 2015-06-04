@@ -15,9 +15,9 @@ registerBinder('{{text}}', function(value) {
 // Catchall attribute binder for regular attributes with expressions in them
 registerBinder('{{attribute}}', function(value) {
   if (value != null) {
-    element.setAttribute(this.name, value);
+    this.element.setAttribute(this.name, value);
   } else {
-    element.removeAttribute(this.name);
+    this.element.removeAttribute(this.name);
   }
 });
 
@@ -125,23 +125,26 @@ function getBinder(name) {
 
 
 // Returns a binding object that matches the given attribute name.
-function findBinder(name) {
+function findBinder(name, value) {
   var binder = getBinder(name);
 
   if (!binder) {
-    wildcards.some(function(binder) {
-      if (binder = binder.expr.test(name)) {
+    wildcards.some(function(wildcardBinder) {
+      if (wildcardBinder.expr.test(name)) {
+        binder = wildcardBinder;
         return true;
       }
     });
   }
 
+  var bound = isBound(value);
+
   // E.g. don't use the `value` binder if there is no expression as in `value="some text"`
-  if (binder && binder.onlyWhenBound && !isBound(value)) {
+  if (binder && binder.onlyWhenBound && !bound) {
     return;
   }
 
-  if (!binder && isBound(value)) {
+  if (!binder && bound) {
     // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
     binder = getBinder('{{attribute}}');
   }
@@ -168,7 +171,8 @@ var boundExpr = /{{(.*?)}}/g;
 
 // Tests whether some text has an expression in it. Something like `/user/{{user.id}}`.
 function isBound(text) {
-  return boundExpr.test(text);
+  if (!text) return false;
+  return !!text.match(boundExpr);
 }
 
 function binderSort(a, b) {

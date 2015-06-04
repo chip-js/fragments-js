@@ -23,7 +23,7 @@ function codifyExpression(text) {
     return text.replace(oneBoundExpr, '$1');
   } else {
     text = '"' + text.replace(boundExpr, function(match, text) {
-      return '" + (' + text + ') + "';
+      return '" + (' + text + ' || "") + "';
     }) + '"';
     return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
   }

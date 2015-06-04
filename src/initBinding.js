@@ -106,7 +106,7 @@ function getBindingsForNode(node, view) {
     var attributes = slice.call(node.attributes);
     for (i = 0, l = attributes.length; i < l; i++) {
       var attr = attributes[i];
-      var binder = Binder.find(attr.name);
+      var binder = Binder.find(attr.name, attr.value);
       if (binder) {
         bound.push({ binder: binder, attr: attr });
       }
@@ -178,6 +178,7 @@ function cloneBinding(binding, view) {
   var binding = new Binding(binding);
   binding.element = node;
   binding.view = view;
+  binding.created();
   return binding;
 }
 
@@ -186,7 +187,7 @@ var boundExpr = /{{(.*?)}}/g;
 
 // Tests whether some text has an expression in it. Something like `/user/{{user.id}}`.
 function isBound(text) {
-  return boundExpr.test(text);
+  return !!text.match(boundExpr);
 }
 
 function sortAttributes(a, b) {
