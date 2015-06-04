@@ -91,7 +91,7 @@ function createTemplate(html) {
 
 
 function templateCreateView() {
-  return this.pool.pop() || createView(this.cloneNode(true), this);
+  return this.pool.pop() || createView(document.importNode(this, true), this);
 }
 
 

@@ -29,14 +29,9 @@ function Binding(options, isTemplate) {
 
   if (isTemplate) {
     this.compiled();
-  } else {
-
-    if (this.expression) {
-      // An observer to observe value changes to the expression within a context
-      this.observer = new Binding.Observer(this.expression, this.updated, this);
-    }
-
-    this.created();
+  } else if (this.expression) {
+    // An observer to observe value changes to the expression within a context
+    this.observer = new Binding.Observer(this.expression, this.updated, this);
   }
 }
 
@@ -47,9 +42,20 @@ Binding.prototype = {
     });
   },
 
+  observe: function(expression, callback, callbackContext) {
+    return new Binding.Observer(expression, callback, callbackContext);
+  },
+
   bind: function(context) {
     this.context = context;
-    if (this.observer) this.observer.bind(context);
+    if (this.observer) {
+      if (this.hasOwnProperty('updated')) {
+        this.observer.bind(context);
+      } else {
+        // set the contect but don't actually bind it
+        this.observer.context = context;
+      }
+    }
     this.attached();
   },
 

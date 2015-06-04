@@ -236,7 +236,7 @@ Binder.register('on-*', {
       if (!(event instanceof CustomEvent)) {
         event.preventDefault();
       }
-      if (!element.hasAttribute('disabled')) {
+      if (!this.hasAttribute('disabled')) {
         // Let an on-[event] make the function call with its own arguments
         var listener = _this.observer.get();
 
@@ -322,7 +322,7 @@ Object.keys(keyCodes).forEach(function(name) {
         if (event.keyCode !== keyCode) return;
         event.preventDefault();
 
-        if (!element.hasAttribute('disabled')) {
+        if (!this.hasAttribute('disabled')) {
           // Let an on-[event] make the function call with its own arguments
           var listener = _this.observer.get();
 
