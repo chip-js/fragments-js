@@ -48,7 +48,7 @@ Observer.prototype = {
   // Sets the value of this expression
   set: function(value) {
     if (this.context && this.setter) {
-      return this.setter.call(this.context, formatters, value);
+      return this.setter.call(this.context._origContext_ || this.context, formatters, value);
     }
   },
 

@@ -530,6 +530,7 @@ Binder.register('each', {
 
   created: function() {
     this.views = [];
+    this.observer.getChangeRecords = true;
   },
 
   updated: function(value, oldValue, changes) {
@@ -548,6 +549,7 @@ Binder.register('each', {
       context = Object.create(this.context);
       if (this.keyName) context[this.keyName] = key;
       context[this.valueName] = value;
+      context._origContext_ = this.context;
     }
     view.bind(context);
     view._eachItem_ = value;
