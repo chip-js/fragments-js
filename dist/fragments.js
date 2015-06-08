@@ -302,8 +302,8 @@ Binder.register('value', {
 
     // The 2-way binding part is setting values on certain events
     function onChange() {
-      if (input.get(valueField) !== observer.oldValue && !element.readOnly) {
-        observer.set(input.get(valueField));
+      if (input.get.call(element, valueField) !== observer.oldValue && !element.readOnly) {
+        observer.set(input.get.call(element, valueField));
       }
     }
 
@@ -319,8 +319,8 @@ Binder.register('value', {
   },
 
   updated: function(value) {
-    if (this.input.get(this.valueField) != value) {
-      this.input.set(value, this.valueField);
+    if (this.input.get.call(this.element, this.valueField) != value) {
+      this.input.set.call(this.element, value, this.valueField);
     }
   }
 });
@@ -328,7 +328,7 @@ Binder.register('value', {
 // Handle the different form types
 var defaultInputMethod = {
   get: function() { return this.value; },
-  set: function(value) { this.value = value; }
+  set: function(value) { this.value = (value == null) ? '' : value; }
 };
 
 var inputMethods = {
@@ -349,11 +349,11 @@ var inputMethods = {
       }
     },
     set: function(value, valueField) {
-      if (valueField) {
+      if (value && valueField) {
         this.valueObject = value;
         this.value = value[valueField];
       } else {
-        this.value = value;
+        this.value = (value == null) ? '' : value;
       }
     }
   },
@@ -362,11 +362,11 @@ var inputMethods = {
       return valueField ? this.valueObject[valueField] : this.value;
     },
     set: function(value, valueField) {
-      if (valueField) {
+      if (value && valueField) {
         this.valueObject = value;
         this.value = value[valueField];
       } else {
-        this.value = value;
+        this.value = (value == null) ? '' : value;
       }
     }
   },
@@ -376,6 +376,7 @@ var inputMethods = {
     get: function() { return this.find('input[type="radio"][checked]').value },
     set: function(value) {
       // in case the value isn't found in radios
+      value = (value == null) ? '' : value;
       this.querySelector('input[type="radio"][checked]').checked = false;
       var radio = this.querySelector('input[type="radio"][value="' + value.replace(/"/g, '\\"') + '"]');
       if (radio) radio.checked = true;
@@ -713,6 +714,7 @@ Binder.register('each', {
 
   created: function() {
     this.views = [];
+    this.observer.getChangeRecords = true;
   },
 
   updated: function(value, oldValue, changes) {
@@ -731,6 +733,7 @@ Binder.register('each', {
       context = Object.create(this.context);
       if (this.keyName) context[this.keyName] = key;
       context[this.valueName] = value;
+      context._origContext_ = this.context;
     }
     view.bind(context);
     view._eachItem_ = value;
@@ -2382,7 +2385,7 @@ Observer.prototype = {
   // Sets the value of this expression
   set: function(value) {
     if (this.context && this.setter) {
-      return this.setter.call(this.context, formatters, value);
+      return this.setter.call(this.context._origContext_ || this.context, formatters, value);
     }
   },
 
