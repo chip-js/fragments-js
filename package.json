@@ -1,6 +1,6 @@
 {
   "name": "fragments-js",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
   "keywords": ["templates", "data-binding", "front-end", "DocumentFragment"],
   "homepage": "http://github.com/chip-js/fragments-js",

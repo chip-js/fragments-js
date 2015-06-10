@@ -1,5 +1,4 @@
 module.exports = Binding;
-var animation = require('./animation');
 var codify = require('../util/codify');
 
 // Properties on a Binding
