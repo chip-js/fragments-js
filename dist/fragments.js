@@ -234,10 +234,10 @@ Binding.prototype = {
   bind: function(context) {
     this.context = context;
     if (this.observer) {
-      if (this.hasOwnProperty('updated')) {
+      if (this.updated !== Binding.prototype.updated) {
         this.observer.bind(context);
       } else {
-        // set the contect but don't actually bind it
+        // set the context but don't actually bind it
         this.observer.context = context;
       }
     }
