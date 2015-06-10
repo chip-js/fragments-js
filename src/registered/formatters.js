@@ -1,8 +1,8 @@
-Formatter = require('./formatter');
+var formatter = require('../binding').formatter;
 
 // # Default Formatters
 
-Formatter.register('tokenList', function(value) {
+formatter.register('tokenList', function(value) {
 
   if (Array.isArray(value)) {
     return value.join(' ');
@@ -22,7 +22,7 @@ Formatter.register('tokenList', function(value) {
 });
 
 // v TODO v
-Formatter.register('styles', function(value) {
+formatter.register('styles', function(value) {
 
   if (Array.isArray(value)) {
     return value.join(' ');
@@ -45,7 +45,7 @@ Formatter.register('styles', function(value) {
 // ## filter
 // Filters an array by the given filter function(s), may provide a function, an
 // array, or an object with filtering functions
-Formatter.register('filter', function(value, filterFunc) {
+formatter.register('filter', function(value, filterFunc) {
   if (!Array.isArray(value)) {
     return [];
   } else if (!filterFunc) {
@@ -71,7 +71,7 @@ Formatter.register('filter', function(value, filterFunc) {
 
 // ## map
 // Adds a formatter to map an array or value by the given mapping function
-Formatter.register('map', function(value, mapFunc) {
+formatter.register('map', function(value, mapFunc) {
   if (value == null || typeof mapFunc !== 'function') {
     return value;
   }
@@ -84,7 +84,7 @@ Formatter.register('map', function(value, mapFunc) {
 
 // ## reduce
 // Adds a formatter to reduce an array or value by the given reduce function
-Formatter.register('reduce', function(value, reduceFunc, initialValue) {
+formatter.register('reduce', function(value, reduceFunc, initialValue) {
   if (value == null || typeof mapFunc !== 'function') {
     return value;
   }
@@ -101,7 +101,7 @@ Formatter.register('reduce', function(value, reduceFunc, initialValue) {
 
 // ## reduce
 // Adds a formatter to reduce an array or value by the given reduce function
-Formatter.register('slice', function(value, index, endIndex) {
+formatter.register('slice', function(value, index, endIndex) {
   if (Array.isArray(value)) {
     return value.slice(index, endIndex);
   } else {
@@ -112,7 +112,7 @@ Formatter.register('slice', function(value, index, endIndex) {
 
 // ## date
 // Adds a formatter to format dates and strings
-Formatter.register('date', function(value) {
+formatter.register('date', function(value) {
   if (!value) {
     return '';
   }
@@ -131,7 +131,7 @@ Formatter.register('date', function(value) {
 
 // ## log
 // Adds a formatter to log the value of the expression, useful for debugging
-Formatter.register('log', function(value, prefix) {
+formatter.register('log', function(value, prefix) {
   if (prefix == null) prefix = 'Log:';
   console.log(prefix, value);
   return value;
@@ -140,7 +140,7 @@ Formatter.register('log', function(value, prefix) {
 
 // ## limit
 // Adds a formatter to limit the length of an array or string
-Formatter.register('limit', function(value, limit) {
+formatter.register('limit', function(value, limit) {
   if (value && typeof value.slice === 'function') {
     if (limit < 0) {
       return value.slice(limit);
@@ -155,7 +155,7 @@ Formatter.register('limit', function(value, limit) {
 
 // ## sort
 // Sorts an array given a field name or sort function, and a direction
-Formatter.register('sort', function(value, sortFunc, dir) {
+formatter.register('sort', function(value, sortFunc, dir) {
   if (!sortFunc || !Array.isArray(value)) {
     return value;
   }
@@ -182,7 +182,7 @@ Formatter.register('sort', function(value, sortFunc, dir) {
 
 // ## addQuery
 // Takes the input URL and adds (or replaces) the field in the query
-Formatter.register('addQuery', function(value, queryField, queryValue) {
+formatter.register('addQuery', function(value, queryField, queryValue) {
   var url = value || location.href;
   var parts = url.split('?');
   url = parts[0];
@@ -226,7 +226,7 @@ function escapeHTML(value) {
 // ```xml
 // <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</div>
 // ```
-Formatter.register('escape', escapeHTML);
+formatter.register('escape', escapeHTML);
 
 
 // ## p
@@ -241,7 +241,7 @@ Formatter.register('escape', escapeHTML);
 // <div><p>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!</p>
 // <p>It's great</p></div>
 // ```
-Formatter.register('p', function(value) {
+formatter.register('p', function(value) {
   var lines = (value || '').split(/\r?\n/);
   var escaped = lines.map(function(line) { return escapeHTML(line) || '<br>'; });
   return '<p>' + escaped.join('</p><p>') + '</p>';
@@ -260,7 +260,7 @@ Formatter.register('p', function(value) {
 // <div>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!<br>
 // It's great</div>
 // ```
-Formatter.register('br', function(value) {
+formatter.register('br', function(value) {
   var lines = (value || '').split(/\r?\n/);
   return lines.map(escapeHTML).join('<br>');
 });
@@ -278,7 +278,7 @@ Formatter.register('br', function(value) {
 // <div><p>Check out <a href="https://github.com/chip-js/" target="_blank">https://github.com/chip-js/</a>!<br>
 // It's great</p></div>
 // ```
-Formatter.register('newline', function(value) {
+formatter.register('newline', function(value) {
   var paragraphs = (value || '').split(/\r?\n\s*\r?\n/);
   var escaped = paragraphs.map(function(paragraph) {
     var lines = paragraph.split(/\r?\n/);
@@ -302,7 +302,7 @@ Formatter.register('newline', function(value) {
 // ```
 var urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
 
-Formatter.register('autolink', function(value, target) {
+formatter.register('autolink', function(value, target) {
   target = (target) ? ' target="_blank"' : '';
 
   return ('' + value).replace(/<[^>]+>|[^<]+/g, function(match) {
@@ -314,18 +314,18 @@ Formatter.register('autolink', function(value, target) {
 });
 
 
-Formatter.register('int', function(value) {
+formatter.register('int', function(value) {
   value = parseInt(value);
   return isNaN(value) ? null : value;
 });
 
 
-Formatter.register('float', function(value) {
+formatter.register('float', function(value) {
   value = parseFloat(value);
   return isNaN(value) ? null : value;
 });
 
 
-Formatter.register('bool', function(value) {
+formatter.register('bool', function(value) {
   return value && value !== '0' && value !== 'false';
 });

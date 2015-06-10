@@ -9,25 +9,9 @@
 var expression = exports;
 expression.cache = {};
 expression.globals = ['true', 'false', 'null', 'undefined', 'window', 'this'];
-expression.codify = codifyExpression;
 expression.get = getExpression;
 expression.getSetter = getSetter;
 expression.bind = bindExpression;
-
-var oneBoundExpr = /^{{(.*?)}}$/;
-var boundExpr = /{{(.*?)}}/g;
-
-// Converts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
-function codifyExpression(text) {
-  if (oneBoundExpr.test(text)) {
-    return text.replace(oneBoundExpr, '$1');
-  } else {
-    text = '"' + text.replace(boundExpr, function(match, text) {
-      return '" + (' + text + ' || "") + "';
-    }) + '"';
-    return text.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
-  }
-}
 
 
 // Creates a function from the given expression. An `options` object may be

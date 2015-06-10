@@ -1,10 +1,18 @@
-exports.Observer = require('./src/observer');
-exports.diff = require('./src/diff');
-exports.Template = require('./src/template');
-exports.Expression = require('./src/expression');
-exports.Binding = require('./src/binding');
-exports.Binder = require('./src/binder');
-exports.Formatter = require('./src/formatter');
-require('./src/binders');
-require('./src/formatters');
-require('./src/initBinding');
+var fragments = require('./src/fragments');
+var binding = require('./src/binding');
+var expression = require('./src/expression');
+
+// Dependency injection
+binding.Binding.Observer = expression.Observer;
+expression.Observer.formatters = binding.formatter.formatters;
+
+exports.template = fragments.template;
+exports.view = fragments.view;
+exports.binder = binding.binder;
+exports.formatter = binding.formatter;
+exports.Binding = binding.Binding;
+exports.expression = expression;
+exports.sync = expression.Observer.sync;
+
+require('./src/registered/binders');
+require('./src/registered/formatters');

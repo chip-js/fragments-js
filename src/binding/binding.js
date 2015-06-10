@@ -1,6 +1,6 @@
 module.exports = Binding;
-Binding.Observer = require('./observer');
-Expression = require('./expression');
+var animation = require('./animation');
+var codify = require('../util/codify');
 
 // Properties on a Binding
 // binder: The binder for this binding
@@ -31,11 +31,14 @@ function Binding(options, isTemplate) {
     this.compiled();
   } else if (this.expression) {
     // An observer to observe value changes to the expression within a context
+    if (!Binding.Observer) throw new Error('Must inject an Observer onto Binding');
     this.observer = new Binding.Observer(this.expression, this.updated, this);
   }
 }
 
 Binding.prototype = {
+  constructor: Binding,
+
   get camelCase() {
     return (this.match || this.name || '').replace(/-+(\w)/g, function(_, char) {
       return char.toUpperCase();
@@ -49,10 +52,10 @@ Binding.prototype = {
   bind: function(context) {
     this.context = context;
     if (this.observer) {
-      if (this.hasOwnProperty('updated')) {
+      if (this.updated !== Binding.prototype.updated) {
         this.observer.bind(context);
       } else {
-        // set the contect but don't actually bind it
+        // set the context but don't actually bind it
         this.observer.context = context;
       }
     }
@@ -80,8 +83,20 @@ Binding.prototype = {
   // The function to run when the element is removed from the DOM
   detached: function() {},
 
-  codify: function(text) {
-    return Expression.codify(text);
+  codify: codify,
+
+  // Clones a binding scoped to a duplicate view.
+  clone: function(view) {
+    if (!view) throw new TypeError('A binding must clone against a new view');
+    var node = view;
+    this.elementPath.forEach(function(index) {
+      node = node.childNodes[index];
+    });
+    var binding = new this.constructor(this);
+    binding.element = node;
+    binding.view = view;
+    binding.created();
+    return binding;
   }
 };
 

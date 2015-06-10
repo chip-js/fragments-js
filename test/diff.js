@@ -1,6 +1,6 @@
 
 describe('diff', function() {
-	var diff = fragments.diff;
+	var diff = fragments.expression.diff;
 
 	it('should return no change for two NaN values', function() {
 		var changed = diff.values(NaN, NaN)

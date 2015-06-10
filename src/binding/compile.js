@@ -1,79 +1,34 @@
-var Template = require('./template');
+var fragments = require('../fragments');
 var Binder = require('./binder');
 var Binding = require('./binding');
-var Expression = require('./expression');
+var codify = require('../util/codify');
 var slice = Array.prototype.slice;
 
-
-Template.addHook('compile', compileTemplate);
-Template.addHook('view', initializeView);
-Template.addHook('dispose', cleanupView);
-Template.viewMethods.bind = bindView;
-Template.viewMethods.unbind = unbindView;
+module.exports = compileTemplate;
 
 
 // Walks the template DOM replacing any bindings and caching bindings onto the template object.
 function compileTemplate(template) {
   var walker = document.createTreeWalker(template, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  var bindings = [], previous;
-  template.bindings = bindings;
+  var bindings = template.bindings = [], currentNode, parentNode, previousNode;
 
-  // This ensures the first node will be a valid node from SHOW_NODES (the root isn't valid if it's a document fragment)
+  // Reset first node to ensure it isn't a fragment
   walker.nextNode();
   walker.previousNode();
 
   // find bindings for each node
   do {
-    var node = walker.currentNode;
-    var parentNode = node.parentNode;
-    bindings.push.apply(bindings, getBindingsForNode(node, template));
+    currentNode = walker.currentNode;
+    parentNode = currentNode.parentNode;
+    bindings.push.apply(bindings, getBindingsForNode(currentNode, template));
 
-    if (node.parentNode !== parentNode && previous) {
+    if (currentNode.parentNode !== parentNode) {
       // currentNode was removed and made a template
-      walker.currentNode = previous;
-      walker.nextNode();
-      if (walker.currentNode.nodeType !== Node.TEXT_NODE || walker.currentNode.nodeValue !== '') {
-        // an empty text node wasn't used as a placeholder, go back
-        walker.previousNode();
-      }
+      walker.currentNode = previousNode || walker.root;
+    } else {
+      previousNode = currentNode;
     }
-
-    previous = walker.currentNode;
   } while (walker.nextNode());
-}
-
-
-// Clones the bindings from the template onto the view
-function initializeView(view) {
-  if (!view.template) {
-    compileTemplate(view);
-  } else {
-    view.bindings = view.template.bindings.map(function(binding) {
-      return cloneBinding(binding, view);
-    });
-  }
-}
-
-
-// Makes sure the view is unbound before being put back into the pool
-function cleanupView(view) {
-  view.unbind();
-}
-
-
-// Adds a method to views to bind their observers with an object
-function bindView(context) {
-  this.bindings.forEach(function(binding) {
-    binding.bind(context);
-  });
-}
-
-
-// Adds a method to view to unbind their observers
-function unbindView() {
-  this.bindings.forEach(function(binding) {
-    binding.unbind();
-  });
 }
 
 
@@ -94,7 +49,7 @@ function getBindingsForNode(node, view) {
     splitTextNode(node);
     if (isBound(node.nodeValue)) {
       var binder = Binder.find('{{text}}');
-      var expr = Expression.codify(node.nodeValue);
+      var expr = codify(node.nodeValue);
       var binding = createBinding(binder, { expression: expr });
       bindings.push(binding);
       node.nodeValue = '';
@@ -127,7 +82,7 @@ function getBindingsForNode(node, view) {
 
       var binding = createBinding(binder, {
         name: name,
-        expression: Expression.codify(value),
+        expression: codify(value),
         match: binder.expr ? name.match(binder.expr)[1] : undefined
       });
       bindings.push(binding);
@@ -167,19 +122,6 @@ function splitTextNode(node) {
       node.parentNode.insertBefore(fragment, node.nextSibling);
     }
   }
-}
-
-// Clones a binding scoped to a duplicate view.
-function cloneBinding(binding, view) {
-  var node = view;
-  binding.elementPath.forEach(function(index) {
-    node = node.childNodes[index];
-  });
-  var binding = new Binding(binding);
-  binding.element = node;
-  binding.view = view;
-  binding.created();
-  return binding;
 }
 
 // A regex for determining whether some text has an expression in it
