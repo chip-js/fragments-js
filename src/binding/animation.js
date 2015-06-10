@@ -3,13 +3,17 @@
 
 // The following 5 methods are helper DOM methods that allow registered bindings to work with CSS transitions for
 // animating elements. If an element has the `animate` attribute or a matching JavaScript method, these helper methods
-// will set a class on the node to trigger the transition or call the JavaScript method to handle it.
+// will set a class on the node to trigger the animation and/or call the JavaScript methods to handle it.
 
-// If using CSS transitions, classes are added and removed from node. When an element is inserted it will add the `will-
-// animate-in` class before adding to the DOM then the `animate-in` then remove them after transitioning. When an
-// element is being removed from the DOM it will add the `animate-out` class to apply a transition or animation and wait
-// until it is done before removing the node. `animate-move-out` and `animate-move-in` are applied to an element when it
-// is leaving the DOM and coming back into its new place.
+// An animation may be either a CSS transition, a CSS animation, or a set of JavaScript methods that will be called.
+
+// If using CSS, classes are added and removed from the element. When an element is inserted it will receive the `will-
+// animate-in` class before being added to the DOM, then it will receive the `animate-in` class immediately after being
+// added to the DOM, then both clases will be removed after the animation is complete. When an element is being removed
+// from the DOM it will receive the `will-animate-out` and `animate-out` classes, then the classes will be removed once
+// the animation is complete.
+
+// If using JavaScript, methods must be defined  to animate the element there are 3 supported methods which can b
 
 // TODO cache by class-name (Angular)? Only support javascript-style (Ember)? Add a `will-animate-in` and
 // `did-animate-in` etc.?
@@ -39,18 +43,22 @@ exports.removeTransitionEndListener = removeTransitionEndListener;
 // Helper method to replace a node in the DOM with another node, allowing for animations to occure. `callback` will be
 // called when finished.
 function replaceNode(node, withNode, callback) {
-  animate('out', node, function() {
+  animate.call(this, 'out', node, function() {
     node.parentNode.replaceChild(withNode, node);
-    animate('in', withNode, callback);
+    animate.call(this, 'in', withNode, callback, this);
   });
 };
 
 // Helper method to remove a node from the DOM, allowing for animations to occure. `callback` will be called when
 // finished.
 function removeNode(node, callback) {
-  animate('out', node, function() {
+  if (!node) {
+    if (callback) callback.call(this);
+    return;
+  }
+  animate.call(this, 'out', node, function() {
     node.parentNode.removeChild(node);
-    if (callback) callback();
+    if (callback) callback.call(this);
   });
 };
 
@@ -58,22 +66,22 @@ function removeNode(node, callback) {
 // called when finished.
 function insertNodeBefore(node, before, callback) {
   before.parentNode.insertBefore(node, before);
-  animate('in', node, callback);
+  animate.call(this, 'in', node, callback, this);
 };
 
 // Helper method to insert a node in the DOM after another node, allowing for animations to occure. `callback` will be
 // called when finished.
 function insertNodeAfter(node, after, callback) {
   after.parentNode.insertBefore(node, after.nextSibling);
-  animate('in', node, callback);
+  animate.call(this, 'in', node, callback, this);
 };
 
 // Helper method to move a node within its parent to the location before the given `before` node, or at the end if
 // `before` is `null`, allowing for animations to occure. `callback` will be called when finished.
 function moveNode(node, index, callback) {
-  animate('move-out', node, function() {
+  animate.call(this, 'move-out', node, function() {
     node.parentNode.insertBefore(node, before);
-    animate('move-in', node, callback);
+    animate.call(this, 'move-in', node, callback, this);
   });
 };
 
@@ -95,7 +103,7 @@ function animate(direction, node, callback) {
   var methodName = ANIMATIONS[name];
 
   if (!className && !node[methodName]) {
-    if (callback) callback();
+    if (callback) callback.call(this);
     return;
   }
 
@@ -103,7 +111,7 @@ function animate(direction, node, callback) {
   node.dispatchEvent(event);
 
   if (node.defaultPrevented) {
-    if (callback) callback();
+    if (callback) callback.call(this);
     return;
   }
 
@@ -118,7 +126,7 @@ function animate(direction, node, callback) {
     }
 
     node[methodName](function() {
-      if (callback) callback();
+      if (callback) callback.call(this);
 
       if (node[didMethodName]) {
         node[didMethodName]();
@@ -133,7 +141,7 @@ function animate(direction, node, callback) {
     var duration = getDuration(node, className + ' ' + willName);
     if (!duration) {
       node.classList.remove(willName);
-      if (callback) callback();
+      if (callback) callback.call(this);
       return;
     }
 
@@ -151,7 +159,7 @@ function animate(direction, node, callback) {
       node.classList.add(name);
       afterAnimation(node, duration, function() {
         node.classList.remove(name);
-        if (callback) callback();
+        if (callback) callback.call(this);
       });
     });
   }

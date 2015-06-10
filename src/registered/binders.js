@@ -1,10 +1,10 @@
-var Binder = require('./binder');
-var Template = require('./template');
+var binder = require('../binding').binder;
+var template = require('../fragments').template;
 
 // # Default Bindings
 
 
-Binder.register('debug', {
+binder.register('debug', {
   priority: 200,
   udpated: function(value) {
     console.info('Debug:', this.expression, '=', value);
@@ -32,7 +32,7 @@ Binder.register('debug', {
 //   </p>
 // </div>
 // ```
-Binder.register('html', function(value) {
+binder.register('html', function(value) {
   element.innerHTML = value == null ? '' : value;
 });
 
@@ -53,7 +53,7 @@ Binder.register('html', function(value) {
 //   <button class="btn primary highlight"></button>
 // </div>
 // ```
-Binder.register('class-*', function(value) {
+binder.register('class-*', function(value) {
   if (value) {
     this.element.classList.add(this.match);
   } else {
@@ -85,7 +85,7 @@ Binder.register('class-*', function(value) {
 // ```
 // And when the user changes the text in the first input to "Jac", `user.firstName` will be updated immediately with the
 // value of `'Jac'`.
-Binder.register('value', {
+binder.register('value', {
   onlyWhenBound: true,
 
   compiled: function() {
@@ -228,7 +228,7 @@ var inputMethods = {
 //   <button>Save</button>
 // </form>
 // ```
-Binder.register('on-*', {
+binder.register('on-*', {
   created: function() {
     var eventName = this.match;
     var _this = this;
@@ -276,7 +276,7 @@ Binder.register('on-*', {
 //   <button>Save</button>
 // </form>
 // ```
-Binder.register('native-*', {
+binder.register('native-*', {
   created: function() {
     var eventName = this.match;
     var _this = this;
@@ -314,7 +314,7 @@ var keyCodes = { enter: 13, esc: 27, 'ctrl-enter': 13 };
 Object.keys(keyCodes).forEach(function(name) {
   var keyCode = keyCodes[name];
 
-  Binder.register('on-' + name, {
+  binder.register('on-' + name, {
     created: function() {
       var useCtrlKey = this.match.indexOf('ctrl-') === 0;
       var _this = this;
@@ -351,7 +351,7 @@ Object.keys(keyCodes).forEach(function(name) {
 // ```html
 // <img src="http://cdn.example.com/avatars/jacwright-small.png">
 // ```
-Binder.register('*$', function(value) {
+binder.register('*$', function(value) {
   var attrName = this.match;
   if (!value) {
     this.element.removeAttribute(attrName);
@@ -377,17 +377,17 @@ Binder.register('*$', function(value) {
 // <input type="checkbox">
 // <button disabled>Submit</button>
 // ```
-Binder.register('*?', function(value) {
+binder.register('*?', function(value) {
   var attrName = this.match;
   if (!value) {
     this.element.removeAttribute(attrName);
   } else {
-    this.element.setAttribute(attrName, value);
+    this.element.setAttribute(attrName, '');
   }
 });
 
 // Add a clone of the `value` binder for `checked?` so checkboxes can have two-way binding using `checked?`.
-Binder.register('checked?', Binder.get('value'));
+binder.register('checked?', binder.get('value'));
 
 
 
@@ -409,7 +409,7 @@ Binder.register('checked?', Binder.get('value'));
 //   <li><a href="/login">Sign In</a></li>
 // </ul>
 // ```
-Binder.register('if', {
+binder.register('if', {
   priority: 50,
 
   compiled: function() {
@@ -421,7 +421,7 @@ Binder.register('if', {
     element.parentNode.replaceChild(placeholder, element);
 
     // Stores a template for all the elements that can go into this spot
-    this.templates = [ Template.createTemplate(element) ];
+    this.templates = [ template(element) ];
 
     // Pull out any other elements that are chained with this one
     while (node) {
@@ -443,7 +443,7 @@ Binder.register('if', {
       }
 
       node.remove();
-      this.templates.push(Template.createTemplate(node));
+      this.templates.push(template(node));
       node = next;
     }
 
@@ -461,14 +461,14 @@ Binder.register('if', {
     }
     var template = this.templates[index];
     if (template) {
-      this.showing = template.createView();
+      this.showing = template.view();
       this.showing.bind(this.context);
       this.element.parentNode.insertBefore(this.showing, this.element.nextSibling);
     }
   }
 });
 
-Binder.register('unless', Binder.get('if'));
+binder.register('unless', binder.get('if'));
 
 function wrapIfExp(expr, isUnless) {
   return (isUnless ? '!' : '') + expr;
@@ -510,13 +510,13 @@ function wrapIfExp(expr, isUnless) {
 //   </div>
 // </div>
 // ```
-Binder.register('each', {
+binder.register('each', {
   priority: 100,
   compiled: function() {
     var parent = this.element.parentNode;
     var placeholder = document.createTextNode('');
     parent.insertBefore(placeholder, this.element);
-    this.template = Template.createTemplate(this.element);
+    this.template = template(this.element);
     this.element = placeholder;
 
     var parts = this.expression.split(/\s+in\s+/);
@@ -544,7 +544,7 @@ Binder.register('each', {
 
   // Method for creating and setting up new views for our list
   createView: function(key, value) {
-    var view = this.template.createView();
+    var view = this.template.view();
     var context = value;
     if (this.valueName) {
       context = Object.create(this.context);

@@ -1,6 +1,5 @@
 module.exports = Observer;
 var expression = require('./expression');
-var formatters = require('./formatter').formatters;
 var diff = require('./diff');
 
 // # Observer
@@ -41,14 +40,14 @@ Observer.prototype = {
   // Returns the current value of this observer
   get: function() {
     if (this.context) {
-      return this.getter.call(this.context, formatters);
+      return this.getter.call(this.context, Observer.formatters);
     }
   },
 
   // Sets the value of this expression
   set: function(value) {
     if (this.context && this.setter) {
-      return this.setter.call(this.context._origContext_ || this.context, formatters, value);
+      return this.setter.call(this.context._origContext_ || this.context, Observer.formatters, value);
     }
   },
 
@@ -120,51 +119,50 @@ Observer.timeout = null;
 // Runs the observer sync cycle which checks all the observers to see if they've changed.
 Observer.sync = function(callback) {
   if (typeof callback === 'function') {
-    this.afterSync(callback);
+    Observer.afterSync(callback);
   }
 
-  if (this.syncing) {
-    this.rerun = true;
+  if (Observer.syncing) {
+    Observer.rerun = true;
     return false;
   }
 
-  this.syncing = true;
-  this.rerun = true;
-  this.cycles = 0;
+  Observer.syncing = true;
+  Observer.rerun = true;
+  Observer.cycles = 0;
 
-  // Allow callbacks to run the sync cycle again immediately, but stop at `this.max` (default 10) cycles to we don't
+  // Allow callbacks to run the sync cycle again immediately, but stop at `Observer.max` (default 10) cycles to we don't
   // run infinite loops
-  while (this.rerun) {
-    if (++this.cycles === this.max) {
+  while (Observer.rerun) {
+    if (++Observer.cycles === Observer.max) {
       throw new Error('Infinite observer syncing, an observer is calling Observer.sync() too many times');
     }
-    this.rerun = false;
+    Observer.rerun = false;
     // the observer array may increase or decrease in size (remaining observers) during the sync
-    for (var i = 0; i < this.observers.length; i++) {
-      this.observers[i].sync();
+    for (var i = 0; i < Observer.observers.length; i++) {
+      Observer.observers[i].sync();
     }
   }
 
-  while (this.callbacks.length) {
-    this.callbacks.shift()();
+  while (Observer.callbacks.length) {
+    Observer.callbacks.shift()();
   }
 
-  for (var i = 0, l = this.listeners.length; i < l; i++) {
-    var listener = this.listeners[i];
+  for (var i = 0, l = Observer.listeners.length; i < l; i++) {
+    var listener = Observer.listeners[i];
     listener();
   }
 
-  this.syncing = false;
-  this.cycles = 0;
+  Observer.syncing = false;
+  Observer.cycles = 0;
   return true;
 };
 
 Observer.syncLater = function(callback) {
-  if (!this.timeout) {
-    var _this = this;
-    this.timeout = setTimeout(function() {
-      _this.timeout = null;
-      _this.sync(callback);
+  if (!Observer.timeout) {
+    Observer.timeout = setTimeout(function() {
+      Observer.timeout = null;
+      Observer.sync(callback);
     });
     return true;
   } else {
@@ -177,22 +175,22 @@ Observer.afterSync = function(callback) {
   if (typeof callback === 'function') {
     throw new TypeError('callback must be a function');
   }
-  this.callbacks.push(callback);
+  Observer.callbacks.push(callback);
 };
 
 Observer.onSync = function(listener) {
   if (typeof listener === 'function') {
     throw new TypeError('listener must be a function');
   }
-  this.listeners.push(listener);
+  Observer.listeners.push(listener);
 };
 
 Observer.removeOnSync = function(listener) {
   if (typeof listener === 'function') {
     throw new TypeError('listener must be a function');
   }
-  var index = this.listeners.indexOf(listener);
+  var index = Observer.listeners.indexOf(listener);
   if (index !== -1) {
-    this.listeners.splice(index, 1).pop();
+    Observer.listeners.splice(index, 1).pop();
   }
 };
