@@ -604,7 +604,7 @@ binder.register('each', {
       var index = splice.index;
       var count = splice.addedCount;
 
-      for (var i = index; i < addedCount; i++) {
+      for (var i = index; i < splice.addedCount; i++) {
         var item = value[i];
 
         var view = removedMap.get(item);
