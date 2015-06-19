@@ -1,6 +1,6 @@
 {
   "name": "fragments-js",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
   "keywords": ["templates", "data-binding", "front-end", "DocumentFragment"],
   "homepage": "http://github.com/chip-js/fragments-js",
@@ -21,8 +21,8 @@
     "url": "git://github.com/chip-js/fragments-js/LICENSE"
   },
   "scripts": {
-    "build": "browserify --standalone fragments index.js -o dist/fragments.js",
-    "watch": "watchify --standalone fragments index.js -o dist/fragments.js",
+    "build": "browserify --debug --standalone fragments index.js -o dist/fragments.js",
+    "watch": "watchify --debug --standalone fragments index.js -o dist/fragments.js",
     "compress": "uglifyjs dist/fragments.js -c -o dist/fragments.min.js",
     "docs": "docco -o docs src/*.js",
     "prepublish": "npm run build",
