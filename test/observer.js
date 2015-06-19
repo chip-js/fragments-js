@@ -3,7 +3,7 @@ describe('Observer', function() {
 	var obj
 	var observer
 	var called
-	var Observer = fragments.expression.Observer
+	var Observer = fragments.Observer
 	var expression = 'name'
 
 	function getter() {

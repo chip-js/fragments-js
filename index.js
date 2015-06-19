@@ -1,18 +1,8 @@
-var fragments = require('./src/fragments');
-var binding = require('./src/binding');
-var expression = require('./src/expression');
+var Fragments = require('./src/fragments');
+var Observer = require('./src/observer');
 
-// Dependency injection
-binding.Binding.Observer = expression.Observer;
-expression.Observer.formatters = binding.formatter.formatters;
-
-exports.template = fragments.template;
-exports.view = fragments.view;
-exports.binder = binding.binder;
-exports.formatter = binding.formatter;
-exports.Binding = binding.Binding;
-exports.expression = expression;
-exports.sync = expression.Observer.sync;
-
-require('./src/registered/binders');
-require('./src/registered/formatters');
+// Create an instance of fragments with the default observer
+var fragments = new Fragments(Observer);
+fragments.expression = Observer.expression;
+fragments.sync = Observer.sync;
+module.exports = fragments;

@@ -1,111 +1,429 @@
+module.exports = Fragments;
+var extend = require('./util/extend');
 var toFragment = require('./util/toFragment');
-exports.template = template;
-exports.view = view;
+var Template = require('./template');
+var View = require('./view');
+var Binding = require('./binding');
+var compile = require('./compile');
+var registerDefaultBinders = require('./registered/binders');
+var registerDefaultFormatters = require('./registered/formatters');
 
-// Triggers when a template is compiled, a view is created, or a view is disposed.
-template.onCompile = function(){};
-template.onView = function(){};
-view.onDispose = function(){};
-
-// Methods which get added to each template created. This is exposed for extension.
-template.methods = {
-  view: templateCreateView
-};
-
-// Methods which get added to each view created. This is exposed for extension.
-view.methods = {
-  remove: removeView,
-  dispose: disposeView
-};
-
-
-// ## Template
-// Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
-// Instances may then be created and bound to a given context.
-// @param {String|NodeList|HTMLCollection|HTMLTemplateElement|HTMLScriptElement|Node} html A Template can be created
-// from many different types of objects. Any of these will be converted into a document fragment for the template to
-// clone. Nodes and elements passed in will be removed from the DOM.
-function template(html) {
-  var fragment = toFragment(html);
-  if (fragment.childNodes.length === 0) {
-    throw new Error('Cannot create a template from ' + html);
+/**
+ * A Fragments object serves as a registry for binders and formatters
+ * @param {[type]} ObserverClass [description]
+ */
+function Fragments(ObserverClass) {
+  if (!ObserverClass) {
+    throw new TypeError('Must provide an Observer class to Fragments.');
   }
 
-  Object.keys(template.methods).forEach(function(key) {
-    fragment[key] = template.methods[key];
+  this.Observer = ObserverClass;
+  this.formatters = ObserverClass.formatters = {};
+
+  this.binders = {
+    element: { _wildcards: [] },
+    attribute: { _wildcards: [], _expr: /{{(.*?)}}/g },
+    text: { _wildcards: [], _expr: /{{(.*?)}}/g }
+  };
+
+  // Text binder for text nodes with expressions in them
+  this.registerBinder('text', '__default__', function(value) {
+    this.element.textContent = (value != null) ? value : '';
   });
 
-  fragment.pool = [];
-  template.onCompile(fragment);
-
-  return fragment;
-}
-
-
-// Creates a new view (instance of the template) from this template.
-// A view is an HTMLElement (or DocumentFragment) with additional methods. Because we can't extend Node we copy the
-// methods onto them and return them. Views should be removed from the DOM using `view.remove()`.
-function templateCreateView() {
-  return this.pool.pop() || view(document.importNode(this, true), this);
-}
-
-
-// ## View
-// Takes an HTML Element or DocumentFragment
-function view(fragment, fromTemplate) {
-  if (!(fragment instanceof Node)) {
-    throw new TypeError('A view must be created from an HTML Node');
-  }
-
-  if (fragment.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-    var node = fragment;
-    fragment = document.createDocumentFragment();
-    fragment.firstViewNode = fragment.lastViewNode = node;
-  } else {
-    if (!fromTemplate) {
-      // needs to run through the compile if it didn't come from a template
-      template.onCompile(fragment);
+  // Catchall attribute binder for regular attributes with expressions in them
+  this.registerBinder('attribute', '__default__', function(value) {
+    if (value != null) {
+      this.element.setAttribute(this.name, value);
+    } else {
+      this.element.removeAttribute(this.name);
     }
-    fragment.firstViewNode = fragment.firstChild;
-    fragment.lastViewNode = fragment.lastChild;
-  }
-
-  Object.keys(view.methods).forEach(function(key) {
-    fragment[key] = view.methods[key];
   });
 
-  fragment.template = fromTemplate;
-
-  template.onView(fragment);
-
-  return fragment;
+  registerDefaultBinders(this);
+  registerDefaultFormatters(this);
 }
 
+Fragments.prototype = {
 
-// Removes a view from the DOM. The view is a DocumentFragment, so `remove()` returns all its nodes to itself.
-function removeView() {
-  var node = this.firstViewNode;
-  var next;
+  /**
+   * Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
+   * Instances may then be created and bound to a given context.
+   * @param {String|NodeList|HTMLCollection|HTMLTemplateElement|HTMLScriptElement|Node} html A Template can be created
+   * from many different types of objects. Any of these will be converted into a document fragment for the template to
+   * clone. Nodes and elements passed in will be removed from the DOM.
+   */
+  createTemplate: function(html) {
+    var fragment = toFragment(html);
+    if (fragment.childNodes.length === 0) {
+      throw new Error('Cannot create a template from ' + html);
+    }
+    var template = extend.make(Template, fragment);
+    compile(this, template);
+    return template;
+  },
 
-  if (node.parentNode !== this) {
-    // Remove all the nodes and put them back into this fragment
-    while (node) {
-      next = (node === this.lastViewNode) ? null : node.nextSibling;
-      this.appendChild(node);
-      node = next;
+
+  /**
+   * Compiles and binds an element which was not created from a template. Mostly only used for binding the document's
+   * html element.
+   */
+  bindElement: function(element, context) {
+    compile(this, element);
+    // initialize all the bindings first before binding them to the context
+    element.bindings.forEach(function(binding) {
+      binding.init();
+    });
+
+    element.bindings.forEach(function(binding) {
+      binding.bind(context);
+    });
+    return element;
+  },
+
+
+  /**
+   * Registers a binder for a given type and name. A binder is a subclass of Binding and is used to create bindings on
+   * an element or text node whose tag name, attribute name, or expression contents match this binder's name/expression.
+   *
+   * ### Parameters
+   *
+   *  * `type`: there are three types of binders: element, attribute, or text. These correspond to matching against an
+   *    element's tag name, an element with the given attribute name, or a text node that matches the provided
+   *    expression.
+   *
+   *  * `name`: to match, a binder needs the name of an element or attribute, or a regular expression that matches a
+   *    given text node. Names for elements and attributes can be regular expressions as well, or they may be wildcard
+   *    names by using an asterisk.
+   *
+   *  * `definition`: a binder is a subclass of Binding which overrides key methods, `compiled`, `created`, `updated`,
+   *    `bound`, and `unbound`. The definition may be an actual subclass of Binding or it may be an object which will be
+   *    used for the prototype of the newly created subclass. For many bindings only the `updated` method is overridden,
+   *    so by just passing in a function for `definition` the binder will be created with that as its `updated` method.
+   *
+   * ### Explaination of methods
+   *
+   * A binder can have 5 methods which will be called at various points in a binding's lifecycle. Many binders will
+   * only use the `updated(value)` method, so calling register with a function instead of an object as its third
+   * parameter is a shortcut to creating a binder with just an `update` method. The binder may also include a `priority`
+   * to instruct some binders to be processed before others. Binders with higher priority are processed first.
+   *
+   * Listed in order of when they occur in a binding's lifecycle:
+   *
+   * `compiled(options)` is called when first creating a binding during the template compilation process and receives
+   * the `options` object that will be passed into `new Binding(options)`. This can be used for creating templates,
+   * modifying the DOM (only subsequent DOM that hasn't already been processed) and other things that should be
+   * applied at compile time and not duplicated for each view created.
+   *
+   * `created()` is called on the binding when a new view is created. This can be used to add event listeners on the
+   * element or do other things that will persiste with the view through its many uses. Views may get reused so don't
+   * do anything here to tie it to a given context.
+   *
+   * `attached()` is called on the binding when the view is bound to a given context and inserted into the DOM. This
+   * can be used to handle context-specific actions, add listeners to the window or document (to be removed in
+   * `detached`!), etc.
+   *
+   * `updated(value, oldValue, changeRecords)` is called on the binding whenever the value of the expression within
+   * the attribute changes. For example, `bind-text="{{username}}"` will trigger `updated` with the value of username
+   * whenever it changes on the given context. When the view is removed `updated` will be triggered with a value of
+   * `undefined` if the value was not already `undefined`, giving a chance to "reset" to an empty state.
+   *
+   * `detached()` is called on the binding when the view is unbound to a given context and removed from the DOM. This
+   * can be used to clean up anything done in `attached()` or in `updated()` before being removed.
+   *
+   * Element and attribute binders will apply whenever the tag name or attribute name is matched. In the case of
+   * attribute binders if you only want it to match when expressions are used within the attribute, add `onlyWhenBound`
+   * to the definition. Otherwise the binder will match and the value of the expression will simply be a string that
+   * only calls updated once since it will not change.
+   *
+   * Note, attributes which match a binder are removed during compile. They are considered to be binding definitions and
+   * not part of the element. Bindings may set the attribute which served as their definition if desired.
+   *
+   * ### Defaults
+   *
+   * There are default binders for attribute and text nodes which apply when no other binders match. They only apply to
+   * attributes and text nodes with expressions in them (e.g. `{{foo}}`). The default is to set the attribute or text
+   * node's value to the result of the expression. If you wanted to override this default you may register a binder with
+   * the name `"__default__"`.
+   *
+   * **Example:** This binding handler adds pirateized text to an element.
+   * ```javascript
+   * registry.registerBinder('attribute', 'my-pirate', function(value) {
+   *   if (typeof value !== 'string') {
+   *     value = '';
+   *   } else {
+   *     value = value
+   *       .replace(/\Bing\b/g, "in'")
+   *       .replace(/\bto\b/g, "t'")
+   *       .replace(/\byou\b/, 'ye')
+   *       + ' Arrrr!';
+   *   }
+   *   this.element.textContent = value;
+   * });
+   * ```
+   *
+   * ```html
+   * <p my-pirate="{{post.body}}">This text will be replaced.</p>
+   * ```
+   */
+  registerBinder: function(type, name, definition) {
+    var binder, binders = this.binders[type], superClass = Binding;
+
+    if (!binders) {
+      throw new TypeError('`type` must be one of ' + Object.keys(this.binders).join(', '));
+    }
+
+    if (typeof definition === 'function') {
+      if (definition.prototype instanceof Binding) {
+        superClass = definition;
+        definition = {};
+      } else {
+        definition = { updated: definition };
+      }
+    }
+
+    // Create a subclass of Binding (or another binder) with the definition
+    function Binder() {
+      superClass.apply(this, arguments);
+    }
+    if (definition.priority == null) {
+      definition.priority = 0;
+    }
+    definition.Observer = this.Observer;
+    superClass.extend(Binder, definition);
+
+    var expr;
+    if (name instanceof RegExp) {
+      expr = name;
+    } else if (name.indexOf('*') >= 0) {
+      expr = new RegExp('^' + escapeRegExp(name).replace('\\*', '(.*)') + '$');
+    }
+
+    if (expr) {
+      Binder.expr = expr;
+      binders._wildcards.push(Binder);
+      binders._wildcards.sort(this.bindingSort);
+    }
+
+    binders[name] = Binder;
+    return Binder;
+  },
+
+
+  /**
+   * Removes a binder that was added with `register()`. If an RegExp was used in register for the name it must be used
+   * to unregister, but it does not need to be the same instance.
+   */
+  unregisterBinder: function(type, name) {
+    var binder = this.getBinder(type, name), binders = this.binders[type];
+    if (!binder) return;
+    if (binder.expr) {
+      var index = binders._wildcards.indexOf(binder);
+      if (index >= 0) binders._wildcards.splice(index, 1);
+    }
+    delete binders[name];
+    return binder;
+  },
+
+
+  /**
+   * Returns a binder that was added with `register()` by type and name.
+   */
+  getBinder: function(type, name) {
+    var binders = this.binders[type];
+
+    if (!binders) {
+      throw new TypeError('`type` must be one of ' + Object.keys(this.binders).join(', '));
+    }
+
+    if (name && binders.hasOwnProperty(name)) {
+      return binders[name];
+    }
+  },
+
+
+  /**
+   * Find a matching binder for the given type. Elements should only provide name. Attributes should provide the name
+   * and value (value so the default can be returned if an expression exists in the value). Text nodes should only
+   * provide the value (in place of the name) and will return the default if no binders match.
+   */
+  findBinder: function(type, name, value) {
+    if (type === 'text' && value == null) {
+      value = name;
+      name = undefined;
+    }
+    var binder = this.getBinder(type, name), binders = this.binders[type];
+
+    if (!binder) {
+      var toMatch = (type === 'text') ? value : name;
+      binders._wildcards.some(function(wildcardBinder) {
+        if (toMatch.match(wildcardBinder.expr)) {
+          binder = wildcardBinder;
+          return true;
+        }
+      });
+    }
+
+    if (binder && type === 'attribute' && binder.onlyWhenBound && !this.isBound(type, value)) {
+      // don't use the `value` binder if there is no expression in the attribute value (e.g. `value="some text"`)
+      return;
+    }
+
+    if (!binder && value && (type === 'text' || this.isBound(type, value))) {
+      // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
+      binder = this.getBinder(type, '__default__');
+    }
+
+    return binder;
+  },
+
+
+  /**
+   * A Formatter is stored to process the value of an expression. This alters the value of what comes in with a function
+   * that returns a new value. Formatters are added by using a single pipe character (`|`) followed by the name of the
+   * formatter. Multiple formatters can be used by chaining pipes with formatter names. Formatters may also have
+   * arguments passed to them by using the colon to separate arguments from the formatter name. The signature of a
+   * formatter should be `function(value, args...)` where args are extra parameters passed into the formatter after
+   * colons.
+   *
+   * *Example:*
+   * ```js
+   * registry.registerFormatter('uppercase', function(value) {
+   *   if (typeof value != 'string') return ''
+   *   return value.toUppercase()
+   * })
+   *
+   * registry.registerFormatter('replace', function(value, replace, with) {
+   *   if (typeof value != 'string') return ''
+   *   return value.replace(replace, with)
+   * })
+   * ```html
+   * <h1 bind-text="title | uppercase | replace:'LETTER':'NUMBER'"></h1>
+   * ```
+   * *Result:*
+   * ```html
+   * <h1>GETTING TO KNOW ALL ABOUT THE NUMBER A</h1>
+   * ```
+   *
+   * A `valueFormatter` is like a formatter but used specifically with the `value` binding since it is a two-way binding. When
+   * the value of the element is changed a `valueFormatter` can adjust the value from a string to the correct value type for
+   * the controller expression. The signature for a `valueFormatter` includes the current value of the expression
+   * before the optional arguments (if any). This allows dates to be adjusted and possibley other uses.
+   *
+   * *Example:*
+   * ```js
+   * registry.registerFormatter('numeric', function(value) {
+   *   // value coming from the controller expression, to be set on the element
+   *   if (value == null || isNaN(value)) return ''
+   *   return value
+   * })
+   *
+   * registry.registerFormatter('date-hour', function(value) {
+   *   // value coming from the controller expression, to be set on the element
+   *   if ( !(currentValue instanceof Date) ) return ''
+   *   var hours = value.getHours()
+   *   if (hours >= 12) hours -= 12
+   *   if (hours == 0) hours = 12
+   *   return hours
+   * })
+   * ```html
+   * <label>Number Attending:</label>
+   * <input size="4" bind-value="event.attendeeCount | numeric">
+   * <label>Time:</label>
+   * <input size="2" bind-value="event.date | date-hour"> :
+   * <input size="2" bind-value="event.date | date-minute">
+   * <select bind-value="event.date | date-ampm">
+   *   <option>AM</option>
+   *   <option>PM</option>
+   * </select>
+   * ```
+   */
+  registerFormatter: function (name, formatter) {
+    this.formatters[name] = formatter;
+  },
+
+
+  /**
+   * Unregisters a formatter
+   */
+  unregisterFormatter: function (name, formatter) {
+    delete this.formatters[name];
+  },
+
+
+  /**
+   * Gets a registered formatter.
+   */
+  getFormatter: function (name) {
+    return this.formatters[name];
+  },
+
+
+  /**
+   * Sets the delimiters that define an expression. Default is `{{` and `}}` but this may be overridden. If empty
+   * strings are passed in (for type "attribute" only) then no delimiters are required for matching attributes, but the
+   * default attribute matcher will not apply to the rest of the attributes.
+   */
+  setExpressionDelimiters: function(type, pre, post) {
+    if (type !== 'attribute' && type !== 'text') {
+      throw new TypeError('Expression delimiters must be of type "attribute" or "text"');
+    }
+
+    this.binders[type]._expr = new RegExp(escapeRegExp(pre) + '(.*?)' + escapeRegExp(post), 'g');
+  },
+
+
+  /**
+   * Tests whether a value has an expression in it. Something like `/user/{{user.id}}`.
+   */
+  isBound: function(type, value) {
+    if (type !== 'attribute' && type !== 'text') {
+      throw new TypeError('isBound must provide type "attribute" or "text"');
+    }
+    var expr = this.binders[type]._expr;
+    return Boolean(expr && value && value.match(expr));
+  },
+
+
+  /**
+   * The sort function to sort binders correctly
+   */
+  bindingSort: function(a, b) {
+    return b.prototype.priority - a.prototype.priority;
+  },
+
+
+  /**
+   * Converts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
+   */
+  codifyExpression: function(type, text) {
+    if (type !== 'attribute' && type !== 'text') {
+      throw new TypeError('codifyExpression must use type "attribute" or "text"');
+    }
+
+    var expr = this.binders[type]._expr;
+    var match = text.match(expr);
+
+    if (!match) {
+      return '"' + text.replace(/"/g, '\\"') + '"';
+    } else if (match.length === 1 && match[0] === text) {
+      return text.replace(expr, '$1');
+    } else {
+      var newText = '"', lastIndex = 0;
+      while (match = expr.exec(text)) {
+        var str = text.slice(lastIndex, expr.lastIndex - match[0].length);
+        newText += str.replace(/"/g, '\\"');
+        newText += '" + (' + match[1] + ' || "") + "';
+        lastIndex = expr.lastIndex;
+      }
+      newText += text.slice(lastIndex).replace(/"/g, '\\"') + '"';
+      return newText.replace(/^"" \+ | "" \+ | \+ ""$/g, '');
     }
   }
 
-  return this;
-}
+};
 
-
-// Removes a view (if not already removed) and adds the view to its template's pool.
-function disposeView() {
-  // Make sure the view is removed from the DOM
-  this.remove();
-  view.onDispose(this);
-  if (this.template) {
-    this.template.pool.push(this);
-  }
+// Takes a string like "(\*)" or "on-\*" and converts it into a regular expression.
+function escapeRegExp(text) {
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 }
