@@ -27,12 +27,12 @@ function Fragments(ObserverClass) {
   };
 
   // Text binder for text nodes with expressions in them
-  this.registerBinder('text', '__default__', function(value) {
+  this.registerText('__default__', function(value) {
     this.element.textContent = (value != null) ? value : '';
   });
 
   // Catchall attribute binder for regular attributes with expressions in them
-  this.registerBinder('attribute', '__default__', function(value) {
+  this.registerAttribute('__default__', function(value) {
     if (value != null) {
       this.element.setAttribute(this.name, value);
     } else {
@@ -148,7 +148,7 @@ Fragments.prototype = {
    *
    * **Example:** This binding handler adds pirateized text to an element.
    * ```javascript
-   * registry.registerBinder('attribute', 'my-pirate', function(value) {
+   * registry.registerAttribute('my-pirate', function(value) {
    *   if (typeof value !== 'string') {
    *     value = '';
    *   } else {
@@ -166,6 +166,15 @@ Fragments.prototype = {
    * <p my-pirate="{{post.body}}">This text will be replaced.</p>
    * ```
    */
+  registerElement: function(name, definition) {
+    this.registerBinder('element', name, definition);
+  },
+  registerAttribute: function(name, definition) {
+    this.registerBinder('attribute', name, definition);
+  },
+  registerText: function(name, definition) {
+    this.registerBinder('text', name, definition);
+  },
   registerBinder: function(type, name, definition) {
     var binder, binders = this.binders[type], superClass = Binding;
 
@@ -214,6 +223,15 @@ Fragments.prototype = {
    * Removes a binder that was added with `register()`. If an RegExp was used in register for the name it must be used
    * to unregister, but it does not need to be the same instance.
    */
+  unregisterElement: function(name) {
+    this.unregisterBinder('element', name);
+  },
+  unregisterAttribute: function(name) {
+    this.unregisterBinder('attribute', name);
+  },
+  unregisterText: function(name) {
+    this.unregisterBinder('text', name);
+  },
   unregisterBinder: function(type, name) {
     var binder = this.getBinder(type, name), binders = this.binders[type];
     if (!binder) return;
@@ -229,6 +247,15 @@ Fragments.prototype = {
   /**
    * Returns a binder that was added with `register()` by type and name.
    */
+  getElementBinder: function(name) {
+    return this.getBinder('element', name);
+  },
+  getAttributeBinder: function(name) {
+    return this.getBinder('attribute', name);
+  },
+  getTextBinder: function(name) {
+    return this.getBinder('text', name);
+  },
   getBinder: function(type, name) {
     var binders = this.binders[type];
 

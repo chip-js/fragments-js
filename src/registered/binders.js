@@ -9,7 +9,7 @@ function registerDefaults(fragments) {
   /**
    * Prints out the value of the expression to the console.
    */
-  fragments.registerBinder('attribute', 'debug', {
+  fragments.registerAttribute('debug', {
     priority: 200,
     udpated: function(value) {
       console.info('Debug:', this.expression, '=', value);
@@ -39,7 +39,7 @@ function registerDefaults(fragments) {
    * </div>
    * ```
    */
-  fragments.registerBinder('attribute', 'html', function(value) {
+  fragments.registerAttribute('html', function(value) {
     element.innerHTML = value == null ? '' : value;
   });
 
@@ -62,7 +62,7 @@ function registerDefaults(fragments) {
    * </div>
    * ```
    */
-  fragments.registerBinder('attribute', 'class-*', function(value) {
+  fragments.registerAttribute('class-*', function(value) {
     if (value) {
       this.element.classList.add(this.match);
     } else {
@@ -96,7 +96,7 @@ function registerDefaults(fragments) {
    * And when the user changes the text in the first input to "Jac", `user.firstName` will be updated immediately with
    * the value of `'Jac'`.
    */
-  fragments.registerBinder('attribute', 'value', {
+  fragments.registerAttribute('value', {
     onlyWhenBound: true,
 
     compiled: function() {
@@ -249,7 +249,7 @@ function registerDefaults(fragments) {
    * </form>
    * ```
    */
-  fragments.registerBinder('attribute', 'on-*', {
+  fragments.registerAttribute('on-*', {
     created: function() {
       var eventName = this.match;
       var _this = this;
@@ -299,7 +299,7 @@ function registerDefaults(fragments) {
    * </form>
    * ```
    */
-  fragments.registerBinder('attribute', 'native-*', {
+  fragments.registerAttribute('native-*', {
     created: function() {
       var eventName = this.match;
       var _this = this;
@@ -339,7 +339,7 @@ function registerDefaults(fragments) {
   Object.keys(keyCodes).forEach(function(name) {
     var keyCode = keyCodes[name];
 
-    fragments.registerBinder('attribute', 'on-' + name, {
+    fragments.registerAttribute('on-' + name, {
       created: function() {
         var useCtrlKey = name.indexOf('ctrl-') === 0;
         var _this = this;
@@ -378,7 +378,7 @@ function registerDefaults(fragments) {
    * <img src="http://cdn.example.com/avatars/jacwright-small.png">
    * ```
    */
-  fragments.registerBinder('attribute', '*$', function(value) {
+  fragments.registerAttribute('*$', function(value) {
     var attrName = this.match;
     if (!value) {
       this.element.removeAttribute(attrName);
@@ -406,7 +406,7 @@ function registerDefaults(fragments) {
    * <button disabled>Submit</button>
    * ```
    */
-  fragments.registerBinder('attribute', '*?', function(value) {
+  fragments.registerAttribute('*?', function(value) {
     var attrName = this.match;
     if (!value) {
       this.element.removeAttribute(attrName);
@@ -419,7 +419,7 @@ function registerDefaults(fragments) {
   /**
    * Add a clone of the `value` binder for `checked?` so checkboxes can have two-way binding using `checked?`.
    */
-  fragments.registerBinder('attribute', 'checked?', fragments.getBinder('attribute', 'value'));
+  fragments.registerAttribute('checked?', fragments.getAttributeBinder('value'));
 
 
 
@@ -443,7 +443,7 @@ function registerDefaults(fragments) {
    * </ul>
    * ```
    */
-  fragments.registerBinder('attribute', 'if', {
+  fragments.registerAttribute('if', {
     priority: 50,
 
     compiled: function() {
@@ -511,7 +511,7 @@ function registerDefaults(fragments) {
   });
 
 
-  fragments.registerBinder('attribute', 'unless', fragments.getBinder('attribute', 'if'));
+  fragments.registerAttribute('unless', fragments.getAttributeBinder('if'));
 
   function wrapIfExp(expr, isUnless) {
     return (isUnless ? '!' : '') + expr;
@@ -555,7 +555,7 @@ function registerDefaults(fragments) {
    * </div>
    * ```
    */
-  fragments.registerBinder('attribute', 'repeat', {
+  fragments.registerAttribute('repeat', {
     priority: 100,
     compiled: function() {
       var parent = this.element.parentNode;
@@ -690,6 +690,6 @@ function registerDefaults(fragments) {
     }
   });
 
-  fragments.registerBinder('attribute', 'foreach', fragments.getBinder('attribute', 'repeat'));
-  fragments.registerBinder('attribute', 'each', fragments.getBinder('attribute', 'repeat'));
+  fragments.registerAttribute('foreach', fragments.getAttributeBinder('repeat'));
+  fragments.registerAttribute('each', fragments.getAttributeBinder('repeat'));
 }
