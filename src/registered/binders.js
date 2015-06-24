@@ -499,21 +499,29 @@ function registerDefaults(fragments) {
       }
     },
 
+    add: function(view) {
+      this.element.parentNode.insertBefore(view, this.element.nextSibling);
+    },
+
+    remove: function(view) {
+      view.dispose();
+    },
+
     updatedRegular: function(index) {
       if (this.showing) {
-        this.showing.dispose();
+        this.remove(this.showing);
         this.showing = null;
       }
       var template = this.templates[index];
       if (template) {
         this.showing = template.createView();
         this.showing.bind(this.context);
-        this.element.parentNode.insertBefore(this.showing, this.element.nextSibling);
+        this.add(this.showing);
       }
     },
 
     updatedAnimated: function(index) {
-      this.lastValue = value;
+      this.lastValue = index;
       if (this.animating) {
         return;
       }
@@ -522,6 +530,7 @@ function registerDefaults(fragments) {
         this.animating = true;
         this.animateOut(this.showing, function() {
           this.animating = false;
+          this.remove(this.showing);
           this.showing = null;
           // finish by animating the new element in (if any)
           this.updatedAnimated(this.lastValue);
@@ -533,8 +542,9 @@ function registerDefaults(fragments) {
       if (template) {
         this.showing = template.createView();
         this.showing.bind(this.context);
+        this.add(this.showing);
         this.animating = true;
-        this.animateIn(this.showing, this.element.nextSibling, function() {
+        this.animateIn(this.showing, function() {
           this.animating = false;
           // if the value changed while this was animating run it again
           if (this.lastValue !== index) {
