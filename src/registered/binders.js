@@ -263,7 +263,7 @@ function registerDefaults(fragments) {
           var listener = _this.observer.get();
 
           // Or just return a function which will be called with the event object
-          if (typeof listener === 'function') listener.call(this, event);
+          if (typeof listener === 'function') listener.call(_this.context, event);
         }
       });
     }
@@ -308,7 +308,7 @@ function registerDefaults(fragments) {
         var listener = _this.observer.get();
 
         // Or just return a function which will be called with the event object
-        if (typeof listener === 'function') listener.call(this, event);
+        if (typeof listener === 'function') listener.call(_this.context, event);
       });
     }
   });
@@ -353,7 +353,7 @@ function registerDefaults(fragments) {
             var listener = _this.observer.get();
 
             // Or just return a function which will be called with the event object
-            if (typeof listener === 'function') listener.call(this, event);
+            if (typeof listener === 'function') listener.call(_this.context, event);
           }
         });
       }
