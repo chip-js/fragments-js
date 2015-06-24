@@ -68,10 +68,10 @@ describe('Default Binders', function() {
 	})
 
 
-	describe('each', function() {
+	describe('repeat', function() {
 
 		it('should exist by default', function() {
-			expect(fragments.getBinder('attribute', 'each')).to.not.be.undefined
+			expect(fragments.getBinder('attribute', 'repeat')).to.not.be.undefined
 		})
 
 		it('should repeat elements', function() {
@@ -81,7 +81,7 @@ describe('Default Binders', function() {
 				{ name: 'test3' }
 			]}
 
-			var template = fragments.createTemplate('<div><div each="{{items}}">{{name}}</div></div>')
+			var template = fragments.createTemplate('<div><div repeat="{{items}}">{{name}}</div></div>')
 			var view = template.createView()
 			view.bind(obj)
 

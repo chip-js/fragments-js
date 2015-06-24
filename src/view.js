@@ -9,6 +9,8 @@ function View(template) {
   this.template = template;
   this.firstViewNode = this.firstChild;
   this.lastViewNode = this.lastChild;
+  this.firstViewNode.view = this;
+  this.lastViewNode.view = this;
   this.bindings = this.template.bindings.map(function(binding) {
     return binding.cloneForView(this);
   }, this);

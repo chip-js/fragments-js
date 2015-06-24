@@ -1,12 +1,15 @@
 module.exports = Fragments;
 var extend = require('./util/extend');
 var toFragment = require('./util/toFragment');
+var animation = require('./util/animation');
 var Template = require('./template');
 var View = require('./view');
 var Binding = require('./binding');
+var AnimatedBinding = require('./animatedBinding');
 var compile = require('./compile');
 var registerDefaultBinders = require('./registered/binders');
 var registerDefaultFormatters = require('./registered/formatters');
+var registerDefaultAnimations = require('./registered/animations');
 
 /**
  * A Fragments object serves as a registry for binders and formatters
@@ -19,6 +22,7 @@ function Fragments(ObserverClass) {
 
   this.Observer = ObserverClass;
   this.formatters = ObserverClass.formatters = {};
+  this.animations = {};
 
   this.binders = {
     element: { _wildcards: [] },
@@ -42,6 +46,7 @@ function Fragments(ObserverClass) {
 
   registerDefaultBinders(this);
   registerDefaultFormatters(this);
+  registerDefaultAnimations(this);
 }
 
 Fragments.prototype = {
@@ -65,11 +70,20 @@ Fragments.prototype = {
 
 
   /**
+   * Compiles bindings on an element.
+   */
+  compileElement: function(element) {
+    return compile(this, element);
+  },
+
+
+  /**
    * Compiles and binds an element which was not created from a template. Mostly only used for binding the document's
    * html element.
    */
   bindElement: function(element, context) {
-    compile(this, element);
+    this.compileElement(element);
+
     // initialize all the bindings first before binding them to the context
     element.bindings.forEach(function(binding) {
       binding.init();
@@ -101,34 +115,44 @@ Fragments.prototype = {
    *    used for the prototype of the newly created subclass. For many bindings only the `updated` method is overridden,
    *    so by just passing in a function for `definition` the binder will be created with that as its `updated` method.
    *
-   * ### Explaination of methods
+   * ### Explaination of properties and methods
+   *
+   *   * `priority` may be defined as number to instruct some binders to be processed before others. Binders with
+   *   higher priority are processed first.
+   *
+   *   * `animated` can be set to `true` to extend the AnimatedBinding class which provides support for animation when
+   *   insertingand removing nodes from the DOM. The `animated` property only *allows* animation but the element must
+   *   have the `animate` attribute to use animation. A binding will have the `animate` property set to true when it is
+   *   to be animated. Binders should have fast paths for when animation is not used rather than assuming animation will
+   *   be used.
+   *
+   * Binders
    *
    * A binder can have 5 methods which will be called at various points in a binding's lifecycle. Many binders will
    * only use the `updated(value)` method, so calling register with a function instead of an object as its third
-   * parameter is a shortcut to creating a binder with just an `update` method. The binder may also include a `priority`
-   * to instruct some binders to be processed before others. Binders with higher priority are processed first.
+   * parameter is a shortcut to creating a binder with just an `update` method.
    *
    * Listed in order of when they occur in a binding's lifecycle:
    *
-   * `compiled(options)` is called when first creating a binding during the template compilation process and receives
+   *   * `compiled(options)` is called when first creating a binding during the template compilation process and receives
    * the `options` object that will be passed into `new Binding(options)`. This can be used for creating templates,
    * modifying the DOM (only subsequent DOM that hasn't already been processed) and other things that should be
    * applied at compile time and not duplicated for each view created.
    *
-   * `created()` is called on the binding when a new view is created. This can be used to add event listeners on the
+   *   * `created()` is called on the binding when a new view is created. This can be used to add event listeners on the
    * element or do other things that will persiste with the view through its many uses. Views may get reused so don't
    * do anything here to tie it to a given context.
    *
-   * `attached()` is called on the binding when the view is bound to a given context and inserted into the DOM. This
+   *   * `attached()` is called on the binding when the view is bound to a given context and inserted into the DOM. This
    * can be used to handle context-specific actions, add listeners to the window or document (to be removed in
    * `detached`!), etc.
    *
-   * `updated(value, oldValue, changeRecords)` is called on the binding whenever the value of the expression within
+   *   * `updated(value, oldValue, changeRecords)` is called on the binding whenever the value of the expression within
    * the attribute changes. For example, `bind-text="{{username}}"` will trigger `updated` with the value of username
    * whenever it changes on the given context. When the view is removed `updated` will be triggered with a value of
    * `undefined` if the value was not already `undefined`, giving a chance to "reset" to an empty state.
    *
-   * `detached()` is called on the binding when the view is unbound to a given context and removed from the DOM. This
+   *   * `detached()` is called on the binding when the view is unbound to a given context and removed from the DOM. This
    * can be used to clean up anything done in `attached()` or in `updated()` before being removed.
    *
    * Element and attribute binders will apply whenever the tag name or attribute name is matched. In the case of
@@ -167,16 +191,17 @@ Fragments.prototype = {
    * ```
    */
   registerElement: function(name, definition) {
-    this.registerBinder('element', name, definition);
+    return this.registerBinder('element', name, definition);
   },
   registerAttribute: function(name, definition) {
-    this.registerBinder('attribute', name, definition);
+    return this.registerBinder('attribute', name, definition);
   },
   registerText: function(name, definition) {
-    this.registerBinder('text', name, definition);
+    return this.registerBinder('text', name, definition);
   },
   registerBinder: function(type, name, definition) {
-    var binder, binders = this.binders[type], superClass = Binding;
+    var binder, binders = this.binders[type]
+    var superClass = definition.animated ? AnimatedBinding : Binding;
 
     if (!binders) {
       throw new TypeError('`type` must be one of ' + Object.keys(this.binders).join(', '));
@@ -214,6 +239,7 @@ Fragments.prototype = {
       binders._wildcards.sort(this.bindingSort);
     }
 
+    Binder.name = '' + name;
     binders[name] = Binder;
     return Binder;
   },
@@ -224,13 +250,13 @@ Fragments.prototype = {
    * to unregister, but it does not need to be the same instance.
    */
   unregisterElement: function(name) {
-    this.unregisterBinder('element', name);
+    return this.unregisterBinder('element', name);
   },
   unregisterAttribute: function(name) {
-    this.unregisterBinder('attribute', name);
+    return this.unregisterBinder('attribute', name);
   },
   unregisterText: function(name) {
-    this.unregisterBinder('text', name);
+    return this.unregisterBinder('text', name);
   },
   unregisterBinder: function(type, name) {
     var binder = this.getBinder(type, name), binders = this.binders[type];
@@ -371,7 +397,7 @@ Fragments.prototype = {
 
 
   /**
-   * Unregisters a formatter
+   * Unregisters a formatter.
    */
   unregisterFormatter: function (name, formatter) {
     delete this.formatters[name];
@@ -384,6 +410,110 @@ Fragments.prototype = {
   getFormatter: function (name) {
     return this.formatters[name];
   },
+
+
+  /**
+   * An Animation is stored to handle animations. A registered animation is an object (or class which instantiates into
+   * an object) with the methods:
+   *   * `willAnimateIn(element)`
+   *   * `animateIn(element, callback)`
+   *   * `didAnimateIn(element)`
+   *   * `willAnimateOut(element)`
+   *   * `animateOut(element, callback)`
+   *   * `didAnimateOut(element)`
+   *
+   * Animation is included with binders which are registered with the `animated` property set to `true` (such as `if`
+   * and `repeat`). Animations allow elements to fade in, fade out, slide down, collapse, move from one location in a
+   * list to another, and more.
+   *
+   * To use animation add an attribute named `animate` onto an element with a supported binder.
+   *
+   * ### CSS Animations
+   *
+   * If the `animate` attribute does not have a value or the value is a class name (e.g. `animate=".my-fade"`) then
+   * fragments will use a CSS transition/animation. Classes will be added and removed to trigger the animation.
+   *
+   *   * `.will-animate-in` is added right after an element is inserted into the DOM. This can be used to set the
+   *     opacity to `0.0` for example. It is then removed on the next animation frame.
+   *   * `.animate-in` is when `.will-animate-in` is removed. It can be used to set opacity to `1.0` for example. The
+   *     `animation` style can be set on this class if using it. The `transition` style can be set here. Note that
+   *     although the `animate` attribute is placed on an element with the `repeat` binder, these classes are added to
+   *     its children as they get added and removed.
+   *   * `.will-animate-out` is added before an element is removed from the DOM. This can be used to set the opacity to
+   *     `1` for example. It is then removed on the next animation frame.
+   *   * `.animate-out` is added when `.will-animate-out` is removed. It can be used to set opacity to `0.0` for
+   *     example. The `animation` style can be set on this class if using it. The `transition` style can be set here or
+   *     on another selector that matches the element. Note that although the `animate` attribute is placed on an
+   *     element with the `repeat` binder, these classes are added to its children as they get added and removed.
+   *
+   * If the `animate` attribute is set to a class name (e.g. `animate=".my-fade"`) then that class name will be added as
+   * a class to the element during animation. This allows you to use `.my-fade.will-animate-in`, `.my-fade.animate-in`,
+   * etc. in your stylesheets to use the same animation throughout your application.
+   *
+   * ### JavaScript Animations
+   *
+   * If you need greater control over your animations JavaScript may be used. It is recommended that CSS styles still be
+   * used by having your code set them manually. This allows the animation to take advantage of the browser
+   * optimizations such as hardware acceleration. This is not a requirement.
+   *
+   * In order to use JavaScript an object should be passed into the `animation` attribute using an expression. This
+   * object should have methods that allow JavaScript animation handling. For example, if you are bound to a context
+   * with an object named `customFade` with animation methods, your element should have `attribute="{{customFade}}"`.
+   * The following is a list of the methods you may implement.
+   *
+   *   * `willAnimateIn(element)` will be called after an element has been inserted into the DOM. Use it to set initial
+   *     CSS properties before `animateIn` is called to set the final properties. This method is optional.
+   *   * `animateIn(element, callback)` will be called shortly after `willAnimateIn` if it was defined. Use it to set
+   *     final CSS properties.
+   *   * `animateOut(element, done)` will be called before an element is to be removed from the DOM. `done` must be
+   *     called when the animation is complete in order for the binder to finish removing the element. **Remember** to
+   *     clean up by removing any styles that were added before calling `done()` so the element can be reused without
+   *     side-effects.
+   *
+   * The `element` passed in will be polyfilled for with the `animate` method using
+   * https://github.com/web-animations/web-animations-js.
+   *
+   * ### Registered Animations
+   *
+   * Animations may be registered and used throughout your application. To use a registered animation use its name in
+   * the `animate` attribute (e.g. `animate="fade"`). Note the only difference between a registered animation and a
+   * class registration is class registrations are prefixed with a dot (`.`). Registered animations are always
+   * JavaScript animations. To register an animation use `fragments.registerAnimation(name, animationObject)`.
+   *
+   * The Animation module comes with several common animations registered by default. The defaults use CSS styles to
+   * work correctly, using `element.animate`.
+   *
+   *   * `fade` will fade an element in and out over 300 milliseconds.
+   *   * `slide` will slide an element down when it is added and slide it up when it is removed.
+   *   * `slide-move` will move an element from its old location to its new location in a repeated list.
+   *
+   * Do you have another common animation you think should be included by default? Submit a pull request!
+   */
+  registerAnimation: function(name, animationObject) {
+    this.animations[name] = animationObject;
+  },
+
+
+  /**
+   * Unregisters an animation.
+   */
+  unregisterAnimation: function(name) {
+    delete this.animations[name];
+  },
+
+
+  /**
+   * Gets a registered animation.
+   */
+  getAnimation: function(name) {
+    return this.animations[name];
+  },
+
+
+  /**
+   * Prepare an element to be easier animatable (adding a simple `animate` polyfill if needed)
+   */
+  makeElementAnimatable: animation.makeElementAnimatable,
 
 
   /**

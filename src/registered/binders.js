@@ -1,4 +1,5 @@
 module.exports = registerDefaults;
+var diff = require('../observer/diff');
 
 /**
  * # Default Binders
@@ -443,7 +444,8 @@ function registerDefaults(fragments) {
    * </ul>
    * ```
    */
-  fragments.registerAttribute('if', {
+  var IfBinding = fragments.registerAttribute('if', {
+    animated: true,
     priority: 50,
 
     compiled: function() {
@@ -489,15 +491,66 @@ function registerDefaults(fragments) {
     },
 
     updated: function(index) {
+      // For performance provide an alternate code path for animation
+      if (this.animate) {
+        this.updatedAnimated(index);
+      } else {
+        this.updatedRegular(index);
+      }
+    },
+
+    add: function(view) {
+      this.element.parentNode.insertBefore(view, this.element.nextSibling);
+    },
+
+    remove: function(view) {
+      view.dispose();
+    },
+
+    updatedRegular: function(index) {
       if (this.showing) {
-        this.showing.dispose();
+        this.remove(this.showing);
         this.showing = null;
       }
       var template = this.templates[index];
       if (template) {
         this.showing = template.createView();
         this.showing.bind(this.context);
-        this.element.parentNode.insertBefore(this.showing, this.element.nextSibling);
+        this.add(this.showing);
+      }
+    },
+
+    updatedAnimated: function(index) {
+      this.lastValue = index;
+      if (this.animating) {
+        return;
+      }
+
+      if (this.showing) {
+        this.animating = true;
+        this.animateOut(this.showing, function() {
+          this.animating = false;
+          this.remove(this.showing);
+          this.showing = null;
+          // finish by animating the new element in (if any)
+          this.updatedAnimated(this.lastValue);
+        });
+        return;
+      }
+
+      var template = this.templates[index];
+      if (template) {
+        this.showing = template.createView();
+        this.showing.bind(this.context);
+        this.add(this.showing);
+        this.animating = true;
+        this.animateIn(this.showing, function() {
+          this.animating = false;
+          // if the value changed while this was animating run it again
+          if (this.lastValue !== index) {
+            this.updatedAnimated(this.lastValue);
+          }
+        });
       }
     },
 
@@ -510,8 +563,7 @@ function registerDefaults(fragments) {
     }
   });
 
-
-  fragments.registerAttribute('unless', fragments.getAttributeBinder('if'));
+  fragments.registerAttribute('unless', IfBinding);
 
   function wrapIfExp(expr, isUnless) {
     return (isUnless ? '!' : '') + expr;
@@ -556,7 +608,9 @@ function registerDefaults(fragments) {
    * ```
    */
   fragments.registerAttribute('repeat', {
+    animated: true,
     priority: 100,
+
     compiled: function() {
       var parent = this.element.parentNode;
       var placeholder = document.createTextNode('');
@@ -579,11 +633,25 @@ function registerDefaults(fragments) {
       this.observer.getChangeRecords = true;
     },
 
+    unbound: function() {
+      if (this.views.length) {
+        this.views.forEach(function(view) {
+          view.dispose();
+          view._repeatItem_ = null;
+        });
+        this.views.length = 0;
+      }
+    },
+
     updated: function(value, oldValue, changes) {
       if (!changes) {
         this.populate(value);
       } else {
-        this.updateChanges(value, changes);
+        if (this.animate) {
+          this.updateChangesAnimated(value, changes);
+        } else {
+          this.updateChanges(value, changes);
+        }
       }
     },
 
@@ -598,11 +666,16 @@ function registerDefaults(fragments) {
         context._origContext_ = this.context;
       }
       view.bind(context);
-      view._eachItem_ = value;
+      view._repeatItem_ = value;
       return view;
     },
 
     populate: function(value) {
+      if (this.animating) {
+        this.valueWhileAnimating = value;
+        return;
+      }
+
       if (this.views.length) {
         this.views.forEach(function(node) {
           node.dispose();
@@ -611,20 +684,22 @@ function registerDefaults(fragments) {
       }
 
       if (Array.isArray(value) && value.length) {
-        value.forEach(function(item, index) {
-          this.views.push(this.createView(index, item));
-        }, this);
-      }
-
-      if (this.views.length) {
         var frag = document.createDocumentFragment();
-        this.views.forEach(function(elem) {
-          frag.appendChild(elem);
-        });
+
+        value.forEach(function(item, index) {
+          var view = this.createView(index, item);
+          this.views.push(view);
+          frag.appendChild(view);
+        }, this);
+
         this.element.parentNode.insertBefore(frag, this.element.nextSibling);
       }
     },
 
+    /**
+     * This un-animated version removes all removed views first so they can be returned to the pool and then adds new
+     * views back in. This is the most optimal method when not animating.
+     */
     updateChanges: function(value, changes) {
       // Remove everything first, then add again, allowing for element reuse from the pool
       var removedCount = 0;
@@ -635,7 +710,7 @@ function registerDefaults(fragments) {
         var removed = this.views.splice(splice.index - removedCount, splice.removed.length);
         // Save for reuse if items moved (e.g. on a sort update) instead of just getting removed
         removed.forEach(function(view) {
-          removedMap.set(view._eachItem_, view);
+          removedMap.set(view._repeatItem_, view);
           view.remove();
         });
         removedCount += removed.length;
@@ -644,8 +719,8 @@ function registerDefaults(fragments) {
       // Add the new/moved views
       changes.forEach(function(splice) {
         if (!splice.addedCount) return;
-        var newViews = []
-        var frag = document.createDocumentFragment();
+        var addedViews = [];
+        var fragment = document.createDocumentFragment();
         var index = splice.index;
         var endIndex = index + splice.addedCount;
 
@@ -663,33 +738,79 @@ function registerDefaults(fragments) {
             // Otherwise create a new one
             view = this.createView(i, item);
           }
-          newViews.push(view);
-          frag.appendChild(view);
+          addedViews.push(view);
+          fragment.appendChild(view);
         }
-        this.views.splice.apply(this.views, [ index, 0 ].concat(newViews));
+        this.views.splice.apply(this.views, [ index, 0 ].concat(addedViews));
         var previousView = this.views[index - 1];
         var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
-        nextSibling.parentNode.insertBefore(frag, nextSibling);
+        nextSibling.parentNode.insertBefore(fragment, nextSibling);
       }, this);
 
-      // Cleanup any views that were removed (not moved)
+      // Cleanup any views that were removed and not re-added (moved)
       removedMap.forEach(function(value) {
-        value._eachItem_ = null;
+        value._repeatItem_ = null;
         value.dispose();
       });
       removedMap.clear();
     },
 
-    unbound: function() {
-      if (this.views.length) {
-        this.views.forEach(function(node) {
-          node.dispose();
-        });
-        this.views.length = 0;
+    /**
+     * This animated version must animate removed nodes out while added nodes are animating in making it less optimal
+     * (but cool looking). It also handles "move" animations for nodes which are moving place within the list.
+     */
+    updateChangesAnimated: function(value, changes) {
+      if (this.animating) {
+        this.valueWhileAnimating = value;
+        return;
       }
+      var animatingValue = value.slice();
+      this.animating = true;
+
+      // Run updates which occured while this was animating.
+      function whenDone() {
+        // The last animation finished will run this
+        if (--whenDone.count === 0) return;
+
+        this.animating = false;
+        if (this.valueWhileAnimating) {
+          var changes = diff.array(this.valueWhileAnimating, animatingValue);
+          this.updateChangesAnimated(this.valueWhileAnimating, changes);
+          this.valueWhileAnimating = null;
+        }
+      }
+      whenDone.count = 0;
+
+
+      changes.forEach(function(splice) {
+        var addedViews = [];
+        var fragment = document.createDocumentFragment();
+        var index = splice.index;
+        var endIndex = index + splice.addedCount;
+        var removedCount = splice.removed.length;
+
+        for (var i = index; i < endIndex; i++) {
+          var item = value[i];
+          var view = this.createView(i, item);
+          addedViews.push(view);
+          fragment.appendChild(view);
+        }
+
+        var removedViews = this.views.splice.apply(this.views, [ index, removedCount ].concat(addedViews));
+        var previousView = this.views[index - 1];
+        var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
+        this.element.parentNode.insertBefore(fragment, nextSibling);
+
+        removedViews.forEach(function(view) {
+          whenDone.count++;
+          this.animateOut(view, whenDone);
+        }, this);
+
+        addedViews.forEach(function(view) {
+          whenDone.count++;
+          this.animateIn(view, whenDone);
+        }, this);
+      });
     }
   });
-
-  fragments.registerAttribute('foreach', fragments.getAttributeBinder('repeat'));
-  fragments.registerAttribute('each', fragments.getAttributeBinder('repeat'));
 }

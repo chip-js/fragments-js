@@ -24,6 +24,8 @@ function compile(fragments, template) {
       previousNode = currentNode;
     }
   } while (walker.nextNode());
+
+  return template;
 }
 
 
@@ -41,7 +43,7 @@ function getBindingsForNode(fragments, node, view) {
       expr = fragments.codifyExpression('text', node.nodeValue);
       node.nodeValue = '';
       Binder = fragments.findBinder('text', expr);
-      bindings.push(new Binder({ node: node, view: view, expression: expr }));
+      bindings.push(new Binder({ node: node, view: view, expression: expr, fragments: fragments }));
     }
   } else {
     // If the element is removed from the DOM, stop. Check by looking at its parentNode
@@ -50,7 +52,7 @@ function getBindingsForNode(fragments, node, view) {
     // Find any binding for the element
     Binder = fragments.findBinder('element', node.tagName.toLowerCase());
     if (Binder) {
-      bindings.push(new Binder({ node: node, view: view }));
+      bindings.push(new Binder({ node: node, view: view, fragments: fragments }));
     }
 
     // If removed, made a template, don't continue processing
@@ -90,7 +92,8 @@ function getBindingsForNode(fragments, node, view) {
         view: view,
         name: name,
         match: match,
-        expression: fragments.codifyExpression('attribute', value)
+        expression: fragments.codifyExpression('attribute', value),
+        fragments: fragments
       }));
 
       if (node.parentNode !== parent) {

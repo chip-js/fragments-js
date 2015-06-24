@@ -28,6 +28,7 @@ function Binding(properties) {
   this.name = properties.name;
   this.match = properties.match;
   this.expression = properties.expression;
+  this.fragments = properties.fragments;
   this.context = null;
   this.compiled();
 }
@@ -58,6 +59,7 @@ extend(Binding, {
     });
 
     var binding = Object.create(this);
+    binding.clonedFrom = this;
     binding.element = node;
     binding.node = node;
     binding.init();
@@ -67,6 +69,10 @@ extend(Binding, {
 
   // Bind this to the given context object
   bind: function(context) {
+    if (this.context == context) {
+      return;
+    }
+
     this.context = context;
     if (this.observer) {
       if (this.updated !== Binding.prototype.updated) {
@@ -82,6 +88,10 @@ extend(Binding, {
 
   // Unbind this from its context
   unbind: function() {
+    if (this.context === null) {
+      return;
+    }
+
     this.context = null;
     if (this.observer) this.observer.unbind();
     this.unbound();
