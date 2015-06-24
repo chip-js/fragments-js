@@ -1,6 +1,7 @@
 module.exports = Fragments;
 var extend = require('./util/extend');
 var toFragment = require('./util/toFragment');
+var animation = require('./util/animation');
 var Template = require('./template');
 var View = require('./view');
 var Binding = require('./binding');
@@ -8,6 +9,7 @@ var AnimatedBinding = require('./animatedBinding');
 var compile = require('./compile');
 var registerDefaultBinders = require('./registered/binders');
 var registerDefaultFormatters = require('./registered/formatters');
+var registerDefaultAnimations = require('./registered/animations');
 
 /**
  * A Fragments object serves as a registry for binders and formatters
@@ -20,6 +22,7 @@ function Fragments(ObserverClass) {
 
   this.Observer = ObserverClass;
   this.formatters = ObserverClass.formatters = {};
+  this.animations = {};
 
   this.binders = {
     element: { _wildcards: [] },
@@ -43,6 +46,7 @@ function Fragments(ObserverClass) {
 
   registerDefaultBinders(this);
   registerDefaultFormatters(this);
+  registerDefaultAnimations(this);
 }
 
 Fragments.prototype = {
@@ -66,11 +70,20 @@ Fragments.prototype = {
 
 
   /**
+   * Compiles bindings on an element.
+   */
+  compileElement: function(element) {
+    return compile(this, element);
+  },
+
+
+  /**
    * Compiles and binds an element which was not created from a template. Mostly only used for binding the document's
    * html element.
    */
   bindElement: function(element, context) {
-    compile(this, element);
+    this.compileElement(element);
+
     // initialize all the bindings first before binding them to the context
     element.bindings.forEach(function(binding) {
       binding.init();
@@ -472,7 +485,7 @@ Fragments.prototype = {
    *
    *   * `fade` will fade an element in and out over 300 milliseconds.
    *   * `slide` will slide an element down when it is added and slide it up when it is removed.
-   *   * `move` will move an element from its old location to its new location in a repeated list.
+   *   * `slide-move` will move an element from its old location to its new location in a repeated list.
    *
    * Do you have another common animation you think should be included by default? Submit a pull request!
    */
@@ -496,6 +509,11 @@ Fragments.prototype = {
     return this.animations[name];
   },
 
+
+  /**
+   * Prepare an element to be easier animatable (adding a simple `animate` polyfill if needed)
+   */
+  makeElementAnimatable: animation.makeElementAnimatable,
 
 
   /**

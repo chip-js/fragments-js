@@ -24,6 +24,8 @@ function compile(fragments, template) {
       previousNode = currentNode;
     }
   } while (walker.nextNode());
+
+  return template;
 }
 
 

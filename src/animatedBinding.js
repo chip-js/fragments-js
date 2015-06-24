@@ -1,4 +1,5 @@
 module.exports = AnimatedBinding;
+var animation = require('./util/animation');
 var Binding = require('./binding');
 var _super = Binding.prototype;
 
@@ -50,7 +51,7 @@ function AnimatedBinding(properties) {
 
     setTimeout(function() {
       // Allow multiple bindings to animate by not removing until they have all been created
-      element.removeAttibute('animate');
+      element.removeAttribute('animate');
     });
 
     this.animate = true;
@@ -149,7 +150,7 @@ Binding.extend(AnimatedBinding, {
    * Allow an element to use CSS3 transitions or animations to animate in or out of the page.
    */
   animateNode: function(direction, node, callback) {
-    var animateObject, className, name, willName, didName;
+    var animateObject, className, name, willName, didName, _this = this;
 
     if (this.animateObject && typeof this.animateObject === 'object') {
       animateObject = this.animateObject;
@@ -165,6 +166,8 @@ Binding.extend(AnimatedBinding, {
       willName = 'willAnimate' + dir;
       didName = 'didAnimate' + dir;
 
+      animation.makeElementAnimatable(node);
+
       if (animateObject[willName]) {
         animateObject[willName](node);
         // trigger reflow
@@ -174,7 +177,7 @@ Binding.extend(AnimatedBinding, {
       if (animateObject[name]) {
         animateObject[name](node, function() {
           if (animateObject[didName]) animateObject[didName](node);
-          if (callback) callback.call(this);
+          if (callback) callback.call(_this);
         });
       }
     } else {
@@ -193,13 +196,11 @@ Binding.extend(AnimatedBinding, {
       setTimeout(function() {
         node.classList.remove(name);
         if (className) node.classList.remove(className);
-        if (callback) callback.call(this);
+        if (callback) callback.call(_this);
       }, duration);
     }
   }
 });
-
-
 
 
 var transitionDurationName = 'transitionDuration';
