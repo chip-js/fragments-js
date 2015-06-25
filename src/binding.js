@@ -35,6 +35,12 @@ function Binding(properties) {
 
 extend(Binding, {
   /**
+   * Default priority binders may override.
+   */
+  priority: 0,
+
+
+  /**
    * Initialize a cloned binding. This happens after a compiled binding on a template is cloned for a view.
    */
   init: function() {

@@ -192,7 +192,7 @@ Binding.extend(AnimatedBinding, {
       node.classList.remove(willName);
       node.classList.add(name);
 
-      var duration = getDuration.call(this, node);
+      var duration = getDuration.call(this, node, direction);
       setTimeout(function() {
         node.classList.remove(name);
         if (className) node.classList.remove(className);
@@ -218,12 +218,15 @@ if (style.animationDuration === undefined && style.webkitAnimationDuration !== u
 }
 
 
-function getDuration(node) {
-  var milliseconds = this.clonedFrom.__animationDuration__;
-  if (milliseconds == null) {
+function getDuration(node, direction) {
+  var milliseconds = this.clonedFrom['__animationDuration' + direction];
+  if (!milliseconds) {
+    // Recalc if node was out of DOM before and had 0 duration, assume there is always SOME duration.
     var styles = window.getComputedStyle(node);
-    var seconds = Math.max(parseFloat(styles[transitionDurationName]) + parseFloat(styles[transitionDelayName]),
-                           parseFloat(styles[animationDurationName]) + parseFloat(styles[animationDelayName]));
+    var seconds = Math.max(parseFloat(styles[transitionDurationName] || 0) +
+                           parseFloat(styles[transitionDelayName] || 0),
+                           parseFloat(styles[animationDurationName] || 0) +
+                           parseFloat(styles[animationDelayName] || 0));
     milliseconds = seconds * 1000 || 0;
     this.clonedFrom.__animationDuration__ = milliseconds;
   }

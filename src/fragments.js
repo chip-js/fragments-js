@@ -220,9 +220,6 @@ Fragments.prototype = {
     function Binder() {
       superClass.apply(this, arguments);
     }
-    if (definition.priority == null) {
-      definition.priority = 0;
-    }
     definition.Observer = this.Observer;
     superClass.extend(Binder, definition);
 

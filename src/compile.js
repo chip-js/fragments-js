@@ -136,7 +136,7 @@ function splitTextNode(fragments, node) {
 
 
 function sortAttributes(a, b) {
-  return b[0].priority - a[0].priority;
+  return b[0].prototype.priority - a[0].prototype.priority;
 }
 
 function notEmpty(value) {
