@@ -27,5 +27,11 @@ Template.prototype = {
     }
 
     return extend.make(View, document.importNode(this, true), this);
+  },
+
+  returnView: function(view) {
+    if (this.pool.indexOf(view) === -1) {
+      this.pool.push(view);
+    }
   }
 };

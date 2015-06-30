@@ -44,10 +44,10 @@ View.prototype = {
    */
   dispose: function() {
     // Make sure the view is removed from the DOM
-    this.remove();
     this.unbind();
+    this.remove();
     if (this.template) {
-      this.template.pool.push(this);
+      this.template.returnView(this);
     }
   },
 

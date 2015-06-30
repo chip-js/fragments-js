@@ -502,7 +502,7 @@ function registerDefaults(fragments) {
 
       if (this.showing) {
         this.animating = true;
-        this.animateOut(this.showing, function() {
+        this.animateOut(this.showing, true, function() {
           this.animating = false;
           this.remove(this.showing);
           this.showing = null;
