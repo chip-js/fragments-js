@@ -255,61 +255,24 @@ function registerDefaults(fragments) {
       var eventName = this.match;
       var _this = this;
       this.element.addEventListener(eventName, function(event) {
-        // prevent native events, let custom events use the "defaultCanceled" mechanism
-        if (!(event instanceof CustomEvent)) {
-          event.preventDefault();
-        }
         if (!this.hasAttribute('disabled')) {
+          // Set the event on the context so it may be used in the expression when the event is triggered.
+          var prior = Object.getOwnPropertyDescriptor(_this.context, 'event');
+          _this.context.event = event;
+
           // Let an on-[event] make the function call with its own arguments
           var listener = _this.observer.get();
 
           // Or just return a function which will be called with the event object
           if (typeof listener === 'function') listener.call(_this.context, event);
+
+          // Reset the context to its prior state
+          if (prior) {
+            Object.defineProperty(_this.context, event, prior);
+          } else {
+            delete _this.context.event;
+          }
         }
-      });
-    }
-  });
-
-
-   /**
-   * ## native-[event]
-   * Adds a binder for each event name in the array. When the event is triggered the expression will be run.
-   * It will not call event.preventDefault() like on-* or withhold when disabled.
-   *
-   * **Example Events:**
-   *
-   * * native-click
-   * * native-dblclick
-   * * native-submit
-   * * native-change
-   * * native-focus
-   * * native-blur
-   *
-   * **Example:**
-   * ```html
-   * <form native-submit="{{saveUser(event)}}">
-   *   <input name="firstName" value="Jacob">
-   *   <button>Save</button>
-   * </form>
-   * ```
-   * *Result (events don't affect the HTML):*
-   * ```html
-   * <form>
-   *   <input name="firstName" value="Jacob">
-   *   <button>Save</button>
-   * </form>
-   * ```
-   */
-  fragments.registerAttribute('native-*', {
-    created: function() {
-      var eventName = this.match;
-      var _this = this;
-      this.element.addEventListener(eventName, function(event) {
-        // Let an on-[event] make the function call with its own arguments
-        var listener = _this.observer.get();
-
-        // Or just return a function which will be called with the event object
-        if (typeof listener === 'function') listener.call(_this.context, event);
       });
     }
   });
@@ -350,11 +313,22 @@ function registerDefaults(fragments) {
           event.preventDefault();
 
           if (!this.hasAttribute('disabled')) {
+            // Set the event on the context so it may be used in the expression when the event is triggered.
+            var prior = Object.getOwnPropertyDescriptor(_this.context, 'event');
+            _this.context.event = event;
+
             // Let an on-[event] make the function call with its own arguments
             var listener = _this.observer.get();
 
             // Or just return a function which will be called with the event object
             if (typeof listener === 'function') listener.call(_this.context, event);
+
+            // Reset the context to its prior state
+            if (prior) {
+              Object.defineProperty(_this.context, event, prior);
+            } else {
+              delete _this.context.event;
+            }
           }
         });
       }
