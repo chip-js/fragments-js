@@ -92,7 +92,7 @@ function getBindingsForNode(fragments, node, view) {
         view: view,
         name: name,
         match: match,
-        expression: fragments.codifyExpression('attribute', value),
+        expression: value ? fragments.codifyExpression('attribute', value) : null,
         fragments: fragments
       }));
 
