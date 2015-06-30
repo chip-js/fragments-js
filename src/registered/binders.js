@@ -545,7 +545,7 @@ function registerDefaults(fragments) {
 
 
   /**
-   * ## foreach
+   * ## repeat
    * Adds a binder to duplicate an element for each item in an array. The expression may be of the format `epxr` or
    * `itemName in expr` where `itemName` is the name each item inside the array will be referenced by within bindings
    * inside the element.
@@ -609,12 +609,14 @@ function registerDefaults(fragments) {
 
     unbound: function() {
       if (this.views.length) {
-        this.views.forEach(function(view) {
-          view.dispose();
-          view._repeatItem_ = null;
-        });
+        this.views.forEach(this.removeView);
         this.views.length = 0;
       }
+    },
+
+    removeView: function(view) {
+      view.dispose();
+      view._repeatItem_ = null;
     },
 
     updated: function(value, oldValue, changes) {
@@ -651,9 +653,7 @@ function registerDefaults(fragments) {
       }
 
       if (this.views.length) {
-        this.views.forEach(function(node) {
-          node.dispose();
-        });
+        this.views.forEach(this.removeView);
         this.views.length = 0;
       }
 
@@ -676,18 +676,15 @@ function registerDefaults(fragments) {
      */
     updateChanges: function(value, changes) {
       // Remove everything first, then add again, allowing for element reuse from the pool
-      var removedCount = 0;
-      var removedMap = new Map();
+      var addedCount = 0;
 
       changes.forEach(function(splice) {
-        if (!splice.removed.length) return;
-        var removed = this.views.splice(splice.index - removedCount, splice.removed.length);
-        // Save for reuse if items moved (e.g. on a sort update) instead of just getting removed
-        removed.forEach(function(view) {
-          removedMap.set(view._repeatItem_, view);
-          view.remove();
-        });
-        removedCount += removed.length;
+        addedCount += splice.addedCount;
+        if (!splice.removed.length) {
+          return;
+        }
+        var removed = this.views.splice(splice.index - addedCount, splice.removed.length);
+        removed.forEach(this.removeView);
       }, this);
 
       // Add the new/moved views
@@ -700,18 +697,7 @@ function registerDefaults(fragments) {
 
         for (var i = index; i < endIndex; i++) {
           var item = value[i];
-
-          var view = removedMap.get(item);
-          if (view) {
-            // If the node was just removed, reuse it
-            removedMap.delete(item);
-            if (this.keyName) {
-              view.context[this.keyName] = i;
-            }
-          } else {
-            // Otherwise create a new one
-            view = this.createView(i, item);
-          }
+          view = this.createView(i, item);
           addedViews.push(view);
           fragment.appendChild(view);
         }
@@ -720,13 +706,6 @@ function registerDefaults(fragments) {
         var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
         nextSibling.parentNode.insertBefore(fragment, nextSibling);
       }, this);
-
-      // Cleanup any views that were removed and not re-added (moved)
-      removedMap.forEach(function(value) {
-        value._repeatItem_ = null;
-        value.dispose();
-      });
-      removedMap.clear();
     },
 
     /**
@@ -784,7 +763,7 @@ function registerDefaults(fragments) {
           whenDone.count++;
           this.animateIn(view, whenDone);
         }, this);
-      });
+      }, this);
     }
   });
 }
