@@ -12,7 +12,7 @@ function registerDefaults(fragments) {
    */
   fragments.registerAttribute('debug', {
     priority: 200,
-    udpated: function(value) {
+    updated: function(value) {
       console.info('Debug:', this.expression, '=', value);
     }
   });
@@ -255,7 +255,7 @@ function registerDefaults(fragments) {
       var eventName = this.match;
       var _this = this;
       this.element.addEventListener(eventName, function(event) {
-        if (!this.hasAttribute('disabled')) {
+        if (!this.hasAttribute('disabled') && _this.context) {
           // Set the event on the context so it may be used in the expression when the event is triggered.
           var prior = Object.getOwnPropertyDescriptor(_this.context, 'event');
           _this.context.event = event;
@@ -308,8 +308,14 @@ function registerDefaults(fragments) {
         var useCtrlKey = name.indexOf('ctrl-') === 0;
         var _this = this;
         this.element.addEventListener('keydown', function(event) {
-          if (useCtrlKey && !(event.ctrlKey || event.metaKey)) return;
-          if (event.keyCode !== keyCode) return;
+          if (useCtrlKey && !(event.ctrlKey || event.metaKey) || !_this.context) {
+            return;
+          }
+
+          if (event.keyCode !== keyCode) {
+            return;
+          }
+
           event.preventDefault();
 
           if (!this.hasAttribute('disabled')) {
