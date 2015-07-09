@@ -710,7 +710,7 @@ function registerDefaults(fragments) {
         this.views.splice.apply(this.views, [ index, 0 ].concat(addedViews));
         var previousView = this.views[index - 1];
         var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
-        nextSibling.parentNode.insertBefore(fragment, nextSibling);
+        this.element.parentNode.insertBefore(fragment, nextSibling);
       }, this);
     },
 
