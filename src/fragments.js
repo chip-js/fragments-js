@@ -73,7 +73,19 @@ Fragments.prototype = {
    * Compiles bindings on an element.
    */
   compileElement: function(element) {
-    return compile(this, element);
+    if (!element.compiled) {
+      compile(this, element);
+
+      element.bind = View.prototype.bind;
+      element.unbind = View.prototype.unbind;
+      element.bindings.forEach(function(binding) {
+        binding.init();
+      });
+
+      element.compiled = true;
+    }
+
+    return element;
   },
 
 
@@ -84,14 +96,10 @@ Fragments.prototype = {
   bindElement: function(element, context) {
     this.compileElement(element);
 
-    // initialize all the bindings first before binding them to the context
-    element.bindings.forEach(function(binding) {
-      binding.init();
-    });
+    if (context) {
+      element.bind(context);
+    }
 
-    element.bindings.forEach(function(binding) {
-      binding.bind(context);
-    });
     return element;
   },
 
