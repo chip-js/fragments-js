@@ -510,10 +510,17 @@ function registerDefaults(fragments) {
         this.animating = true;
         this.animateOut(this.showing, true, function() {
           this.animating = false;
-          this.remove(this.showing);
-          this.showing = null;
-          // finish by animating the new element in (if any)
-          this.updatedAnimated(this.lastValue);
+
+          if (this.showing) {
+            // Make sure this wasn't unbound while we were animating
+            this.remove(this.showing);
+            this.showing = null;
+          }
+
+          if (this.context) {
+            // finish by animating the new element in (if any), unless no longer bound
+            this.updatedAnimated(this.lastValue);
+          }
         });
         return;
       }
@@ -539,6 +546,7 @@ function registerDefaults(fragments) {
       if (this.showing) {
         this.showing.dispose();
         this.showing = null;
+        this.lastValue = null;
       }
     }
   });
