@@ -13,6 +13,8 @@ function makeElementAnimatable(element) {
   if (!element.getComputedCSS) {
     element.getComputedCSS = getComputedCSS;
   }
+
+  return element;
 }
 
 /**

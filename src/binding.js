@@ -30,7 +30,6 @@ function Binding(properties) {
   this.expression = properties.expression;
   this.fragments = properties.fragments;
   this.context = null;
-  this.compiled();
 }
 
 extend(Binding, {

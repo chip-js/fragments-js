@@ -60,7 +60,7 @@ function registerDefaults(fragments) {
   });
 
 
-  var animatingOut = new Map();
+  var animating = new Map();
 
   /**
    * Move items up and down in a list, slide down and up
@@ -72,14 +72,18 @@ function registerDefaults(fragments) {
     },
 
     animateIn: function(element, done) {
-      var oldElement, moveElement;
       var item = element.view && element.view._repeatItem_;
       if (item) {
-        outElement = animatingOut.get(item);
+        var oldElement = animating.get(item);
         if (oldElement) {
           // This item is being removed in one place and added into another. Make it look like its moving by making both
           // elements not visible and having a clone move above the items to the new location.
           this.animateMove(oldElement, element);
+        } else {
+          animating.set(item, element);
+          setTimeout(function() {
+            animating.delete(item);
+          });
         }
       }
 
@@ -97,10 +101,17 @@ function registerDefaults(fragments) {
     animateOut: function(element, done) {
       var item = element.view && element.view._repeatItem_;
       if (item) {
-        animatingOut.set(item, element);
-        setTimeout(function() {
-          animatingOut.delete(item);
-        });
+        var newElement = animating.get(item);
+        if (newElement) {
+          // This item is being removed in one place and added into another. Make it look like its moving by making both
+          // elements not visible and having a clone move above the items to the new location.
+          this.animateMove(element, newElement);
+        } else {
+          animating.set(item, element);
+          setTimeout(function() {
+            animating.delete(item);
+          });
+        }
       }
 
       // Do the slide
@@ -116,7 +127,7 @@ function registerDefaults(fragments) {
 
     animateMove: function(oldElement, newElement) {
       var moveElement;
-      var parent = element.parentNode;
+      var parent = newElement.parentNode;
       if (!parent.__slideMoveHandled) {
         parent.__slideMoveHandled = true;
         if (window.getComputedStyle(parent).position === 'static') {
@@ -124,16 +135,18 @@ function registerDefaults(fragments) {
         }
       }
 
-      oldElement.style.visibility = 'hidden';
-      element.style.visibility = 'hidden';
       moveElement = fragments.makeElementAnimatable(oldElement.cloneNode(true));
       moveElement.style.position = 'absolute';
+      moveElement.style.top = oldElement.offsetTop + 'px';
       parent.appendChild(moveElement);
+      oldElement.style.visibility = 'hidden';
+      newElement.style.visibility = 'hidden';
 
       moveElement.animate([
         { top: oldElement.offsetTop + 'px' },
-        { top: element.offsetTop + 'px' }
+        { top: newElement.offsetTop + 'px' }
       ], this.options).onfinish = function() {
+        moveElement.remove();
         newElement.style.visibility = '';
       };
     }

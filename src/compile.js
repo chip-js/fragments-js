@@ -33,7 +33,7 @@ function compile(fragments, template) {
 // Find all the bindings on a given node (text nodes will only ever have one binding).
 function getBindingsForNode(fragments, node, view) {
   var bindings = [];
-  var Binder, expr, bound, match, attr, i;
+  var Binder, binding, expr, bound, match, attr, i;
 
   if (node.nodeType === Node.TEXT_NODE) {
     splitTextNode(fragments, node);
@@ -43,7 +43,10 @@ function getBindingsForNode(fragments, node, view) {
       expr = fragments.codifyExpression('text', node.nodeValue);
       node.nodeValue = '';
       Binder = fragments.findBinder('text', expr);
-      bindings.push(new Binder({ node: node, view: view, expression: expr, fragments: fragments }));
+      binding = new Binder({ node: node, view: view, expression: expr, fragments: fragments });
+      if (binding.compiled() !== false) {
+        bindings.push(binding);
+      }
     }
   } else {
     // If the element is removed from the DOM, stop. Check by looking at its parentNode
@@ -52,7 +55,10 @@ function getBindingsForNode(fragments, node, view) {
     // Find any binding for the element
     Binder = fragments.findBinder('element', node.tagName.toLowerCase());
     if (Binder) {
-      bindings.push(new Binder({ node: node, view: view, fragments: fragments }));
+      binding = new Binder({ node: node, view: view, fragments: fragments });
+      if (binding.compiled() !== false) {
+        bindings.push(binding);
+      }
     }
 
     // If removed, made a template, don't continue processing
@@ -87,14 +93,18 @@ function getBindingsForNode(fragments, node, view) {
       }
       node.removeAttributeNode(attr);
 
-      bindings.push(new Binder({
+      binding = new Binder({
         node: node,
         view: view,
         name: name,
         match: match,
         expression: value ? fragments.codifyExpression('attribute', value) : null,
         fragments: fragments
-      }));
+      });
+
+      if (binding.compiled() !== false) {
+        bindings.push(binding);
+      }
 
       if (node.parentNode !== parent) {
         break;

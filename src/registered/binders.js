@@ -11,7 +11,7 @@ function registerDefaults(fragments) {
    * Prints out the value of the expression to the console.
    */
   fragments.registerAttribute('debug', {
-    priority: 200,
+    priority: 60,
     updated: function(value) {
       console.info('Debug:', this.expression, '=', value);
     }
@@ -99,22 +99,24 @@ function registerDefaults(fragments) {
    */
   fragments.registerAttribute('value', {
     onlyWhenBound: true,
+    eventsAttrName: 'value-events',
+    fieldAttrName: 'value-field',
 
     compiled: function() {
       var name = this.element.tagName.toLowerCase();
       var type = this.element.type;
       this.methods = inputMethods[type] || inputMethods[name] || inputMethods.radiogroup;
 
-      if (this.element.hasAttribute('value-events')) {
-        this.events = this.element.getAttribute('value-events').split(' ');
-        this.element.removeAttribute('value-events');
+      if (this.element.hasAttribute(this.eventsAttrName)) {
+        this.events = this.element.getAttribute(this.eventsAttrName).split(' ');
+        this.element.removeAttribute(this.eventsAttrName);
       } else if (name !== 'option') {
         this.events = ['change'];
       }
 
-      if (this.element.hasAttribute('value-field')) {
-        this.valueField = this.element.getAttribute('value-field');
-        this.element.removeAttribute('value-field');
+      if (this.element.hasAttribute(this.fieldAttrName)) {
+        this.valueField = this.element.getAttribute(this.fieldAttrName);
+        this.element.removeAttribute(this.fieldAttrName);
       }
 
       if (type === 'option') {
@@ -427,10 +429,14 @@ function registerDefaults(fragments) {
   var IfBinding = fragments.registerAttribute('if', {
     animated: true,
     priority: 50,
+    unlessAttrName: 'unless',
+    elseIfAttrName: 'else-if',
+    elseUnlessAttrName: 'else-unless',
+    elseAttrName: 'else',
 
     compiled: function() {
       var element = this.element;
-      var expressions = [ wrapIfExp(this.expression, this.name === 'unless') ];
+      var expressions = [ wrapIfExp(this.expression, this.name === this.unlessAttrName) ];
       var placeholder = document.createTextNode('');
       var node = element.nextElementSibling;
       this.element = placeholder;
@@ -443,16 +449,16 @@ function registerDefaults(fragments) {
       while (node) {
         var next = node.nextElementSibling;
         var expression;
-        if (node.hasAttribute('else-if')) {
-          expression = fragments.codifyExpression('attribute', node.getAttribute('else-if'));
+        if (node.hasAttribute(this.elseIfAttrName)) {
+          expression = fragments.codifyExpression('attribute', node.getAttribute(this.elseIfAttrName));
           expressions.push(wrapIfExp(expression, false));
-          node.removeAttribute('else-if');
-        } else if (node.hasAttribute('else-unless')) {
-          expression = fragments.codifyExpression('attribute', node.getAttribute('else-unless'));
+          node.removeAttribute(this.elseIfAttrName);
+        } else if (node.hasAttribute(this.elseUnlessAttrName)) {
+          expression = fragments.codifyExpression('attribute', node.getAttribute(this.elseUnlessAttrName));
           expressions.push(wrapIfExp(expression, true));
-          node.removeAttribute('else-unless');
-        } else if (node.hasAttribute('else')) {
-          node.removeAttribute('else');
+          node.removeAttribute(this.elseUnlessAttrName);
+        } else if (node.hasAttribute(this.elseAttrName)) {
+          node.removeAttribute(this.elseAttrName);
           next = null;
         } else {
           break;
@@ -653,7 +659,9 @@ function registerDefaults(fragments) {
         context = Object.create(this.context);
         if (this.keyName) context[this.keyName] = key;
         context[this.valueName] = value;
-        context._origContext_ = this.context;
+        context._origContext_ = this.context.hasOwnProperty('_origContext_')
+          ? this.context._origContext_
+          : this.context;
       }
       view.bind(context);
       view._repeatItem_ = value;
@@ -737,11 +745,11 @@ function registerDefaults(fragments) {
       // Run updates which occured while this was animating.
       function whenDone() {
         // The last animation finished will run this
-        if (--whenDone.count === 0) return;
+        if (--whenDone.count !== 0) return;
 
         this.animating = false;
         if (this.valueWhileAnimating) {
-          var changes = diff.array(this.valueWhileAnimating, animatingValue);
+          var changes = diff.arrays(this.valueWhileAnimating, animatingValue);
           this.updateChangesAnimated(this.valueWhileAnimating, changes);
           this.valueWhileAnimating = null;
         }

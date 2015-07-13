@@ -11,8 +11,13 @@ var diff = require('./diff');
 // receives an array of splices (for an array), or an array of change objects (for an object) which are the same
 // format that `Array.observe` and `Object.observe` return <http://wiki.ecmascript.org/doku.php?id=harmony:observe>.
 function Observer(expr, callback, callbackContext) {
-  this.getter = expression.get(expr);
-  this.setter = expression.getSetter(expr, { ignoreErrors: true });
+  if (typeof expr === 'function') {
+    this.getter = expr;
+    this.setter = expr;
+  } else {
+    this.getter = expression.get(expr);
+  }
+  this.expr = expr;
   this.callback = callback;
   this.callbackContext = callbackContext;
   this.skip = false;
@@ -46,9 +51,16 @@ Observer.prototype = {
 
   // Sets the value of this expression
   set: function(value) {
-    if (this.context && this.setter) {
-      return this.setter.call(this.context._origContext_ || this.context, Observer.formatters, value);
+    if (!this.context) return;
+    if (this.setter === false) return;
+    if (!this.setter) {
+      this.setter = typeof this.expr === 'string'
+        ? expression.getSetter(this.expr, { ignoreErrors: true }) || false
+        : false;
+      if (!this.setter) return;
     }
+
+    return this.setter.call(this.context._origContext_ || this.context, Observer.formatters, value);
   },
 
 

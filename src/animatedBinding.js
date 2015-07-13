@@ -193,11 +193,17 @@ Binding.extend(AnimatedBinding, {
       node.classList.add(name);
 
       var duration = getDuration.call(this, node, direction);
-      setTimeout(function() {
+      function whenDone() {
         node.classList.remove(name);
         if (className) node.classList.remove(className);
         if (callback) callback.call(_this);
-      }, duration);
+      }
+
+      if (duration) {
+        setTimeout(whenDone, duration);
+      } else {
+        whenDone();
+      }
     }
   }
 });
