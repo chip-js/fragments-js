@@ -553,6 +553,7 @@ function registerDefaults(fragments) {
         this.showing.dispose();
         this.showing = null;
         this.lastValue = null;
+        this.animating = false;
       }
     }
   });
@@ -631,6 +632,8 @@ function registerDefaults(fragments) {
       if (this.views.length) {
         this.views.forEach(this.removeView);
         this.views.length = 0;
+        this.animating = false;
+        this.valueWhileAnimating = null;
       }
     },
 

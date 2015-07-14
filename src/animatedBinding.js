@@ -58,7 +58,7 @@ function AnimatedBinding(properties) {
 
     if (fragments.isBound('attribute', animate)) {
       // javascript animation
-      this.animateExpression = fragments.codifyExpression(animate);
+      this.animateExpression = fragments.codifyExpression('attribute', animate);
     } else {
       if (animate[0] === '.') {
         // class animation

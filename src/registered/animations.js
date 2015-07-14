@@ -38,19 +38,29 @@ function registerDefaults(fragments) {
       easing: 'ease-in-out'
     },
     animateIn: function(element, done) {
+      var height = element.getComputedCSS('height');
+      if (!height || height === '0px') {
+        return done();
+      }
+
       element.style.overflow = 'hidden';
       element.animate([
         { height: '0px' },
-        { height: element.getComputedCSS('height') }
+        { height: height }
       ], this.options).onfinish = function() {
         element.style.overflow = '';
         done();
       };
     },
     animateOut: function(element, done) {
+      var height = element.getComputedCSS('height');
+      if (!height || height === '0px') {
+        return done();
+      }
+
       element.style.overflow = 'hidden';
       element.animate([
-        { height: element.getComputedCSS('height') },
+        { height: height },
         { height: '0px' }
       ], this.options).onfinish = function() {
         element.style.overflow = '';
@@ -72,6 +82,11 @@ function registerDefaults(fragments) {
     },
 
     animateIn: function(element, done) {
+      var height = element.getComputedCSS('height');
+      if (!height || height === '0px') {
+        return done();
+      }
+
       var item = element.view && element.view._repeatItem_;
       if (item) {
         animating.set(item, element);
@@ -84,7 +99,7 @@ function registerDefaults(fragments) {
       element.style.overflow = 'hidden';
       element.animate([
         { height: '0px' },
-        { height: element.getComputedCSS('height') }
+        { height: height }
       ], this.options).onfinish = function() {
         element.style.overflow = '';
         done();
@@ -92,10 +107,15 @@ function registerDefaults(fragments) {
     },
 
     animateOut: function(element, done) {
+      var height = element.getComputedCSS('height');
+      if (!height || height === '0px') {
+        return done();
+      }
+
       var item = element.view && element.view._repeatItem_;
       if (item) {
         var newElement = animating.get(item);
-        if (newElement) {
+        if (newElement && newElement.parentNode === element.parentNode) {
           // This item is being removed in one place and added into another. Make it look like its moving by making both
           // elements not visible and having a clone move above the items to the new location.
           element = this.animateMove(element, newElement);
@@ -105,7 +125,7 @@ function registerDefaults(fragments) {
       // Do the slide
       element.style.overflow = 'hidden';
       element.animate([
-        { height: element.getComputedCSS('height') },
+        { height: height },
         { height: '0px' }
       ], this.options).onfinish = function() {
         element.style.overflow = '';
@@ -123,6 +143,7 @@ function registerDefaults(fragments) {
         }
       }
 
+      var origStyle = oldElement.getAttribute('style');
       var style = window.getComputedStyle(oldElement);
       placeholderElement = fragments.makeElementAnimatable(document.createElement(oldElement.nodeName));
       placeholderElement.style.width = oldElement.style.width = style.width;
@@ -139,6 +160,7 @@ function registerDefaults(fragments) {
         { top: newElement.offsetTop + 'px' }
       ], this.options).onfinish = function() {
         placeholderElement.remove();
+        origStyle ? oldElement.setAttribute('style', origStyle) : oldElement.removeAttribute('style');
         newElement.style.visibility = '';
       };
 
