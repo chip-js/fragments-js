@@ -74,17 +74,10 @@ function registerDefaults(fragments) {
     animateIn: function(element, done) {
       var item = element.view && element.view._repeatItem_;
       if (item) {
-        var oldElement = animating.get(item);
-        if (oldElement) {
-          // This item is being removed in one place and added into another. Make it look like its moving by making both
-          // elements not visible and having a clone move above the items to the new location.
-          this.animateMove(oldElement, element);
-        } else {
-          animating.set(item, element);
-          setTimeout(function() {
-            animating.delete(item);
-          });
-        }
+        animating.set(item, element);
+        setTimeout(function() {
+          animating.delete(item);
+        });
       }
 
       // Do the slide
@@ -105,12 +98,7 @@ function registerDefaults(fragments) {
         if (newElement) {
           // This item is being removed in one place and added into another. Make it look like its moving by making both
           // elements not visible and having a clone move above the items to the new location.
-          this.animateMove(element, newElement);
-        } else {
-          animating.set(item, element);
-          setTimeout(function() {
-            animating.delete(item);
-          });
+          element = this.animateMove(element, newElement);
         }
       }
 
@@ -126,7 +114,7 @@ function registerDefaults(fragments) {
     },
 
     animateMove: function(oldElement, newElement) {
-      var moveElement;
+      var placeholderElement;
       var parent = newElement.parentNode;
       if (!parent.__slideMoveHandled) {
         parent.__slideMoveHandled = true;
@@ -135,20 +123,26 @@ function registerDefaults(fragments) {
         }
       }
 
-      moveElement = fragments.makeElementAnimatable(oldElement.cloneNode(true));
-      moveElement.style.position = 'absolute';
-      moveElement.style.top = oldElement.offsetTop + 'px';
-      parent.appendChild(moveElement);
-      oldElement.style.visibility = 'hidden';
+      var style = window.getComputedStyle(oldElement);
+      placeholderElement = fragments.makeElementAnimatable(document.createElement(oldElement.nodeName));
+      placeholderElement.style.width = oldElement.style.width = style.width;
+      placeholderElement.style.height = oldElement.style.height = style.height;
+      placeholderElement.style.visibility = 'hidden';
+
+      oldElement.style.position = 'absolute';
+      oldElement.style.zIndex = 1000;
+      parent.insertBefore(placeholderElement, oldElement);
       newElement.style.visibility = 'hidden';
 
-      moveElement.animate([
-        { top: oldElement.offsetTop + 'px' },
+      oldElement.animate([
+        { top: placeholderElement.offsetTop + 'px' },
         { top: newElement.offsetTop + 'px' }
       ], this.options).onfinish = function() {
-        moveElement.remove();
+        placeholderElement.remove();
         newElement.style.visibility = '';
       };
+
+      return placeholderElement;
     }
   });
 

@@ -756,6 +756,8 @@ function registerDefaults(fragments) {
       }
       whenDone.count = 0;
 
+      var allAdded = [];
+      var allRemoved = [];
 
       changes.forEach(function(splice) {
         var addedViews = [];
@@ -776,15 +778,19 @@ function registerDefaults(fragments) {
         var nextSibling = previousView ? previousView.lastViewNode.nextSibling : this.element.nextSibling;
         this.element.parentNode.insertBefore(fragment, nextSibling);
 
-        removedViews.forEach(function(view) {
-          whenDone.count++;
-          this.animateOut(view, whenDone);
-        }, this);
+        allAdded = allAdded.concat(addedViews);
+        allRemoved = allRemoved.concat(removedViews);
+      }, this);
 
-        addedViews.forEach(function(view) {
-          whenDone.count++;
-          this.animateIn(view, whenDone);
-        }, this);
+
+      allAdded.forEach(function(view) {
+        whenDone.count++;
+        this.animateIn(view, whenDone);
+      }, this);
+
+      allRemoved.forEach(function(view) {
+        whenDone.count++;
+        this.animateOut(view, whenDone);
       }, this);
     }
   });
