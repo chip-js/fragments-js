@@ -101,17 +101,22 @@ function registerDefaults(fragments) {
     onlyWhenBound: true,
     eventsAttrName: 'value-events',
     fieldAttrName: 'value-field',
+    defaultEvents: [ 'change' ],
 
     compiled: function() {
       var name = this.element.tagName.toLowerCase();
       var type = this.element.type;
-      this.methods = inputMethods[type] || inputMethods[name] || inputMethods.radiogroup;
+      this.methods = inputMethods[type] || inputMethods[name];
+
+      if (!this.methods) {
+        return false;
+      }
 
       if (this.element.hasAttribute(this.eventsAttrName)) {
         this.events = this.element.getAttribute(this.eventsAttrName).split(' ');
         this.element.removeAttribute(this.eventsAttrName);
       } else if (name !== 'option') {
-        this.events = ['change'];
+        this.events = this.defaultEvents;
       }
 
       if (this.element.hasAttribute(this.fieldAttrName)) {
@@ -209,18 +214,7 @@ function registerDefaults(fragments) {
 
     input: defaultInputMethod,
 
-    textarea: defaultInputMethod,
-
-    radiogroup: { // Handles a group of radio inputs, assigned to anything that isn't a a form input
-      get: function() { return this.find('input[type="radio"][checked]').value },
-      set: function(value) {
-        // in case the value isn't found in radios
-        value = (value == null) ? '' : value;
-        this.querySelector('input[type="radio"][checked]').checked = false;
-        var radio = this.querySelector('input[type="radio"][value="' + value.replace(/"/g, '\\"') + '"]');
-        if (radio) radio.checked = true;
-      }
-    }
+    textarea: defaultInputMethod
   };
 
 

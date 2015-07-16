@@ -51,6 +51,7 @@ function getBindingsForNode(fragments, node, view) {
   } else {
     // If the element is removed from the DOM, stop. Check by looking at its parentNode
     var parent = node.parentNode;
+    var DefaultBinder = fragments.getAttributeBinder('__default__');
 
     // Find any binding for the element
     Binder = fragments.findBinder('element', node.tagName.toLowerCase());
@@ -91,7 +92,9 @@ function getBindingsForNode(fragments, node, view) {
         var match = name.match(Binder.expr);
         if (match) match = match[1];
       }
-      node.removeAttributeNode(attr);
+      try {
+        node.removeAttributeNode(attr);
+      } catch(e) {}
 
       binding = new Binder({
         node: node,
@@ -104,6 +107,9 @@ function getBindingsForNode(fragments, node, view) {
 
       if (binding.compiled() !== false) {
         bindings.push(binding);
+      } else if (Binder !== DefaultBinder && fragments.isBound('attribute', value)) {
+        // Revert to default if this binding doesn't take
+        bound.push([ DefaultBinder, attr ]);
       }
 
       if (node.parentNode !== parent) {
