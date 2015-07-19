@@ -64,7 +64,7 @@ Fragments.prototype = {
       throw new Error('Cannot create a template from ' + html);
     }
     var template = extend.make(Template, fragment);
-    compile(this, template);
+    template.bindings = compile(this, template);
     return template;
   },
 
@@ -73,16 +73,9 @@ Fragments.prototype = {
    * Compiles bindings on an element.
    */
   compileElement: function(element) {
-    if (!element.compiled) {
-      compile(this, element);
-
-      element.bind = View.prototype.bind;
-      element.unbind = View.prototype.unbind;
-      element.bindings.forEach(function(binding) {
-        binding.init();
-      });
-
-      element.compiled = true;
+    if (!element.bindings) {
+      element.bindings = compile(this, element);
+      extend.make(View, element, element);
     }
 
     return element;

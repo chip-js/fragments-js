@@ -5,7 +5,7 @@ module.exports = compile;
 // Walks the template DOM replacing any bindings and caching bindings onto the template object.
 function compile(fragments, template) {
   var walker = document.createTreeWalker(template, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-  var bindings = template.bindings = [], currentNode, parentNode, previousNode;
+  var bindings = [], currentNode, parentNode, previousNode;
 
   // Reset first node to ensure it isn't a fragment
   walker.nextNode();
@@ -25,7 +25,7 @@ function compile(fragments, template) {
     }
   } while (walker.nextNode());
 
-  return template;
+  return bindings;
 }
 
 
@@ -89,9 +89,12 @@ function getBindingsForNode(fragments, node, view) {
       var name = attr.name;
       var value = attr.value;
       if (Binder.expr) {
-        var match = name.match(Binder.expr);
+        match = name.match(Binder.expr);
         if (match) match = match[1];
+      } else {
+        match = null;
       }
+
       try {
         node.removeAttributeNode(attr);
       } catch(e) {}

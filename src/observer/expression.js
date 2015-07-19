@@ -183,7 +183,7 @@ function parseFormatters(expr) {
     var match = formatter.trim().match(formatterExpr);
     if (!match) throw new Error('Formatter is invalid: ' + formatter);
     var formatterName = match[1];
-    var args = match[2].split(argSeparator);
+    var args = match[2] ? match[2].split(argSeparator) : [];
     args.unshift(value);
     if (setter) args.push(true);
     value = '_formatters_.' + formatterName + '.call(this, ' + args.join(', ') + ')';

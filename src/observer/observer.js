@@ -1,6 +1,8 @@
 module.exports = Observer;
 var expression = require('./expression');
 var diff = require('./diff');
+var requestAnimationFrame = window.requestAnimationFrame || setTimeout;
+var cancelAnimationFrame = window.cancelAnimationFrame || clearTimeout;
 
 // # Observer
 
@@ -60,7 +62,15 @@ Observer.prototype = {
       if (!this.setter) return;
     }
 
-    return this.setter.call(this.context._origContext_ || this.context, Observer.formatters, value);
+    try {
+      var result = this.setter.call(this.context._origContext_ || this.context, Observer.formatters, value);
+    } catch(e) {
+      return;
+    }
+
+    this.sync();
+    Observer.sync();
+    return result;
   },
 
 
@@ -127,12 +137,25 @@ Observer.rerun = false;
 Observer.cycles = 0;
 Observer.max = 10;
 Observer.timeout = null;
+Observer.syncPending = null;
+
+// Schedules an observer sync cycle which checks all the observers to see if they've changed.
+Observer.sync = function(callback) {
+  if (Observer.syncPending) return false;
+  Observer.syncPending = requestAnimationFrame(function() {
+    Observer.syncNow(callback);
+  });
+  return true;
+};
 
 // Runs the observer sync cycle which checks all the observers to see if they've changed.
-Observer.sync = function(callback) {
+Observer.syncNow = function(callback) {
   if (typeof callback === 'function') {
     Observer.afterSync(callback);
   }
+
+  cancelAnimationFrame(Observer.syncPending);
+  Observer.syncPending = null;
 
   if (Observer.syncing) {
     Observer.rerun = true;
@@ -170,21 +193,9 @@ Observer.sync = function(callback) {
   return true;
 };
 
-Observer.syncLater = function(callback) {
-  if (!Observer.timeout) {
-    Observer.timeout = setTimeout(function() {
-      Observer.timeout = null;
-      Observer.sync(callback);
-    });
-    return true;
-  } else {
-    return false;
-  }
-};
-
 // After the next sync (or the current if in the middle of one), run the provided callback
 Observer.afterSync = function(callback) {
-  if (typeof callback === 'function') {
+  if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function');
   }
   Observer.callbacks.push(callback);
