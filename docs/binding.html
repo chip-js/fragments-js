@@ -20,13 +20,8 @@
             <div id="jump_page">
               
                 
-                <a class="source" href="binder.html">
-                  binder.js
-                </a>
-              
-                
-                <a class="source" href="binders.html">
-                  binders.js
+                <a class="source" href="animatedBinding.html">
+                  animatedBinding.js
                 </a>
               
                 
@@ -35,18 +30,13 @@
                 </a>
               
                 
-                <a class="source" href="diff.html">
-                  diff.js
+                <a class="source" href="compile.html">
+                  compile.js
                 </a>
               
                 
-                <a class="source" href="initBinding.html">
-                  initBinding.js
-                </a>
-              
-                
-                <a class="source" href="observer.html">
-                  observer.js
+                <a class="source" href="fragments.html">
+                  fragments.js
                 </a>
               
                 
@@ -55,13 +45,8 @@
                 </a>
               
                 
-                <a class="source" href="toFragment.html">
-                  toFragment.js
-                </a>
-              
-                
-                <a class="source" href="transition.html">
-                  transition.js
+                <a class="source" href="view.html">
+                  view.js
                 </a>
               
             </div>
@@ -89,12 +74,26 @@
             </div>
             
             <div class="content"><div class='highlight'><pre><span class="hljs-built_in">module</span>.exports = Binding;
-<span class="hljs-keyword">var</span> Observer = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./observer'</span>);
+<span class="hljs-keyword">var</span> extend = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./util/extend'</span>);
 
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">Binding</span>(<span class="hljs-params">options, isTemplate</span>) </span>{
-  <span class="hljs-keyword">if</span> (!options.element || !options.view) {
-    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'A binding must receive an element and a view'</span>);
+<span class="hljs-comment">/**
+ * A binding is a link between an element and some data. Subclasses of Binding called binders define what a binding does
+ * with that link. Instances of these binders are created as bindings on templates. When a view is stamped out from the
+ * template the binding is "cloned" (it is actually extended for performance) and the `element`/`node` property is
+ * updated to the matching element in the view.
+ *
+ * ### Properties
+ *  * element: The element (or text node) this binding is bound to
+ *  * node: Alias of element, since bindings may apply to text nodes this is more accurate
+ *  * name: The attribute or element name (does not apply to matched text nodes)
+ *  * match: The matched part of the name for wildcard attributes (e.g. `on-*` matching against `on-click` would have a
+ *    match property equalling `click`). Use `this.camelCase` to get the match proerty camelCased.
+ *  * expression: The expression this binding will use for its updates (does not apply to matched elements)
+ *  * context: The context the exression operates within when bound
+ */</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">Binding</span>(<span class="hljs-params">properties</span>) </span>{
+  <span class="hljs-keyword">if</span> (!properties.node || !properties.view) {
+    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'A binding must receive a node and a view'</span>);
   }</pre></div></div>
             
         </li>
@@ -106,11 +105,32 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
-              <p>The element (or text node) this binding is bound to</p>
+              <p>element and node are aliases</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.element = options.element;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>._elementPath = initNodePath(properties.node, properties.view);
+  <span class="hljs-keyword">this</span>.node = properties.node;
+  <span class="hljs-keyword">this</span>.element = properties.node;
+  <span class="hljs-keyword">this</span>.name = properties.name;
+  <span class="hljs-keyword">this</span>.match = properties.match;
+  <span class="hljs-keyword">this</span>.expression = properties.expression;
+  <span class="hljs-keyword">this</span>.fragments = properties.fragments;
+  <span class="hljs-keyword">this</span>.context = <span class="hljs-literal">null</span>;
+}
+
+extend(Binding, {
+  <span class="hljs-comment">/**
+   * Default priority binders may override.
+   */</span>
+  priority: <span class="hljs-number">0</span>,
+
+
+  <span class="hljs-comment">/**
+   * Initialize a cloned binding. This happens after a compiled binding on a template is cloned for a view.
+   */</span>
+  init: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.expression) {</pre></div></div>
             
         </li>
         
@@ -121,11 +141,35 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-3">&#182;</a>
               </div>
-              <p>The view this binding belongs to</p>
+              <p>An observer to observe value changes to the expression within a context</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.view = options.view;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">this</span>.observer = <span class="hljs-keyword">new</span> <span class="hljs-keyword">this</span>.Observer(<span class="hljs-keyword">this</span>.expression, <span class="hljs-keyword">this</span>.updated, <span class="hljs-keyword">this</span>);
+    }
+    <span class="hljs-keyword">this</span>.created();
+  },
+
+  <span class="hljs-comment">/**
+   * Clone this binding for a view. The element/node will be updated and the binding will be inited.
+   */</span>
+  cloneForView: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">view</span>) </span>{
+    <span class="hljs-keyword">if</span> (!view) {
+      <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'A binding must clone against a view'</span>);
+    }
+
+    <span class="hljs-keyword">var</span> node = view;
+    <span class="hljs-keyword">this</span>._elementPath.forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">index</span>) </span>{
+      node = node.childNodes[index];
+    });
+
+    <span class="hljs-keyword">var</span> binding = <span class="hljs-built_in">Object</span>.create(<span class="hljs-keyword">this</span>);
+    binding.clonedFrom = <span class="hljs-keyword">this</span>;
+    binding.element = node;
+    binding.node = node;
+    binding.init();
+    <span class="hljs-keyword">return</span> binding;
+  },</pre></div></div>
             
         </li>
         
@@ -136,11 +180,20 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-4">&#182;</a>
               </div>
-              <p>The path from the view to the element, used on cloning (it is an array of node indexes)</p>
+              <p>Bind this to the given context object</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.elementPath = options.elementPath || initNodePath(<span class="hljs-keyword">this</span>.element, <span class="hljs-keyword">this</span>.view);</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  bind: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">context</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.context == context) {
+      <span class="hljs-keyword">return</span>;
+    }
+
+    <span class="hljs-keyword">this</span>.context = context;
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.observer) {
+      <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.updated !== Binding.prototype.updated) {
+        <span class="hljs-keyword">this</span>.observer.bind(context);
+      } <span class="hljs-keyword">else</span> {</pre></div></div>
             
         </li>
         
@@ -151,11 +204,15 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-5">&#182;</a>
               </div>
-              <p>The attribute or element name</p>
+              <p>set the context but don’t actually bind it since <code>updated</code> is a no-op</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.name = options.name;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">this</span>.observer.context = context;
+      }
+    }
+    <span class="hljs-keyword">this</span>.bound();
+  },</pre></div></div>
             
         </li>
         
@@ -166,12 +223,19 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-6">&#182;</a>
               </div>
-              <p>The matched part of the name for wildcard attributes (e.g. <code>on-*</code> matching against <code>on-click</code> would have a match of
-<code>click</code>). Use <code>this.camelCase</code> to get the match camelCased.</p>
+              <p>Unbind this from its context</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.match = options.match;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  unbind: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.context === <span class="hljs-literal">null</span>) {
+      <span class="hljs-keyword">return</span>;
+    }
+
+    <span class="hljs-keyword">this</span>.context = <span class="hljs-literal">null</span>;
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.observer) <span class="hljs-keyword">this</span>.observer.unbind();
+    <span class="hljs-keyword">this</span>.unbound();
+  },</pre></div></div>
             
         </li>
         
@@ -182,11 +246,11 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-7">&#182;</a>
               </div>
-              <p>The expression this binding will use for its updates</p>
+              <p>The function to run when the binding’s element is compiled within a template</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.expression = options.expression;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  compiled: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{},</pre></div></div>
             
         </li>
         
@@ -197,11 +261,11 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-8">&#182;</a>
               </div>
-              <p>The function to run when the element is created</p>
+              <p>The function to run when the binding’s element is created</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.created = options.created;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  created: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{},</pre></div></div>
             
         </li>
         
@@ -216,7 +280,7 @@
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.updated = options.updated;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  updated: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{},</pre></div></div>
             
         </li>
         
@@ -227,11 +291,11 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-10">&#182;</a>
               </div>
-              <p>The function to run when the element is inserted into the DOM</p>
+              <p>The function to run when the binding is bound</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.attached = options.attached;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  bound: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{},</pre></div></div>
             
         </li>
         
@@ -242,11 +306,11 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-11">&#182;</a>
               </div>
-              <p>The function to run when the element is removed from the DOM</p>
+              <p>The function to run when the binding is unbound</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.detached = options.detached;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>  unbound: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{},</pre></div></div>
             
         </li>
         
@@ -257,11 +321,26 @@
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
-              <p>The context the exression operates within</p>
+              <p>Helper methods</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.context = <span class="hljs-literal">null</span>;</pre></div></div>
+            <div class="content"><div class='highlight'><pre>
+  get camelCase() {
+    <span class="hljs-keyword">return</span> (<span class="hljs-keyword">this</span>.match || <span class="hljs-keyword">this</span>.name || <span class="hljs-string">''</span>).replace(<span class="hljs-regexp">/-+(\w)/g</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">_, char</span>) </span>{
+      <span class="hljs-keyword">return</span> char.toUpperCase();
+    });
+  },
+
+  observe: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">expression, callback, callbackContext</span>) </span>{
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-keyword">this</span>.Observer(expression, callback, callbackContext || <span class="hljs-keyword">this</span>);
+  }
+});
+
+
+
+
+<span class="hljs-keyword">var</span> indexOf = <span class="hljs-built_in">Array</span>.prototype.indexOf;</pre></div></div>
             
         </li>
         
@@ -271,64 +350,6 @@
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
-              </div>
-              <p>A template which this binding may use to stamp out views</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.template = options.template;
-
-  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.expression) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-14">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-14">&#182;</a>
-              </div>
-              <p>An observer to observe value changes to the expression within a context</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>.observer = <span class="hljs-keyword">new</span> Observer(<span class="hljs-keyword">this</span>.expression, <span class="hljs-keyword">this</span>.updated ? <span class="hljs-keyword">this</span>.updated.bind(<span class="hljs-keyword">this</span>) : <span class="hljs-literal">null</span>);
-  }
-
-  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.created &amp;&amp; !isTemplate) <span class="hljs-keyword">this</span>.created();
-}
-
-Binding.prototype = {
-  get camelCase() {
-    <span class="hljs-keyword">return</span> (<span class="hljs-keyword">this</span>.match || <span class="hljs-keyword">this</span>.name || <span class="hljs-string">''</span>).replace(<span class="hljs-regexp">/-+(\w)/g</span>, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">_, char</span>) </span>{
-      <span class="hljs-keyword">return</span> char.toUpperCase();
-    });
-  },
-
-  bind: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">context</span>) </span>{
-    <span class="hljs-keyword">this</span>.context = context;
-    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.observer) <span class="hljs-keyword">this</span>.observer.bind(context);
-    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.attached) <span class="hljs-keyword">this</span>.attached();
-  },
-
-  unbind: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
-    <span class="hljs-keyword">this</span>.context = <span class="hljs-literal">null</span>;
-    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.observer) <span class="hljs-keyword">this</span>.observer.ubind();
-    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.detached) <span class="hljs-keyword">this</span>.detached();
-  }
-};
-
-<span class="hljs-keyword">var</span> indexOf = <span class="hljs-built_in">Array</span>.prototype.indexOf;</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-15">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
               <p>Creates an array of indexes to help find the same element within a cloned view</p>
 

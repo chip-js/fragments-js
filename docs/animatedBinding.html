@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>animatedBinding.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              
+                
+                <a class="source" href="animatedBinding.html">
+                  animatedBinding.js
+                </a>
+              
+                
+                <a class="source" href="binding.html">
+                  binding.js
+                </a>
+              
+                
+                <a class="source" href="compile.html">
+                  compile.js
+                </a>
+              
+                
+                <a class="source" href="fragments.html">
+                  fragments.js
+                </a>
+              
+                
+                <a class="source" href="template.html">
+                  template.js
+                </a>
+              
+                
+                <a class="source" href="view.html">
+                  view.js
+                </a>
+              
+            </div>
+          </div>
+        </li>
+      </ul>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>animatedBinding.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-built_in">module</span>.exports = AnimatedBinding;
+<span class="hljs-keyword">var</span> animation = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./util/animation'</span>);
+<span class="hljs-keyword">var</span> Binding = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./binding'</span>);
+<span class="hljs-keyword">var</span> _super = Binding.prototype;
+
+<span class="hljs-comment">/**
+ * Bindings which extend AnimatedBinding have the ability to animate elements that are added to the DOM and removed from
+ * the DOM. This allows menus to slide open and closed, elements to fade in or drop down, and repeated items to appear
+ * to move (if you get creative enough).
+ *
+ * The following 5 methods are helper DOM methods that allow registered bindings to work with CSS transitions for
+ * animating elements. If an element has the `animate` attribute or a matching JavaScript method, these helper methods
+ * will set a class on the node to trigger the animation and/or call the JavaScript methods to handle it.
+ *
+ * An animation may be either a CSS transition, a CSS animation, or a set of JavaScript methods that will be called.
+ *
+ * If using CSS, classes are added and removed from the element. When an element is inserted it will receive the `will-
+ * animate-in` class before being added to the DOM, then it will receive the `animate-in` class immediately after being
+ * added to the DOM, then both clases will be removed after the animation is complete. When an element is being removed
+ * from the DOM it will receive the `will-animate-out` and `animate-out` classes, then the classes will be removed once
+ * the animation is complete.
+ *
+ * If using JavaScript, methods must be defined  to animate the element there are 3 supported methods which can b
+ *
+ * <span class="hljs-doctag"><span class="hljs-keyword">TODO</span></span> cache by class-name (Angular)? Only support javascript-style (Ember)? Add a `will-animate-in` and
+ * `did-animate-in` etc.?
+ * IF has any classes, add the `will-animate-in|out` and get computed duration. If none, return. Cache.
+ * RULE is use unique class to define an animation. Or attribute `animate="fade"` will add the class?
+ * `.fade.will-animate-in`, `.fade.animate-in`, `.fade.will-animate-out`, `.fade.animate-out`
+ *
+ * Events will be triggered on the elements named the same as the class names (e.g. `animate-in`) which may be listened
+ * to in order to cancel an animation or respond to it.
+ *
+ * If the node has methods `animateIn(done)`, `animateOut(done)`, `animateMoveIn(done)`, or `animateMoveOut(done)`
+ * defined on them then the helpers will allow an animation in JavaScript to be run and wait for the `done` function to
+ * be called to know when the animation is complete.
+ *
+ * Be sure to actually have an animation defined for elements with the `animate` class/attribute because the helpers use
+ * the `transitionend` and `animationend` events to know when the animation is finished, and if there is no animation
+ * these events will never be triggered and the operation will never complete.
+ */</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">AnimatedBinding</span>(<span class="hljs-params">properties</span>) </span>{
+  <span class="hljs-keyword">var</span> element = properties.node;
+  <span class="hljs-keyword">var</span> animate = element.getAttribute(<span class="hljs-string">'animate'</span>);
+  <span class="hljs-keyword">var</span> fragments = properties.fragments;
+
+  <span class="hljs-keyword">if</span> (animate !== <span class="hljs-literal">null</span>) {
+    <span class="hljs-keyword">if</span> (element.nodeName === <span class="hljs-string">'TEMPLATE'</span> || element.nodeName === <span class="hljs-string">'SCRIPT'</span>) {
+      <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Cannot animate multiple nodes in a template or script. Remove the [animate] attribute.'</span>);
+    }
+
+    setTimeout(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>Allow multiple bindings to animate by not removing until they have all been created</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      element.removeAttribute(<span class="hljs-string">'animate'</span>);
+    });
+
+    <span class="hljs-keyword">this</span>.animate = <span class="hljs-literal">true</span>;
+
+    <span class="hljs-keyword">if</span> (fragments.isBound(<span class="hljs-string">'attribute'</span>, animate)) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>javascript animation</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">this</span>.animateExpression = fragments.codifyExpression(<span class="hljs-string">'attribute'</span>, animate);
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-keyword">if</span> (animate[<span class="hljs-number">0</span>] === <span class="hljs-string">'.'</span>) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>class animation</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">this</span>.animateClassName = animate.slice(<span class="hljs-number">1</span>);
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (animate) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>registered animation</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">var</span> animateObject = fragments.getAnimation(animate);
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> animateObject === <span class="hljs-string">'function'</span>) animateObject = <span class="hljs-keyword">new</span> animateObject(<span class="hljs-keyword">this</span>);
+        <span class="hljs-keyword">this</span>.animateObject = animateObject;
+      }
+    }
+  }
+
+  Binding.call(<span class="hljs-keyword">this</span>, properties);
+}
+
+
+Binding.extend(AnimatedBinding, {
+  init: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    _super.init.call(<span class="hljs-keyword">this</span>);
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.animateExpression) {
+      <span class="hljs-keyword">this</span>.animateObserver = <span class="hljs-keyword">new</span> <span class="hljs-keyword">this</span>.Observer(<span class="hljs-keyword">this</span>.animateExpression, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">value</span>) </span>{
+        <span class="hljs-keyword">this</span>.animateObject = value;
+      }, <span class="hljs-keyword">this</span>);
+    }
+  },
+
+  bind: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">context</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.context == context) {
+      <span class="hljs-keyword">return</span>;
+    }
+    _super.bind.call(<span class="hljs-keyword">this</span>, context);
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.animateObserver) {
+      <span class="hljs-keyword">this</span>.animateObserver.bind(context);
+    }
+  },
+
+  unbind: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.context === <span class="hljs-literal">null</span>) {
+      <span class="hljs-keyword">return</span>;
+    }
+    _super.unbind.call(<span class="hljs-keyword">this</span>);
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.animateObserver) {
+      <span class="hljs-keyword">this</span>.animateObserver.unbind();
+    }
+  },
+
+  <span class="hljs-comment">/**
+   * Helper method to remove a node from the DOM, allowing for animations to occur. `callback` will be called when
+   * finished.
+   */</span>
+  animateOut: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">node, dontDispose, callback</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> dontDispose === <span class="hljs-string">'function'</span>) {
+      callback = dontDispose;
+      dontDispose = <span class="hljs-literal">false</span>;
+    }
+    <span class="hljs-keyword">if</span> (node.firstViewNode) node = node.firstViewNode;
+
+    <span class="hljs-keyword">this</span>.animateNode(<span class="hljs-string">'out'</span>, node, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+      <span class="hljs-keyword">if</span> (!dontDispose) {
+        node.view.dispose();
+      }
+      <span class="hljs-keyword">if</span> (callback) callback.call(<span class="hljs-keyword">this</span>);
+    });
+  },
+
+  <span class="hljs-comment">/**
+   * Helper method to insert a node in the DOM before another node, allowing for animations to occur. `callback` will
+   * be called when finished. If `before` is not provided then the animation will be run without inserting the node.
+   */</span>
+  animateIn: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">node, before, callback</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> before === <span class="hljs-string">'function'</span>) {
+      callback = before;
+      before = <span class="hljs-literal">null</span>;
+    }
+    <span class="hljs-keyword">if</span> (node.firstViewNode) node = node.firstViewNode;
+    <span class="hljs-keyword">if</span> (before &amp;&amp; before.firstViewNode) before = before.firstViewNode;
+
+    <span class="hljs-keyword">if</span> (before) {
+      before.parentNode.insertBefore(node, before);
+    }
+    <span class="hljs-keyword">this</span>.animateNode(<span class="hljs-string">'in'</span>, node, callback, <span class="hljs-keyword">this</span>);
+  },
+
+  <span class="hljs-comment">/**
+   * Allow an element to use CSS3 transitions or animations to animate in or out of the page.
+   */</span>
+  animateNode: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">direction, node, callback</span>) </span>{
+    <span class="hljs-keyword">var</span> animateObject, className, name, willName, didName, _this = <span class="hljs-keyword">this</span>;
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.animateObject &amp;&amp; <span class="hljs-keyword">typeof</span> <span class="hljs-keyword">this</span>.animateObject === <span class="hljs-string">'object'</span>) {
+      animateObject = <span class="hljs-keyword">this</span>.animateObject;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.animateClassName) {
+      className = <span class="hljs-keyword">this</span>.animateClassName;
+    } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> <span class="hljs-keyword">this</span>.animateObject === <span class="hljs-string">'string'</span>) {
+      className = <span class="hljs-keyword">this</span>.animateObject;
+    }
+
+    <span class="hljs-keyword">if</span> (animateObject) {
+      <span class="hljs-keyword">var</span> dir = direction === <span class="hljs-string">'in'</span> ? <span class="hljs-string">'In'</span> : <span class="hljs-string">'Out'</span>;
+      name = <span class="hljs-string">'animate'</span> + dir;
+      willName = <span class="hljs-string">'willAnimate'</span> + dir;
+      didName = <span class="hljs-string">'didAnimate'</span> + dir;
+
+      animation.makeElementAnimatable(node);
+
+      <span class="hljs-keyword">if</span> (animateObject[willName]) {
+        animateObject[willName](node);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>trigger reflow</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        node.offsetWidth = node.offsetWidth;
+      }
+
+      <span class="hljs-keyword">if</span> (animateObject[name]) {
+        animateObject[name](node, <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+          <span class="hljs-keyword">if</span> (animateObject[didName]) animateObject[didName](node);
+          <span class="hljs-keyword">if</span> (callback) callback.call(_this);
+        });
+      }
+    } <span class="hljs-keyword">else</span> {
+      name = <span class="hljs-string">'animate-'</span> + direction;
+      willName = <span class="hljs-string">'will-animate-'</span> + direction;
+      <span class="hljs-keyword">if</span> (className) node.classList.add(className);
+
+      node.classList.add(willName);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>trigger reflow</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      node.offsetWidth = node.offsetWidth;
+      node.classList.remove(willName);
+      node.classList.add(name);
+
+      <span class="hljs-keyword">var</span> duration = getDuration.call(<span class="hljs-keyword">this</span>, node, direction);
+      <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">whenDone</span>(<span class="hljs-params"></span>) </span>{
+        node.classList.remove(name);
+        <span class="hljs-keyword">if</span> (className) node.classList.remove(className);
+        <span class="hljs-keyword">if</span> (callback) callback.call(_this);
+      }
+
+      <span class="hljs-keyword">if</span> (duration) {
+        setTimeout(whenDone, duration);
+      } <span class="hljs-keyword">else</span> {
+        whenDone();
+      }
+    }
+  }
+});
+
+
+<span class="hljs-keyword">var</span> transitionDurationName = <span class="hljs-string">'transitionDuration'</span>;
+<span class="hljs-keyword">var</span> transitionDelayName = <span class="hljs-string">'transitionDelay'</span>;
+<span class="hljs-keyword">var</span> animationDurationName = <span class="hljs-string">'animationDuration'</span>;
+<span class="hljs-keyword">var</span> animationDelayName = <span class="hljs-string">'animationDelay'</span>;
+<span class="hljs-keyword">var</span> style = <span class="hljs-built_in">document</span>.documentElement.style;
+<span class="hljs-keyword">if</span> (style.transitionDuration === <span class="hljs-literal">undefined</span> &amp;&amp; style.webkitTransitionDuration !== <span class="hljs-literal">undefined</span>) {
+  transitionDurationName = <span class="hljs-string">'webkitTransitionDuration'</span>;
+  transitionDelayName = <span class="hljs-string">'webkitTransitionDelay'</span>;
+}
+<span class="hljs-keyword">if</span> (style.animationDuration === <span class="hljs-literal">undefined</span> &amp;&amp; style.webkitAnimationDuration !== <span class="hljs-literal">undefined</span>) {
+  animationDurationName = <span class="hljs-string">'webkitAnimationDuration'</span>;
+  animationDelayName = <span class="hljs-string">'webkitAnimationDelay'</span>;
+}
+
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">getDuration</span>(<span class="hljs-params">node, direction</span>) </span>{
+  <span class="hljs-keyword">var</span> milliseconds = <span class="hljs-keyword">this</span>.clonedFrom[<span class="hljs-string">'__animationDuration'</span> + direction];
+  <span class="hljs-keyword">if</span> (!milliseconds) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Recalc if node was out of DOM before and had 0 duration, assume there is always SOME duration.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> styles = <span class="hljs-built_in">window</span>.getComputedStyle(node);
+    <span class="hljs-keyword">var</span> seconds = <span class="hljs-built_in">Math</span>.max(<span class="hljs-built_in">parseFloat</span>(styles[transitionDurationName] || <span class="hljs-number">0</span>) +
+                           <span class="hljs-built_in">parseFloat</span>(styles[transitionDelayName] || <span class="hljs-number">0</span>),
+                           <span class="hljs-built_in">parseFloat</span>(styles[animationDurationName] || <span class="hljs-number">0</span>) +
+                           <span class="hljs-built_in">parseFloat</span>(styles[animationDelayName] || <span class="hljs-number">0</span>));
+    milliseconds = seconds * <span class="hljs-number">1000</span> || <span class="hljs-number">0</span>;
+    <span class="hljs-keyword">this</span>.clonedFrom.__animationDuration__ = milliseconds;
+  }
+  <span class="hljs-keyword">return</span> milliseconds;
+}</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

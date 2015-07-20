@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>compile.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              
+                
+                <a class="source" href="animatedBinding.html">
+                  animatedBinding.js
+                </a>
+              
+                
+                <a class="source" href="binding.html">
+                  binding.js
+                </a>
+              
+                
+                <a class="source" href="compile.html">
+                  compile.js
+                </a>
+              
+                
+                <a class="source" href="fragments.html">
+                  fragments.js
+                </a>
+              
+                
+                <a class="source" href="template.html">
+                  template.js
+                </a>
+              
+                
+                <a class="source" href="view.html">
+                  view.js
+                </a>
+              
+            </div>
+          </div>
+        </li>
+      </ul>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>compile.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> slice = <span class="hljs-built_in">Array</span>.prototype.slice;
+<span class="hljs-built_in">module</span>.exports = compile;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>Walks the template DOM replacing any bindings and caching bindings onto the template object.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">compile</span>(<span class="hljs-params">fragments, template</span>) </span>{
+  <span class="hljs-keyword">var</span> walker = <span class="hljs-built_in">document</span>.createTreeWalker(template, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  <span class="hljs-keyword">var</span> bindings = [], currentNode, parentNode, previousNode;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Reset first node to ensure it isn’t a fragment</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  walker.nextNode();
+  walker.previousNode();</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>find bindings for each node</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">do</span> {
+    currentNode = walker.currentNode;
+    parentNode = currentNode.parentNode;
+    bindings.push.apply(bindings, getBindingsForNode(fragments, currentNode, template));
+
+    <span class="hljs-keyword">if</span> (currentNode.parentNode !== parentNode) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>currentNode was removed and made a template</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      walker.currentNode = previousNode || walker.root;
+    } <span class="hljs-keyword">else</span> {
+      previousNode = currentNode;
+    }
+  } <span class="hljs-keyword">while</span> (walker.nextNode());
+
+  <span class="hljs-keyword">return</span> bindings;
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>Find all the bindings on a given node (text nodes will only ever have one binding).</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">getBindingsForNode</span>(<span class="hljs-params">fragments, node, view</span>) </span>{
+  <span class="hljs-keyword">var</span> bindings = [];
+  <span class="hljs-keyword">var</span> Binder, binding, expr, bound, match, attr, i;
+
+  <span class="hljs-keyword">if</span> (node.nodeType === Node.TEXT_NODE) {
+    splitTextNode(fragments, node);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Find any binding for the text node</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (fragments.isBound(<span class="hljs-string">'text'</span>, node.nodeValue)) {
+      expr = fragments.codifyExpression(<span class="hljs-string">'text'</span>, node.nodeValue);
+      node.nodeValue = <span class="hljs-string">''</span>;
+      Binder = fragments.findBinder(<span class="hljs-string">'text'</span>, expr);
+      binding = <span class="hljs-keyword">new</span> Binder({ node: node, view: view, expression: expr, fragments: fragments });
+      <span class="hljs-keyword">if</span> (binding.compiled() !== <span class="hljs-literal">false</span>) {
+        bindings.push(binding);
+      }
+    }
+  } <span class="hljs-keyword">else</span> {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>If the element is removed from the DOM, stop. Check by looking at its parentNode</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> parent = node.parentNode;
+    <span class="hljs-keyword">var</span> DefaultBinder = fragments.getAttributeBinder(<span class="hljs-string">'__default__'</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>Find any binding for the element</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    Binder = fragments.findBinder(<span class="hljs-string">'element'</span>, node.tagName.toLowerCase());
+    <span class="hljs-keyword">if</span> (Binder) {
+      binding = <span class="hljs-keyword">new</span> Binder({ node: node, view: view, fragments: fragments });
+      <span class="hljs-keyword">if</span> (binding.compiled() !== <span class="hljs-literal">false</span>) {
+        bindings.push(binding);
+      }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>If removed, made a template, don’t continue processing</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (node.parentNode !== parent) {
+      <span class="hljs-keyword">return</span>;
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>Find and add any attribute bindings on an element. These can be attributes whose name matches a binding, or
+they can be attributes which have a binding in the value such as <code>href=&quot;/post/{{ post.id }}&quot;</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">var</span> bound = [];
+    <span class="hljs-keyword">var</span> attributes = slice.call(node.attributes);
+    <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>, l = attributes.length; i &lt; l; i++) {
+      <span class="hljs-keyword">var</span> attr = attributes[i];
+      <span class="hljs-keyword">var</span> Binder = fragments.findBinder(<span class="hljs-string">'attribute'</span>, attr.name, attr.value);
+      <span class="hljs-keyword">if</span> (Binder) {
+        bound.push([ Binder, attr ]);
+      }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>Make sure to create and process them in the correct priority order so if a binding create a template from the
+node it doesn’t process the others.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    bound.sort(sortAttributes);
+
+    <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; bound.length; i++) {
+      <span class="hljs-keyword">var</span> Binder = bound[i][<span class="hljs-number">0</span>];
+      <span class="hljs-keyword">var</span> attr = bound[i][<span class="hljs-number">1</span>];
+      <span class="hljs-keyword">var</span> name = attr.name;
+      <span class="hljs-keyword">var</span> value = attr.value;
+      <span class="hljs-keyword">if</span> (Binder.expr) {
+        match = name.match(Binder.expr);
+        <span class="hljs-keyword">if</span> (match) match = match[<span class="hljs-number">1</span>];
+      } <span class="hljs-keyword">else</span> {
+        match = <span class="hljs-literal">null</span>;
+      }
+
+      <span class="hljs-keyword">try</span> {
+        node.removeAttributeNode(attr);
+      } <span class="hljs-keyword">catch</span>(e) {}
+
+      binding = <span class="hljs-keyword">new</span> Binder({
+        node: node,
+        view: view,
+        name: name,
+        match: match,
+        expression: value ? fragments.codifyExpression(<span class="hljs-string">'attribute'</span>, value) : <span class="hljs-literal">null</span>,
+        fragments: fragments
+      });
+
+      <span class="hljs-keyword">if</span> (binding.compiled() !== <span class="hljs-literal">false</span>) {
+        bindings.push(binding);
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (Binder !== DefaultBinder &amp;&amp; fragments.isBound(<span class="hljs-string">'attribute'</span>, value)) {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Revert to default if this binding doesn’t take</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        bound.push([ DefaultBinder, attr ]);
+      }
+
+      <span class="hljs-keyword">if</span> (node.parentNode !== parent) {
+        <span class="hljs-keyword">break</span>;
+      }
+    }
+  }
+
+  <span class="hljs-keyword">return</span> bindings;
+}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>Splits text nodes with expressions in them so they can be bound individually, has parentNode passed in since it may
+be a document fragment which appears as null on node.parentNode.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">splitTextNode</span>(<span class="hljs-params">fragments, node</span>) </span>{
+  <span class="hljs-keyword">if</span> (!node.processed) {
+    node.processed = <span class="hljs-literal">true</span>;
+    <span class="hljs-keyword">var</span> regex = fragments.binders.text._expr;
+    <span class="hljs-keyword">var</span> content = node.nodeValue;
+    <span class="hljs-keyword">if</span> (content.match(regex)) {
+      <span class="hljs-keyword">var</span> match, lastIndex = <span class="hljs-number">0</span>, parts = [], fragment = <span class="hljs-built_in">document</span>.createDocumentFragment();
+      <span class="hljs-keyword">while</span> (match = regex.exec(content)) {
+        parts.push(content.slice(lastIndex, regex.lastIndex - match[<span class="hljs-number">0</span>].length));
+        parts.push(match[<span class="hljs-number">0</span>]);
+        lastIndex = regex.lastIndex;
+      }
+      parts.push(content.slice(lastIndex));
+      parts = parts.filter(notEmpty);
+
+      node.nodeValue = parts[<span class="hljs-number">0</span>];
+      <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">1</span>; i &lt; parts.length; i++) {
+        <span class="hljs-keyword">var</span> newTextNode = <span class="hljs-built_in">document</span>.createTextNode(parts[i]);
+        newTextNode.processed = <span class="hljs-literal">true</span>;
+        fragment.appendChild(newTextNode);
+      }
+      node.parentNode.insertBefore(fragment, node.nextSibling);
+    }
+  }
+}
+
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sortAttributes</span>(<span class="hljs-params">a, b</span>) </span>{
+  <span class="hljs-keyword">return</span> b[<span class="hljs-number">0</span>].prototype.priority - a[<span class="hljs-number">0</span>].prototype.priority;
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">notEmpty</span>(<span class="hljs-params">value</span>) </span>{
+  <span class="hljs-keyword">return</span> <span class="hljs-built_in">Boolean</span>(value);
+}</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

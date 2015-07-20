@@ -20,13 +20,8 @@
             <div id="jump_page">
               
                 
-                <a class="source" href="binder.html">
-                  binder.js
-                </a>
-              
-                
-                <a class="source" href="binders.html">
-                  binders.js
+                <a class="source" href="animatedBinding.html">
+                  animatedBinding.js
                 </a>
               
                 
@@ -35,18 +30,13 @@
                 </a>
               
                 
-                <a class="source" href="diff.html">
-                  diff.js
+                <a class="source" href="compile.html">
+                  compile.js
                 </a>
               
                 
-                <a class="source" href="initBinding.html">
-                  initBinding.js
-                </a>
-              
-                
-                <a class="source" href="observer.html">
-                  observer.js
+                <a class="source" href="fragments.html">
+                  fragments.js
                 </a>
               
                 
@@ -55,13 +45,8 @@
                 </a>
               
                 
-                <a class="source" href="toFragment.html">
-                  toFragment.js
-                </a>
-              
-                
-                <a class="source" href="transition.html">
-                  transition.js
+                <a class="source" href="view.html">
+                  view.js
                 </a>
               
             </div>
@@ -88,364 +73,43 @@
               
             </div>
             
-            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> toFragment = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./toFragment'</span>);</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-2">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-2">&#182;</a>
-              </div>
-              <h2 id="template">Template</h2>
-<p>Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
-Instances may then be created and bound to a given context.
-@param {String|NodeList|HTMLCollection|HTMLTemplateElement|HTMLScriptElement|Node} html A Template can be created
-from many different types of objects. Any of these will be converted into a document fragment for the template to
-clone. Nodes and elements passed in will be removed from the DOM.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>exports.createTemplate = createTemplate;</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-3">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-3">&#182;</a>
-              </div>
-              <h2 id="view">View</h2>
-<p>Takes an HTML Element or DocumentFragment</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>exports.createView = createView;</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-4">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-4">&#182;</a>
-              </div>
-              <p>Registers a hook to be run when a template is compiled or a view is created. <code>type</code> can be <code>&#39;compile&#39;</code> or <code>&#39;view&#39;</code>.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>exports.addHook = addHook;</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-5">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-5">&#182;</a>
-              </div>
-              <p>Removes a hook previously registered. Returns true if the hook was removed, false if it was not registered.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>exports.removeHook = removeHook;</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-6">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-6">&#182;</a>
-              </div>
-              <p>Hooks allow other code to alter and work with templates and views when they are created and managed.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> hooks = {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-7">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-7">&#182;</a>
-              </div>
-              <p>A hook for compiling templates after they are first created. The hook receives a template object which is an HTML
-Element or a DocumentFragment with additional methods for templating.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  compile: [],</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-8">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-8">&#182;</a>
-              </div>
-              <p>A hook for when a view is created after it is first created. The hook receives a view object which is an HTML
-Element or a DocumentFragment clone of the template with additinoal methods for the handling the view instance.
-Views can be pooled by the template by calling <code>dispose()</code> on the view. This hook only gets called once for a view
-when it is created and not every time it is returned from the template pool. Views can also be created without a
-template.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  view: [],</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-9">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-9">&#182;</a>
-              </div>
-              <p>A hook for when a view is returned to the template’s view pool. The hook receives the view object.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  dispose: []
-};</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-10">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-10">&#182;</a>
-              </div>
-              <p>Methods which get added to each template created. This is exposed for extension.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>exports.templateMethods = {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-11">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-11">&#182;</a>
-              </div>
-              <p>Creates a new view (instance of the template) from this template.
-A view is an HTMLElement (or DocumentFragment) with additional methods. Because we can’t extend Node we copy the
-methods onto them and return them. Views should be removed from the DOM using <code>view.remove()</code>.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  createView: templateCreateView
-};</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-12">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-12">&#182;</a>
-              </div>
-              <p>Methods which get added to each view created. This is exposed for extension.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>exports.viewMethods = {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-13">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-13">&#182;</a>
-              </div>
-              <p>Removes a view from the DOM. The view may be a DocumentFragment, so <code>remove()</code> returns all its nodes to itself. If
-it isn’t then <code>remove()</code> is a nice shortcut and provides a consistent interface to the view.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  remove: removeView,</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-14">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-14">&#182;</a>
-              </div>
-              <p>Removes a view (if not already removed) and adds the view to its template’s pool.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  dispose: disposeView
-};
+            <div class="content"><div class='highlight'><pre><span class="hljs-built_in">module</span>.exports = Template;
+<span class="hljs-keyword">var</span> View = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./view'</span>);
+<span class="hljs-keyword">var</span> extend = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./util/extend'</span>);
 
 
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">addHook</span>(<span class="hljs-params">type, hook</span>) </span>{
-  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> hook !== <span class="hljs-string">'function'</span>) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'A hook must be a function'</span>);
-  <span class="hljs-keyword">if</span> (!hooks[type]) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'Invalid type for hook'</span>);
-  hooks[type].push(hook);
+<span class="hljs-comment">/**
+ * ## Template
+ * Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
+ * Instances may then be created and bound to a given context.
+ * @param {String|NodeList|HTMLCollection|HTMLTemplateElement|HTMLScriptElement|Node} html A Template can be created
+ * from many different types of objects. Any of these will be converted into a document fragment for the template to
+ * clone. Nodes and elements passed in will be removed from the DOM.
+ */</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">Template</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">this</span>.pool = [];
 }
 
 
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">removeHook</span>(<span class="hljs-params">type, hook</span>) </span>{
-  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">typeof</span> hook !== <span class="hljs-string">'function'</span>) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'A hook must be a function'</span>);
-  <span class="hljs-keyword">if</span> (!hooks[type]) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'Invalid type for hook'</span>);
-  <span class="hljs-keyword">var</span> index = hooks[type].indexOf(item);
-  <span class="hljs-keyword">if</span> (index &gt;= <span class="hljs-number">0</span>) hooks[type].splice(index, <span class="hljs-number">1</span>);
-  <span class="hljs-keyword">return</span> index &gt;= <span class="hljs-number">0</span>;
-}
+Template.prototype = {
 
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createTemplate</span>(<span class="hljs-params">html</span>) </span>{
-  <span class="hljs-keyword">var</span> node = fragment = toFragment(html);
-  <span class="hljs-keyword">if</span> (fragment.childNodes.length === <span class="hljs-number">1</span>) {
-    node = fragment.removeChild(fragment.firstChild);
-  } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (fragment.childNodes.length === <span class="hljs-number">0</span>) {
-    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Cannot create a template from '</span> + html);
-  }
-
-  <span class="hljs-built_in">Object</span>.keys(exports.templateMethods).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">key</span>) </span>{
-    node[key] = exports.templateMethods[key];
-  });
-
-  node.pool = [];
-  runHooks(<span class="hljs-string">'compile'</span>, node);
-
-  <span class="hljs-keyword">return</span> node;
-}
-
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">templateCreateView</span>(<span class="hljs-params"></span>) </span>{
-  <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.pool.pop() || createView(<span class="hljs-keyword">this</span>.cloneNode(<span class="hljs-literal">true</span>), <span class="hljs-keyword">this</span>);
-}
-
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createView</span>(<span class="hljs-params">node, template</span>) </span>{
-  <span class="hljs-keyword">if</span> (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-    node.firstViewNode = node.firstChild;
-    node.lastViewNode = node.lastChild;
-  } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (node <span class="hljs-keyword">instanceof</span> Node) {
-    node.firstViewNode = node.lastViewNode = node;
-  } <span class="hljs-keyword">else</span> {
-    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">TypeError</span>(<span class="hljs-string">'A view must be created from an HTML Node'</span>);
-  }
-
-  <span class="hljs-built_in">Object</span>.keys(exports.viewMethods).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">key</span>) </span>{
-    node[key] = exports.viewMethods[key];
-  });
-
-  node.template = template;
-
-  runHooks(<span class="hljs-string">'view'</span>, node);
-
-  <span class="hljs-keyword">return</span> node;
-}
-
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">removeView</span>(<span class="hljs-params"></span>) </span>{
-  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-    <span class="hljs-keyword">var</span> node = <span class="hljs-keyword">this</span>.firstViewNode;
-    <span class="hljs-keyword">var</span> next;
-
-    <span class="hljs-keyword">if</span> (node.parentNode !== <span class="hljs-keyword">this</span>) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-15">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-15">&#182;</a>
-              </div>
-              <p>Remove all the nodes and put them back into this fragment</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">while</span> (node) {
-        next = (node === <span class="hljs-keyword">this</span>.lastViewNode) ? <span class="hljs-literal">null</span> : node.nextSibling;
-        <span class="hljs-keyword">this</span>.appendChild(node);
-        node = next;
-      }
+  <span class="hljs-comment">/**
+   * Creates a new view cloned from this template.
+   */</span>
+  createView: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.pool.length) {
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.pool.pop();
     }
 
-  } <span class="hljs-keyword">else</span> {
+    <span class="hljs-keyword">return</span> extend.make(View, <span class="hljs-built_in">document</span>.importNode(<span class="hljs-keyword">this</span>, <span class="hljs-literal">true</span>), <span class="hljs-keyword">this</span>);
+  },
 
-    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.parentNode) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-16">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-16">&#182;</a>
-              </div>
-              <p>Remove this node</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">this</span>.parentNode.removeChild(<span class="hljs-keyword">this</span>);
+  returnView: <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">view</span>) </span>{
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.pool.indexOf(view) === -<span class="hljs-number">1</span>) {
+      <span class="hljs-keyword">this</span>.pool.push(view);
     }
   }
-
-  <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>;
-}
-
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">disposeView</span>(<span class="hljs-params"></span>) </span>{</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-17">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-17">&#182;</a>
-              </div>
-              <p>Make sure the view is removed from the DOM</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">this</span>.remove();
-  runHooks(<span class="hljs-string">'dispose'</span>, <span class="hljs-keyword">this</span>);
-  <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.template) {
-    <span class="hljs-keyword">this</span>.template.pool.push(<span class="hljs-keyword">this</span>);
-  }
-}
-
-
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">runHooks</span>(<span class="hljs-params">type, value</span>) </span>{
-  hooks[type].forEach(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">hook</span>) </span>{
-    hook(value);
-  });
-}</pre></div></div>
+};</pre></div></div>
             
         </li>
         
