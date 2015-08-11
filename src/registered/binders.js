@@ -280,8 +280,10 @@ function registerDefaults(fragments) {
       this.element.addEventListener(eventName, function(event) {
         if (!this.hasAttribute('disabled') && _this.context) {
           // Set the event on the context so it may be used in the expression when the event is triggered.
-          var prior = Object.getOwnPropertyDescriptor(_this.context, 'event');
+          var priorEvent = Object.getOwnPropertyDescriptor(_this.context, 'event');
+          var priorElement = Object.getOwnPropertyDescriptor(_this.context, 'element');
           _this.context.event = event;
+          _this.context.element = _this.element;
 
           // Let an on-[event] make the function call with its own arguments
           var listener = _this.observer.get();
@@ -290,10 +292,16 @@ function registerDefaults(fragments) {
           if (typeof listener === 'function') listener.call(_this.context, event);
 
           // Reset the context to its prior state
-          if (prior) {
-            Object.defineProperty(_this.context, event, prior);
+          if (priorEvent) {
+            Object.defineProperty(_this.context, 'event', priorEvent);
           } else {
             delete _this.context.event;
+          }
+
+          if (priorElement) {
+            Object.defineProperty(_this.context, 'element', priorElement);
+          } else {
+            delete _this.context.element;
           }
         }
       });
