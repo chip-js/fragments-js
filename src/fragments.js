@@ -26,8 +26,8 @@ function Fragments(ObserverClass) {
 
   this.binders = {
     element: { _wildcards: [] },
-    attribute: { _wildcards: [], _expr: /{{(.*?)}}/g },
-    text: { _wildcards: [], _expr: /{{(.*?)}}/g }
+    attribute: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g },
+    text: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g }
   };
 
   // Text binder for text nodes with expressions in them
