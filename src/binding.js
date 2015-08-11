@@ -81,6 +81,7 @@ extend(Binding, {
     this.context = context;
     if (this.observer) {
       if (this.updated !== Binding.prototype.updated) {
+        this.observer.forceUpdateNextSync = true;
         this.observer.bind(context);
       } else {
         // set the context but don't actually bind it since `updated` is a no-op

@@ -23,6 +23,7 @@ function Observer(expr, callback, callbackContext) {
   this.callback = callback;
   this.callbackContext = callbackContext;
   this.skip = false;
+  this.forceUpdateNextSync = false;
   this.context = null;
   this.oldValue = undefined;
 }
@@ -90,7 +91,8 @@ Observer.prototype = {
     } else {
       // If an array has changed calculate the splices and call the callback. This
       var changed = diff.values(value, this.oldValue);
-      if (!changed) return;
+      if (!changed && !this.forceUpdateNextSync) return;
+      this.forceUpdateNextSync = false;
       if (Array.isArray(changed)) {
         this.callback.call(this.callbackContext, value, this.oldValue, changed)
       } else {
