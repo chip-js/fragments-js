@@ -68,7 +68,7 @@ function registerDefaults(fragments) {
    * ```
    */
   fragments.registerAttribute('html', function(value) {
-    element.innerHTML = value == null ? '' : value;
+    this.element.innerHTML = (value == null ? '' : value);
   });
 
 
