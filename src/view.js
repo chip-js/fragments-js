@@ -7,15 +7,15 @@ module.exports = View;
  */
 function View(template) {
   this.template = template;
+  this.bindings = this.template.bindings.map(function(binding) {
+    return binding.cloneForView(this);
+  }, this);
   this.firstViewNode = this.firstChild;
   this.lastViewNode = this.lastChild;
   if (this.firstViewNode) {
     this.firstViewNode.view = this;
     this.lastViewNode.view = this;
   }
-  this.bindings = this.template.bindings.map(function(binding) {
-    return binding.cloneForView(this);
-  }, this);
 }
 
 

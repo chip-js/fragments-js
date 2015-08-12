@@ -321,6 +321,10 @@ Fragments.prototype = {
       return;
     }
 
+    if (name === this.animateAttribute) {
+      return;
+    }
+
     if (!binder && value && (type === 'text' || this.isBound(type, value))) {
       // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
       binder = this.getBinder(type, '__default__');
