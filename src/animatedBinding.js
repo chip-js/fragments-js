@@ -41,7 +41,7 @@ var _super = Binding.prototype;
  */
 function AnimatedBinding(properties) {
   var element = properties.node;
-  var animate = element.getAttribute('animate');
+  var animate = element.getAttribute(properties.fragments.animateAttribute);
   var fragments = properties.fragments;
 
   if (animate !== null) {
@@ -51,7 +51,7 @@ function AnimatedBinding(properties) {
 
     setTimeout(function() {
       // Allow multiple bindings to animate by not removing until they have all been created
-      element.removeAttribute('animate');
+      element.removeAttribute(properties.fragments.animateAttribute);
     });
 
     this.animate = true;

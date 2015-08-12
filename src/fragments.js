@@ -23,6 +23,7 @@ function Fragments(ObserverClass) {
   this.Observer = ObserverClass;
   this.formatters = ObserverClass.formatters = {};
   this.animations = {};
+  this.animateAttribute = 'animate';
 
   this.binders = {
     element: { _wildcards: [] },
