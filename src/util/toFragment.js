@@ -14,7 +14,7 @@ function toFragment(html) {
     return stringToFragment(html);
   } else if (html instanceof Node) {
     return nodeToFragment(html);
-  } else if (html.hasOwnProperty('length')) {
+  } else if ('length' in html) {
     return listToFragment(html);
   } else {
     throw new TypeError('Unsupported Template Type: Cannot convert `' + html + '` into a document fragment.');
@@ -48,6 +48,11 @@ function listToFragment(list) {
   for (var i = 0, l = list.length; i < l; i++) {
     // Use toFragment since this may be an array of text, a jQuery object of `<template>`s, etc.
     fragment.appendChild(toFragment(list[i]));
+    if (l === list.length + 1) {
+      // adjust for NodeLists which are live, they shrink as we pull nodes out of the DOM
+      i--;
+      l--;
+    }
   }
   return fragment;
 }
