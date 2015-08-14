@@ -64,7 +64,7 @@ Observer.prototype = {
     }
 
     try {
-      var result = this.setter.call(this.context._origContext_ || this.context, Observer.formatters, value);
+      var result = this.setter.call(this.context, Observer.formatters, value);
     } catch(e) {
       return;
     }
