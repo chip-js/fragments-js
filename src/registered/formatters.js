@@ -242,9 +242,14 @@ function registerDefaults(fragments) {
 
 
   var div = document.createElement('div')
-  function escapeHTML(value) {
-    div.textContent = value || '';
-    return div.innerHTML;
+  function escapeHTML(value, setter) {
+    if (setter) {
+      div.innerHTML = value;
+      return div.textContent;
+    } else {
+      div.textContent = value || '';
+      return div.innerHTML;
+    }
   }
 
 
@@ -278,10 +283,14 @@ function registerDefaults(fragments) {
    * <p>It's great</p></div>
    * ```
    */
-  fragments.registerFormatter('p', function(value) {
-    var lines = (value || '').split(/\r?\n/);
-    var escaped = lines.map(function(line) { return escapeHTML(line) || '<br>'; });
-    return '<p>' + escaped.join('</p><p>') + '</p>';
+  fragments.registerFormatter('p', function(value, setter) {
+    if (setter) {
+      return escapeHTML(value, setter);
+    } else {
+      var lines = (value || '').split(/\r?\n/);
+      var escaped = lines.map(function(line) { return escapeHTML(line) || '<br>'; });
+      return '<p>' + escaped.join('</p>\n<p>') + '</p>';
+    }
   });
 
 
@@ -299,9 +308,13 @@ function registerDefaults(fragments) {
    * It's great</div>
    * ```
    */
-  fragments.registerFormatter('br', function(value) {
-    var lines = (value || '').split(/\r?\n/);
-    return lines.map(escapeHTML).join('<br>');
+  fragments.registerFormatter('br', function(value, setter) {
+    if (setter) {
+      return escapeHTML(value, setter);
+    } else {
+      var lines = (value || '').split(/\r?\n/);
+      return lines.map(escapeHTML).join('<br>\n');
+    }
   });
 
 
@@ -319,13 +332,17 @@ function registerDefaults(fragments) {
    * It's great</p></div>
    * ```
    */
-  fragments.registerFormatter('newline', function(value) {
-    var paragraphs = (value || '').split(/\r?\n\s*\r?\n/);
-    var escaped = paragraphs.map(function(paragraph) {
-      var lines = paragraph.split(/\r?\n/);
-      return lines.map(escapeHTML).join('<br>');
-    });
-    return '<p>' + escaped.join('</p><p>') + '</p>';
+  fragments.registerFormatter('newline', function(value, setter) {
+    if (setter) {
+      return escapeHTML(value, setter);
+    } else {
+      var paragraphs = (value || '').split(/\r?\n\s*\r?\n/);
+      var escaped = paragraphs.map(function(paragraph) {
+        var lines = paragraph.split(/\r?\n/);
+        return lines.map(escapeHTML).join('<br>\n');
+      });
+      return '<p>' + escaped.join('</p>\n\n<p>') + '</p>';
+    }
   });
 
 

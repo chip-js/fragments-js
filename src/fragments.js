@@ -360,7 +360,7 @@ Fragments.prototype = {
    * ```html
    * <h1>GETTING TO KNOW ALL ABOUT THE NUMBER A</h1>
    * ```
-   *
+   * TODO: old docs, rewrite, there is an extra argument named `setter` which will be true when the expression is being "set" instead of "get"
    * A `valueFormatter` is like a formatter but used specifically with the `value` binding since it is a two-way binding. When
    * the value of the element is changed a `valueFormatter` can adjust the value from a string to the correct value type for
    * the controller expression. The signature for a `valueFormatter` includes the current value of the expression
