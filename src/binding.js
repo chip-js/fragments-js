@@ -104,6 +104,17 @@ extend(Binding, {
   },
 
 
+  // Cleans up binding completely
+  dispose: function() {
+    this.unbind();
+    if (this.observer) {
+      // This will clear it out, nullifying any data stored
+      this.observer.sync();
+    }
+    this.disposed();
+  },
+
+
   // The function to run when the binding's element is compiled within a template
   compiled: function() {},
 
@@ -118,6 +129,9 @@ extend(Binding, {
 
   // The function to run when the binding is unbound
   unbound: function() {},
+
+  // The function to run when the binding is disposed
+  disposed: function() {},
 
   // Helper methods
 

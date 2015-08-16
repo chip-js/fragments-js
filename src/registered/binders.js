@@ -507,7 +507,7 @@ function registerDefaults(fragments) {
 
     updated: function(index) {
       // For performance provide an alternate code path for animation
-      if (this.animate) {
+      if (this.animate && this.context) {
         this.updatedAnimated(index);
       } else {
         this.updatedRegular(index);
@@ -518,13 +518,9 @@ function registerDefaults(fragments) {
       this.element.parentNode.insertBefore(view, this.element.nextSibling);
     },
 
-    remove: function(view) {
-      view.dispose();
-    },
-
     updatedRegular: function(index) {
       if (this.showing) {
-        this.remove(this.showing);
+        this.showing.dispose();
         this.showing = null;
       }
       var template = this.templates[index];
@@ -538,17 +534,20 @@ function registerDefaults(fragments) {
     updatedAnimated: function(index) {
       this.lastValue = index;
       if (this.animating) {
+        // Obsoleted, will change after animation is finished.
+        this.showing.unbind();
         return;
       }
 
       if (this.showing) {
         this.animating = true;
-        this.animateOut(this.showing, true, function() {
+        this.showing.unbind();
+        this.animateOut(this.showing, function() {
           this.animating = false;
 
           if (this.showing) {
-            // Make sure this wasn't unbound while we were animating
-            this.remove(this.showing);
+            // Make sure this wasn't unbound while we were animating (e.g. by a parent `if` that doesn't animate)
+            this.showing.dispose();
             this.showing = null;
           }
 
@@ -577,13 +576,11 @@ function registerDefaults(fragments) {
     },
 
     unbound: function() {
-      // Clean up
       if (this.showing) {
-        this.showing.dispose();
-        this.showing = null;
-        this.lastValue = null;
-        this.animating = false;
+        this.showing.unbind();
       }
+      this.lastValue = null;
+      this.animating = false;
     }
   });
 
@@ -657,22 +654,13 @@ function registerDefaults(fragments) {
       this.observer.getChangeRecords = true;
     },
 
-    unbound: function() {
-      if (this.views.length) {
-        this.views.forEach(this.removeView);
-        this.views.length = 0;
-        this.animating = false;
-        this.valueWhileAnimating = null;
-      }
-    },
-
     removeView: function(view) {
       view.dispose();
       view._repeatItem_ = null;
     },
 
     updated: function(value, oldValue, changes) {
-      if (!changes) {
+      if (!changes || !this.context) {
         this.populate(value);
       } else {
         if (this.animate) {
@@ -772,12 +760,16 @@ function registerDefaults(fragments) {
         return;
       }
       var animatingValue = value.slice();
+      var allAdded = [];
+      var allRemoved = [];
       this.animating = true;
 
       // Run updates which occured while this was animating.
       function whenDone() {
         // The last animation finished will run this
         if (--whenDone.count !== 0) return;
+
+        allRemoved.forEach(this.removeView);
 
         this.animating = false;
         if (this.valueWhileAnimating) {
@@ -787,9 +779,6 @@ function registerDefaults(fragments) {
         }
       }
       whenDone.count = 0;
-
-      var allAdded = [];
-      var allRemoved = [];
 
       changes.forEach(function(splice) {
         var addedViews = [];
@@ -822,8 +811,17 @@ function registerDefaults(fragments) {
 
       allRemoved.forEach(function(view) {
         whenDone.count++;
+        view.unbind();
         this.animateOut(view, whenDone);
       }, this);
+    },
+
+    unbound: function() {
+      this.views.forEach(function(view) {
+        view.unbind();
+      });
+      this.valueWhileAnimating = null;
+      this.animating = false;
     }
   });
 }

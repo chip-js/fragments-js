@@ -113,17 +113,10 @@ Binding.extend(AnimatedBinding, {
    * Helper method to remove a node from the DOM, allowing for animations to occur. `callback` will be called when
    * finished.
    */
-  animateOut: function(node, dontDispose, callback) {
-    if (typeof dontDispose === 'function') {
-      callback = dontDispose;
-      dontDispose = false;
-    }
+  animateOut: function(node, callback) {
     if (node.firstViewNode) node = node.firstViewNode;
 
     this.animateNode('out', node, function() {
-      if (!dontDispose) {
-        node.view.dispose();
-      }
       if (callback) callback.call(this);
     });
   },
@@ -132,17 +125,8 @@ Binding.extend(AnimatedBinding, {
    * Helper method to insert a node in the DOM before another node, allowing for animations to occur. `callback` will
    * be called when finished. If `before` is not provided then the animation will be run without inserting the node.
    */
-  animateIn: function(node, before, callback) {
-    if (typeof before === 'function') {
-      callback = before;
-      before = null;
-    }
+  animateIn: function(node, callback) {
     if (node.firstViewNode) node = node.firstViewNode;
-    if (before && before.firstViewNode) before = before.firstViewNode;
-
-    if (before) {
-      before.parentNode.insertBefore(node, before);
-    }
     this.animateNode('in', node, callback, this);
   },
 

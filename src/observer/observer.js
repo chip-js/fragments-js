@@ -42,7 +42,6 @@ Observer.prototype = {
   unbind: function() {
     this.context = null;
     Observer.remove(this);
-    this.sync();
   },
 
   // Returns the current value of this observer

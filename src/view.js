@@ -46,7 +46,10 @@ View.prototype = {
    */
   dispose: function() {
     // Make sure the view is removed from the DOM
-    this.unbind();
+    this.bindings.forEach(function(binding) {
+      binding.dispose();
+    });
+
     this.remove();
     if (this.template) {
       this.template.returnView(this);
