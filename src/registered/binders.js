@@ -518,9 +518,14 @@ function registerDefaults(fragments) {
       this.element.parentNode.insertBefore(view, this.element.nextSibling);
     },
 
+    // Doesn't do much, but allows sub-classes to alter the functionality.
+    remove: function(view) {
+      view.dispose();
+    },
+
     updatedRegular: function(index) {
       if (this.showing) {
-        this.showing.dispose();
+        this.remove(this.showing);
         this.showing = null;
       }
       var template = this.templates[index];
@@ -547,7 +552,7 @@ function registerDefaults(fragments) {
 
           if (this.showing) {
             // Make sure this wasn't unbound while we were animating (e.g. by a parent `if` that doesn't animate)
-            this.showing.dispose();
+            this.remove(this.showing);
             this.showing = null;
           }
 
