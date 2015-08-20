@@ -169,10 +169,16 @@ Binding.extend(AnimatedBinding, {
       willName = 'will-animate-' + direction;
       if (className) node.classList.add(className);
 
-      node.classList.add(willName);
+      if (direction === 'in') {
+        var next = node.nextSibling, parent = node.parentNode;
+        parent.removeChild(node);
+        node.classList.add(willName);
+        parent.insertBefore(node, next);
+      } else {
+        // trigger reflow
+        node.offsetWidth = node.offsetWidth;
+      }
 
-      // trigger reflow
-      node.offsetWidth = node.offsetWidth;
       node.classList.remove(willName);
       node.classList.add(name);
 
