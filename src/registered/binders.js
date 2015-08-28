@@ -99,6 +99,48 @@ function registerDefaults(fragments) {
   });
 
 
+  /**
+   * Automatically focuses the input when it is displayed on screen.
+   */
+  fragments.registerAttribute('autofocus', {
+    bound: function() {
+      var element = this.element;
+      setTimeout(function() {
+        element.focus();
+      });
+    }
+  });
+
+
+  /**
+   * Automatically selects the contents of an input when it receives focus.
+   */
+  fragments.registerAttribute('autoselect', {
+    created: function() {
+      var focused, mouseEvent;
+
+      this.element.addEventListener('mousedown', function() {
+        // Use matches since document.activeElement doesn't work well with web components (future compat)
+        focused = this.matches(':focus');
+        mouseEvent = true;
+      });
+
+      this.element.addEventListener('focus', function() {
+        if (!mouseEvent) {
+          this.select();
+        }
+      });
+
+      this.element.addEventListener('mouseup', function() {
+        if (!focused) {
+          this.select();
+        }
+        mouseEvent = false;
+      });
+    }
+  });
+
+
 
   /**
    * ## value
@@ -592,7 +634,11 @@ function registerDefaults(fragments) {
   fragments.registerAttribute('unless', IfBinding);
 
   function wrapIfExp(expr, isUnless) {
-    return (isUnless ? '!' : '') + expr;
+    if (isUnless) {
+      return '!(' + expr + ')';
+    } else {
+      return expr;
+    }
   }
 
 

@@ -1,4 +1,5 @@
 module.exports = Fragments;
+require('./util/polyfills');
 var extend = require('./util/extend');
 var toFragment = require('./util/toFragment');
 var animation = require('./util/animation');
