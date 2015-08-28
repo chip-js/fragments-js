@@ -219,6 +219,10 @@ Fragments.prototype = {
       }
     }
 
+    if (name === '__default__' && !definition.hasOwnProperty('priority')) {
+      definition.priority = -100;
+    }
+
     // Create a subclass of Binding (or another binder) with the definition
     function Binder() {
       superClass.apply(this, arguments);
