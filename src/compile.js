@@ -86,6 +86,10 @@ function getBindingsForNode(fragments, node, view) {
     for (i = 0; i < bound.length; i++) {
       var Binder = bound[i][0];
       var attr = bound[i][1];
+      if (!node.hasAttribute(attr.name)) {
+        // If this was removed already by another binding, don't process.
+        continue;
+      }
       var name = attr.name;
       var value = attr.value;
       if (Binder.expr) {
@@ -96,7 +100,7 @@ function getBindingsForNode(fragments, node, view) {
       }
 
       try {
-        node.removeAttributeNode(attr);
+        node.removeAttribute(attr.name);
       } catch(e) {}
 
       binding = new Binder({
