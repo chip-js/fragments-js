@@ -59,6 +59,11 @@ function listToFragment(list) {
 
 // Converts a string of HTML text into a document fragment.
 function stringToFragment(string) {
+  if (!string) {
+    var fragment = document.createDocumentFragment();
+    fragment.appendChild(document.createTextNode(''));
+    return fragment;
+  }
   var templateElement;
   templateElement = document.createElement('template');
   templateElement.innerHTML = string;
@@ -86,6 +91,11 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
     wrapMap.th = wrapMap.td;
 
     return function stringToFragment(string) {
+      if (!string) {
+        var fragment = document.createDocumentFragment();
+        fragment.appendChild(document.createTextNode(''));
+        return fragment;
+      }
       var tag = string.match(tagExp);
       var parts = wrapMap[tag] || wrapMap._default;
       var depth = parts[0];
