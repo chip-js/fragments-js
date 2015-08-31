@@ -99,10 +99,14 @@ Observer.prototype = {
       }
     }
 
-    // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
-    // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
-    // in bind-each)
-    this.oldValue = diff.clone(value);
+    if (this.getChangeRecords) {
+      // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
+      // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+      // in bind-each)
+      this.oldValue = diff.clone(value);
+    } else {
+      this.oldValue = value;
+    }
   }
 };
 

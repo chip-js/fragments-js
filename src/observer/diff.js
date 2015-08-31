@@ -85,6 +85,9 @@ var diff = exports;
   // values are both arrays or both objects, an array of changes (splices or change records) between the two will be
   // returned. Otherwise  `true` will be returned.
   function diffValues(value, oldValue) {
+    // Shortcut out for values that are exactly equal
+    if (value === oldValue) return false;
+
     if (Array.isArray(value) && Array.isArray(oldValue)) {
       // If an array has changed calculate the splices
       var splices = diffArrays(value, oldValue);
