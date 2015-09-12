@@ -98,6 +98,27 @@ function registerDefaults(fragments) {
     }
   });
 
+  /**
+   * When working with a bound class attribute, make sure it doesn't stop on class-* attributes.
+   */
+  fragments.registerAttribute('class', {
+    onlyWhenBound: true,
+    updated: function(value) {
+      var classList = this.element.classList;
+      if (this.classes) {
+        this.classes.forEach(function(className) {
+          classList.remove(className)
+        });
+      }
+      if (value) {
+        this.classes = value.split(/\s+/);
+        this.classes.forEach(function(className) {
+          classList.add(className);
+        });
+      }
+    }
+  });
+
 
   /**
    * Automatically focuses the input when it is displayed on screen.
