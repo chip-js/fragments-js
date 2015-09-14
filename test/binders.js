@@ -47,7 +47,7 @@ describe('Default Binders', function() {
 			expect(view.firstChild.children.length).to.equal(1)
 			obj.value = false
 			expect(view.firstChild.children.length).to.equal(1)
-			fragments.sync()
+			fragments.syncNow()
 			expect(view.firstChild.children.length).to.equal(0)
 		})
 
@@ -59,10 +59,10 @@ describe('Default Binders', function() {
 
 			expect(view.textContent).to.equal('test1')
 			obj.value = 'bar'
-			fragments.sync()
+			fragments.syncNow()
 			expect(view.textContent).to.equal('test2')
 			obj.value = 'anything else'
-			fragments.sync()
+			fragments.syncNow()
 			expect(view.textContent).to.equal('test3')
 		})
 	})
@@ -88,7 +88,7 @@ describe('Default Binders', function() {
 			expect(view.firstChild.children.length).to.equal(3)
 			expect(view.textContent).to.equal('test1test2test3')
 			obj.items.splice(1, 1)
-			fragments.sync()
+			fragments.syncNow()
 			expect(view.firstChild.children.length).to.equal(2)
 			expect(view.textContent).to.equal('test1test3')
 		})

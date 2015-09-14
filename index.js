@@ -5,6 +5,7 @@ function create() {
   var fragments = new Fragments(Observer);
   fragments.expression = Observer.expression;
   fragments.sync = Observer.sync;
+  fragments.syncNow = Observer.syncNow;
   return fragments;
 }
 

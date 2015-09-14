@@ -45,7 +45,8 @@ describe('Observer', function() {
 		expect(called).to.equal(1)
 
 		obj.name = 'test2'
-		Observer.sync()
+		Observer.syncNow()
+		console.log('called:', called);
 		expect(called).to.equal(2)
 	})
 
@@ -55,7 +56,7 @@ describe('Observer', function() {
 		expect(called).to.equal(1)
 
 		obj.age = 50
-		Observer.sync()
+		Observer.syncNow()
 		expect(called).to.equal(1)
 	})
 
@@ -65,9 +66,10 @@ describe('Observer', function() {
 		expect(called).to.equal(1)
 
 		observer.unbind()
+		observer.sync()
 		expect(called).to.equal(2)
 		obj.name = 'test2'
-		Observer.sync()
+		Observer.syncNow()
 		expect(called).to.equal(2)
 	})
 
@@ -79,14 +81,14 @@ describe('Observer', function() {
 		observer.skipNextSync()
 		obj.name = 'test2'
 
-		Observer.sync()
+		Observer.syncNow()
 		expect(called).to.equal(1)
 
-		Observer.sync()
+		Observer.syncNow()
 		expect(called).to.equal(1)
 
 		obj.name = 'test3'
-		Observer.sync()
+		Observer.syncNow()
 		expect(called).to.equal(2)
 	})
 
@@ -101,8 +103,8 @@ describe('Observer', function() {
 		observer.bind(obj)
 		observer.set('test2')
 		expect(obj.name).to.equal('test2')
-		expect(called).to.equal(1)
-		Observer.sync()
+		expect(called).to.equal(2)
+		Observer.syncNow()
 		expect(called).to.equal(2)
 	})
 

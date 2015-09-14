@@ -68,6 +68,8 @@ Observer.prototype = {
       return;
     }
 
+    // We can't expect code in fragments outside Observer to be aware of "sync" since observer can be replaced by other
+    // types (e.g. one without a `sync()` method, such as one that uses `Object.observe`) in other systems.
     this.sync();
     Observer.sync();
     return result;
