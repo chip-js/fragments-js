@@ -107,7 +107,9 @@ function registerDefaults(fragments) {
       var classList = this.element.classList;
       if (this.classes) {
         this.classes.forEach(function(className) {
-          classList.remove(className)
+          if (className) {
+            classList.remove(className);
+          }
         });
       }
       if (value) {
