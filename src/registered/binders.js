@@ -113,7 +113,9 @@ function registerDefaults(fragments) {
       if (value) {
         this.classes = value.split(/\s+/);
         this.classes.forEach(function(className) {
-          classList.add(className);
+          if (className) {
+            classList.add(className);
+          }
         });
       }
     }
