@@ -321,7 +321,7 @@ Fragments.prototype = {
       });
     }
 
-    if (binder && type === 'attribute' && binder.onlyWhenBound && !this.isBound(type, value)) {
+    if (binder && type === 'attribute' && binder.prototype.onlyWhenBound && !this.isBound(type, value)) {
       // don't use the `value` binder if there is no expression in the attribute value (e.g. `value="some text"`)
       return;
     }
