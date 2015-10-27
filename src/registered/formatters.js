@@ -348,7 +348,7 @@ function registerDefaults(fragments) {
 
 
   var urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
-  var wwwExp = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
+  var wwwExp = /(^|[^\/])(www\.[\S]+\.\w{2,}(\b|$))/gim;
   /**
    * ## autolink
    * Adds automatic links to escaped content (be sure to escape user content). Can be used on existing HTML content as it
