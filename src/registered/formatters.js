@@ -348,6 +348,7 @@ function registerDefaults(fragments) {
 
 
   var urlExp = /(^|\s|\()((?:https?|ftp):\/\/[\-A-Z0-9+\u0026@#\/%?=()~_|!:,.;]*[\-A-Z0-9+\u0026@#\/%=~(_|])/gi;
+  var wwwExp = /(^|[^\/])(www\.[\S]+\.\w{2,}(\b|$))/gim;
   /**
    * ## autolink
    * Adds automatic links to escaped content (be sure to escape user content). Can be used on existing HTML content as it
@@ -369,7 +370,8 @@ function registerDefaults(fragments) {
       if (match.charAt(0) === '<') {
         return match;
       }
-      return match.replace(urlExp, '$1<a href="$2"' + target + '>$2</a>');
+      var replacedText = match.replace(urlExp, '$1<a href="$2"' + target + '>$2</a>');
+      return replacedText.replace(wwwExp, '$1<a href="http://$2"' + target + '>$2</a>');
     });
   });
 
