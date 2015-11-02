@@ -209,14 +209,14 @@ Observer.afterSync = function(callback) {
 };
 
 Observer.onSync = function(listener) {
-  if (typeof listener === 'function') {
+  if (typeof listener !== 'function') {
     throw new TypeError('listener must be a function');
   }
   Observer.listeners.push(listener);
 };
 
 Observer.removeOnSync = function(listener) {
-  if (typeof listener === 'function') {
+  if (typeof listener !== 'function') {
     throw new TypeError('listener must be a function');
   }
   var index = Observer.listeners.indexOf(listener);
