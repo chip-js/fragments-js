@@ -171,7 +171,7 @@ function parseFormatters(expr) {
   // Processes the formatters
   // If the expression is a setter the value will be run through the formatters
   var setter = '';
-  value = expr;
+  var value = expr;
 
   if (setterExpr.test(expr)) {
     var parts = expr.split(setterExpr);
