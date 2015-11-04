@@ -79,16 +79,15 @@ extend(Binding, {
     }
 
     this.context = context;
+    if (this.observer) this.observer.context = context;
+    this.bound();
+
     if (this.observer) {
       if (this.updated !== Binding.prototype.updated) {
         this.observer.forceUpdateNextSync = true;
         this.observer.bind(context);
-      } else {
-        // set the context but don't actually bind it since `updated` is a no-op
-        this.observer.context = context;
       }
     }
-    this.bound();
   },
 
 
@@ -98,9 +97,9 @@ extend(Binding, {
       return;
     }
 
-    this.context = null;
     if (this.observer) this.observer.unbind();
     this.unbound();
+    this.context = null;
   },
 
 

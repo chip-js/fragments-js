@@ -581,7 +581,7 @@ function registerDefaults(fragments) {
    */
   var IfBinding = fragments.registerAttribute('if', {
     animated: true,
-    priority: 50,
+    priority: 150,
     unlessAttrName: 'unless',
     elseIfAttrName: 'else-if',
     elseUnlessAttrName: 'else-unless',
