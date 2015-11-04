@@ -65,8 +65,6 @@ Fragments.prototype = {
     if (fragment.childNodes.length === 0) {
       throw new Error('Cannot create a template from ' + html);
     }
-    // Add a text node to the end to enclose the template nodes (which may be replaced by if-statements)
-    fragment.appendChild(document.createTextNode(''));
     var template = extend.make(Template, fragment);
     template.bindings = compile(this, template);
     return template;
