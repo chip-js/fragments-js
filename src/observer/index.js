@@ -1,3 +1,3 @@
 module.exports = exports = require('./observer');
-exports.expression = require('./expression');
-exports.expression.diff = require('./diff');
+exports.expressions = require('expressions-js');
+exports.expressions.diff = require('./diff');

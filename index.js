@@ -3,7 +3,7 @@ var Observer = require('./src/observer');
 
 function create() {
   var fragments = new Fragments(Observer);
-  fragments.expression = Observer.expression;
+  fragments.expressions = Observer.expressions;
   fragments.sync = Observer.sync;
   fragments.syncNow = Observer.syncNow;
   return fragments;
