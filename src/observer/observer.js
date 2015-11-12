@@ -1,5 +1,5 @@
 module.exports = Observer;
-var expression = require('./expression');
+var expressions = require('expressions-js');
 var diff = require('./diff');
 var requestAnimationFrame = window.requestAnimationFrame || setTimeout;
 var cancelAnimationFrame = window.cancelAnimationFrame || clearTimeout;
@@ -17,7 +17,7 @@ function Observer(expr, callback, callbackContext) {
     this.getter = expr;
     this.setter = expr;
   } else {
-    this.getter = expression.get(expr);
+    this.getter = expressions.parse(expr, Observer.globals, Observer.formatters);
   }
   this.expr = expr;
   this.callback = callback;
@@ -47,7 +47,7 @@ Observer.prototype = {
   // Returns the current value of this observer
   get: function() {
     if (this.context) {
-      return this.getter.call(this.context, Observer.formatters);
+      return this.getter.call(this.context);
     }
   },
 
@@ -56,14 +56,18 @@ Observer.prototype = {
     if (!this.context) return;
     if (this.setter === false) return;
     if (!this.setter) {
-      this.setter = typeof this.expr === 'string'
-        ? expression.getSetter(this.expr, { ignoreErrors: true }) || false
-        : false;
+      try {
+        this.setter = typeof this.expr === 'string'
+          ? expressions.parseSetter(this.expr, Observer.globals, Observer.formatters)
+          : false;
+      } catch (e) {
+        this.setter = false;
+      }
       if (!this.setter) return;
     }
 
     try {
-      var result = this.setter.call(this.context, Observer.formatters, value);
+      var result = this.setter.call(this.context, value);
     } catch(e) {
       return;
     }

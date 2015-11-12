@@ -22,6 +22,7 @@ function Fragments(ObserverClass) {
   }
 
   this.Observer = ObserverClass;
+  this.globals = ObserverClass.globals = {};
   this.formatters = ObserverClass.formatters = {};
   this.animations = {};
   this.animateAttribute = 'animate';
