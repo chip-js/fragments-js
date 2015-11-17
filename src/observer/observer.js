@@ -136,7 +136,10 @@ Observer.listeners = [];
 // change is made, not initially.
 Observer.add = function(observer, skipUpdate) {
   this.observers.push(observer);
-  if (!skipUpdate) observer.sync();
+  if (!skipUpdate) {
+    observer.forceUpdateNextSync = true;
+    observer.sync();
+  }
 };
 
 // Removes an observer, stopping it from being run
