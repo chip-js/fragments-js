@@ -6,6 +6,7 @@ function create() {
   fragments.expressions = Observer.expressions;
   fragments.sync = Observer.sync;
   fragments.syncNow = Observer.syncNow;
+  fragments.context = Observer.context;
   return fragments;
 }
 
