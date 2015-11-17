@@ -101,6 +101,16 @@ Fragments.prototype = {
 
 
   /**
+   * Observes an expression within a given context, calling the callback when it changes and returning the observer.
+   */
+  observe: function(context, expr, callback, callbackContext) {
+    var observer = new this.Observer(expr, callback, callbackContext);
+    observer.bind(context, true);
+    return observer;
+  },
+
+
+  /**
    * Registers a binder for a given type and name. A binder is a subclass of Binding and is used to create bindings on
    * an element or text node whose tag name, attribute name, or expression contents match this binder's name/expression.
    *

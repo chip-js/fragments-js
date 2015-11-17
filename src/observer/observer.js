@@ -1,6 +1,7 @@
 module.exports = Observer;
 var expressions = require('expressions-js');
 var diff = require('./diff');
+var fragmentsContext = require('./context');
 var requestAnimationFrame = window.requestAnimationFrame || setTimeout;
 var cancelAnimationFrame = window.cancelAnimationFrame || clearTimeout;
 
@@ -40,8 +41,15 @@ Observer.prototype = {
 
   // Unbinds this expression
   unbind: function() {
-    this.context = null;
     Observer.remove(this);
+    this.context = null;
+  },
+
+  // Closes the observer, cleaning up any possible memory-leaks
+  close: function() {
+    this.unbind();
+    this.callback = null;
+    this.callbackContext = null;
   },
 
   // Returns the current value of this observer
@@ -177,27 +185,31 @@ Observer.syncNow = function(callback) {
   Observer.rerun = true;
   Observer.cycles = 0;
 
-  // Allow callbacks to run the sync cycle again immediately, but stop at `Observer.max` (default 10) cycles to we don't
-  // run infinite loops
-  while (Observer.rerun) {
-    if (++Observer.cycles === Observer.max) {
-      throw new Error('Infinite observer syncing, an observer is calling Observer.sync() too many times');
-    }
-    Observer.rerun = false;
-    // the observer array may increase or decrease in size (remaining observers) during the sync
-    for (var i = 0; i < Observer.observers.length; i++) {
-      Observer.observers[i].sync();
-    }
-  }
+  fragmentsContext.skipNextSync();
+  fragmentsContext.run(function() {
 
-  while (Observer.callbacks.length) {
-    Observer.callbacks.shift()();
-  }
+    // Allow callbacks to run the sync cycle again immediately, but stop at `Observer.max` (default 10) cycles to we don't
+    // run infinite loops
+    while (Observer.rerun) {
+      if (++Observer.cycles === Observer.max) {
+        throw new Error('Infinite observer syncing, an observer is calling Observer.sync() too many times');
+      }
+      Observer.rerun = false;
+      // the observer array may increase or decrease in size (remaining observers) during the sync
+      for (var i = 0; i < Observer.observers.length; i++) {
+        Observer.observers[i].sync();
+      }
+    }
 
-  for (var i = 0, l = Observer.listeners.length; i < l; i++) {
-    var listener = Observer.listeners[i];
-    listener();
-  }
+    while (Observer.callbacks.length) {
+      Observer.callbacks.shift()();
+    }
+
+    for (var i = 0, l = Observer.listeners.length; i < l; i++) {
+      var listener = Observer.listeners[i];
+      listener();
+    }
+  });
 
   Observer.syncing = false;
   Observer.cycles = 0;

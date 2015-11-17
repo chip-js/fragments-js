@@ -206,7 +206,7 @@ function registerDefaults(fragments) {
       sortFunc = function(a, b) { return -origFunc(a, b); };
     }
 
-    return value.slice().sort(sortFunc);
+    return value.slice().sort(sortFunc.bind(this));
   });
 
 
