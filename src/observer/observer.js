@@ -155,6 +155,7 @@ Observer.remove = function(observer) {
 
 // *private* properties used in the sync cycle
 Observer.syncing = false;
+Observer.callbacksRunning = false;
 Observer.rerun = false;
 Observer.cycles = 0;
 Observer.max = 10;
@@ -204,14 +205,20 @@ Observer.syncNow = function(callback) {
       }
     }
 
-    while (Observer.callbacks.length) {
-      Observer.callbacks.shift()();
+    Observer.callbacksRunning = true;
+
+    var callbacks = Observer.callbacks;
+    Observer.callbacks = [];
+    while (callbacks.length) {
+      callbacks.shift()();
     }
 
     for (var i = 0, l = Observer.listeners.length; i < l; i++) {
       var listener = Observer.listeners[i];
       listener();
     }
+
+    Observer.callbacksRunning = false;
   });
 
   Observer.syncing = false;
@@ -223,6 +230,9 @@ Observer.syncNow = function(callback) {
 Observer.afterSync = function(callback) {
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function');
+  }
+  if (Observer.callbacksRunning) {
+    Observer.sync();
   }
   Observer.callbacks.push(callback);
 };
