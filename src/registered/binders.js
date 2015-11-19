@@ -349,8 +349,7 @@ function registerDefaults(fragments) {
           // Set the event on the context so it may be used in the expression when the event is triggered.
           var priorEvent = Object.getOwnPropertyDescriptor(_this.context, 'event');
           var priorElement = Object.getOwnPropertyDescriptor(_this.context, 'element');
-          _this.context.event = event;
-          _this.context.element = _this.element;
+          _this.setEvent(event, priorEvent, priorElement);
 
           // Let an on-[event] make the function call with its own arguments
           var listener = _this.observer.get();
@@ -359,19 +358,50 @@ function registerDefaults(fragments) {
           if (typeof listener === 'function') listener.call(_this.context, event);
 
           // Reset the context to its prior state
-          if (priorEvent) {
-            Object.defineProperty(_this.context, 'event', priorEvent);
-          } else {
-            delete _this.context.event;
-          }
-
-          if (priorElement) {
-            Object.defineProperty(_this.context, 'element', priorElement);
-          } else {
-            delete _this.context.element;
-          }
+          _this.clearEvent();
         }
       });
+    },
+
+    unbound: function() {
+      this.clearEvent();
+    },
+
+    setEvent: function(event, priorEventDescriptor, priorElementDescriptor) {
+      if (!this.context) {
+        return;
+      }
+      this.event = event;
+      this.priorEventDescriptor = priorEventDescriptor;
+      this.priorElementDescriptor = priorElementDescriptor;
+      this.lastContext = this.context;
+
+      this.context.event = event;
+      this.context.element = this.element;
+    },
+
+    clearEvent: function() {
+      if (!this.event) {
+        return;
+      }
+      var context = this.lastContext;
+
+      if (this.priorEventDescriptor) {
+        Object.defineProperty(context, 'event', this.priorEventDescriptor);
+        this.priorEventDescriptor = null;
+      } else {
+        delete context.event;
+      }
+
+      if (this.priorElementDescriptor) {
+        Object.defineProperty(context, 'element', this.priorElementDescriptor);
+        this.priorElementDescriptor = null;
+      } else {
+        delete context.element;
+      }
+
+      this.event = null;
+      this.lastContext = null;
     }
   });
 
