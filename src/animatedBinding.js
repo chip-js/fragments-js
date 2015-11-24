@@ -179,13 +179,13 @@ Binding.extend(AnimatedBinding, {
 
       var duration = getDuration.call(this, node, direction);
       var whenDone = function() {
+        if (callback) callback.call(_this);
         node.classList.remove(name);
         if (className) node.classList.remove(className);
-        if (callback) callback.call(_this);
       };
 
       if (duration) {
-        setTimeout(whenDone, duration);
+        onAnimationEnd(node, duration, whenDone);
       } else {
         whenDone();
       }
@@ -198,15 +198,23 @@ var transitionDurationName = 'transitionDuration';
 var transitionDelayName = 'transitionDelay';
 var animationDurationName = 'animationDuration';
 var animationDelayName = 'animationDelay';
+var transitionEventName = 'transitionend';
+var animationEventName = 'animationend';
 var style = document.documentElement.style;
-if (style.transitionDuration === undefined && style.webkitTransitionDuration !== undefined) {
-  transitionDurationName = 'webkitTransitionDuration';
-  transitionDelayName = 'webkitTransitionDelay';
-}
-if (style.animationDuration === undefined && style.webkitAnimationDuration !== undefined) {
-  animationDurationName = 'webkitAnimationDuration';
-  animationDelayName = 'webkitAnimationDelay';
-}
+
+['webkit', 'moz', 'ms', 'o'].forEach(function(prefix) {
+  if (style.transitionDuration === undefined && style[prefix + 'TransitionDuration']) {
+    transitionDurationName = prefix + 'TransitionDuration';
+    transitionDelayName = prefix + 'TransitionDelay';
+    transitionEventName = prefix + 'transitionend';
+  }
+
+  if (style.animationDuration === undefined && style[prefix + 'AnimationDuration']) {
+    animationDurationName = prefix + 'AnimationDuration';
+    animationDelayName = prefix + 'AnimationDelay';
+    animationEventName = prefix + 'animationend';
+  }
+});
 
 
 function getDuration(node, direction) {
@@ -222,4 +230,20 @@ function getDuration(node, direction) {
     this.clonedFrom.__animationDuration__ = milliseconds;
   }
   return milliseconds;
+}
+
+
+function onAnimationEnd(node, duration, callback) {
+  var onEnd = function() {
+    node.removeEventListener(transitionEventName, onEnd);
+    node.removeEventListener(animationEventName, onEnd);
+    clearTimeout(timeout);
+    callback();
+  };
+
+  // contingency plan
+  var timeout = setTimeout(onEnd, duration + 10);
+
+  node.addEventListener(transitionEventName, onEnd);
+  node.addEventListener(animationEventName, onEnd);
 }
