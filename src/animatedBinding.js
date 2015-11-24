@@ -169,25 +169,20 @@ Binding.extend(AnimatedBinding, {
       willName = 'will-animate-' + direction;
       if (className) node.classList.add(className);
 
-      if (direction === 'in') {
-        var next = node.nextSibling, parent = node.parentNode;
-        parent.removeChild(node);
-        node.classList.add(willName);
-        parent.insertBefore(node, next);
-      } else {
-        // trigger reflow
-        node.offsetWidth = node.offsetWidth;
-      }
+      node.classList.add(willName);
 
-      node.classList.remove(willName);
+      // trigger reflow
+      node.offsetWidth = node.offsetWidth;
+
       node.classList.add(name);
+      node.classList.remove(willName);
 
       var duration = getDuration.call(this, node, direction);
-      function whenDone() {
+      var whenDone = function() {
         node.classList.remove(name);
         if (className) node.classList.remove(className);
         if (callback) callback.call(_this);
-      }
+      };
 
       if (duration) {
         setTimeout(whenDone, duration);

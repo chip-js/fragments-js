@@ -41,6 +41,7 @@ function animateElement(css, options) {
     throw new TypeError('animate polyfill requires options with a duration');
   }
 
+  var element = this;
   var duration = options.duration || 0;
   var delay = options.delay || 0;
   var easing = options.easing;
@@ -66,7 +67,7 @@ function animateElement(css, options) {
   }
 
   element.style.transition = Object.keys(finalCss).map(function(key) {
-    return key + transitionOptions
+    return key + transitionOptions;
   }).join(', ');
 
   Object.keys(finalCss).forEach(function(key) {

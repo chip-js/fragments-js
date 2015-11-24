@@ -114,7 +114,7 @@ var diff = exports;
 
   // Diffs two basic types, returning true if changed or false if not
   function diffBasic(value, oldValue) {
-   if (value && oldValue && typeof value === 'object' && typeof oldValue === 'object') {
+    if (value && oldValue && typeof value === 'object' && typeof oldValue === 'object') {
       // Allow dates and Number/String objects to be compared
       var valueValue = value.valueOf();
       var oldValueValue = oldValue.valueOf();
@@ -184,10 +184,10 @@ var diff = exports;
 
 
 
-  EDIT_LEAVE = 0
-  EDIT_UPDATE = 1
-  EDIT_ADD = 2
-  EDIT_DELETE = 3
+  var EDIT_LEAVE = 0;
+  var EDIT_UPDATE = 1;
+  var EDIT_ADD = 2;
+  var EDIT_DELETE = 3;
 
 
   // Diffs two arrays returning an array of splices. A splice object looks like:
@@ -327,6 +327,7 @@ var diff = exports;
       var northWest = distances[i - 1][j - 1];
       var west = distances[i - 1][j];
       var north = distances[i][j - 1];
+      var min;
 
       if (west < north) {
         min = west < northWest ? west : northWest;

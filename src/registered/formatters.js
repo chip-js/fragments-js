@@ -159,7 +159,9 @@ function registerDefaults(fragments) {
    */
   fragments.registerFormatter('log', function(value, prefix) {
     if (prefix == null) prefix = 'Log:';
+    /*eslint-disable no-console */
     console.log(prefix, value);
+    /*eslint-enable */
     return value;
   });
 
@@ -196,7 +198,7 @@ function registerDefaults(fragments) {
       var dir2 = parts[1];
       dir2 = (dir2 === 'desc') ? -1 : 1;
       dir = dir || dir2;
-      var sortFunc = function(a, b) {
+      sortFunc = function(a, b) {
         if (a[prop] > b[prop]) return dir;
         if (a[prop] < b[prop]) return -dir;
         return 0;
@@ -241,7 +243,7 @@ function registerDefaults(fragments) {
   });
 
 
-  var div = document.createElement('div')
+  var div = document.createElement('div');
   function escapeHTML(value, setter) {
     if (setter) {
       div.innerHTML = value;

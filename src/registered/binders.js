@@ -13,7 +13,9 @@ function registerDefaults(fragments) {
   fragments.registerAttribute('debug', {
     priority: 60,
     updated: function(value) {
+      /*eslint-disable no-console */
       console.info('Debug:', this.expression, '=', value);
+      /*eslint-enable */
     }
   });
 
@@ -271,7 +273,7 @@ function registerDefaults(fragments) {
 
     file: {
       get: function() { return this.files && this.files[0]; },
-      set: function(value) {}
+      set: function() {}
     },
 
     select: {
@@ -466,7 +468,7 @@ function registerDefaults(fragments) {
           }
         });
       }
-    })
+    });
   });
 
 
@@ -661,11 +663,12 @@ function registerDefaults(fragments) {
 
     updated: function(index) {
       // For performance provide an alternate code path for animation
-      if (this.animate && this.context) {
+      if (this.animate && this.context && !this.firstUpdate) {
         this.updatedAnimated(index);
       } else {
         this.updatedRegular(index);
       }
+      this.firstUpdate = false;
     },
 
     add: function(view) {
@@ -732,6 +735,10 @@ function registerDefaults(fragments) {
           }
         });
       }
+    },
+
+    bound: function() {
+      this.firstUpdate = true;
     },
 
     unbound: function() {
@@ -902,7 +909,7 @@ function registerDefaults(fragments) {
 
         for (var i = index; i < endIndex; i++) {
           var item = value[i];
-          view = this.createView(i, item);
+          var view = this.createView(i, item);
           addedViews.push(view);
           fragment.appendChild(view);
         }

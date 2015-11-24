@@ -214,7 +214,7 @@ Fragments.prototype = {
     return this.registerBinder('text', name, definition);
   },
   registerBinder: function(type, name, definition) {
-    var binder, binders = this.binders[type]
+    var binders = this.binders[type];
     var superClass = definition.animated ? AnimatedBinding : Binding;
 
     if (!binders) {
@@ -418,7 +418,7 @@ Fragments.prototype = {
   /**
    * Unregisters a formatter.
    */
-  unregisterFormatter: function (name, formatter) {
+  unregisterFormatter: function (name) {
     delete this.formatters[name];
   },
 
@@ -586,7 +586,7 @@ Fragments.prototype = {
       return text.replace(expr, '$1');
     } else {
       var newText = '"', lastIndex = 0;
-      while (match = expr.exec(text)) {
+      while ((match = expr.exec(text))) {
         var str = text.slice(lastIndex, expr.lastIndex - match[0].length);
         newText += str.replace(/"/g, '\\"');
         newText += '" + (' + match[1] + ' || "") + "';
@@ -601,5 +601,5 @@ Fragments.prototype = {
 
 // Takes a string like "(\*)" or "on-\*" and converts it into a regular expression.
 function escapeRegExp(text) {
-  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
