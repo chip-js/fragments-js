@@ -1,4 +1,4 @@
-var global = (function() { return this })();
+var global = (function() { return this; })();
 var slice = Array.prototype.slice;
 module.exports = extend;
 extend.make = make;

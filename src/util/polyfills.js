@@ -21,5 +21,5 @@ if (!Element.prototype.closest) {
       }
     } while ((element = element.parentNode) && element.nodeType === Node.ELEMENT_NODE);
     return null;
-  }
+  };
 }

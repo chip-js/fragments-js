@@ -107,7 +107,7 @@ Observer.prototype = {
       if (!changed && !this.forceUpdateNextSync) return;
       this.forceUpdateNextSync = false;
       if (Array.isArray(changed)) {
-        this.callback.call(this.callbackContext, value, this.oldValue, changed)
+        this.callback.call(this.callbackContext, value, this.oldValue, changed);
       } else {
         this.callback.call(this.callbackContext, value, this.oldValue);
       }
@@ -191,6 +191,7 @@ Observer.syncNow = function(callback) {
 
   fragmentsContext.skipNextSync();
   fragmentsContext.run(function() {
+    var i, l;
 
     // Allow callbacks to run the sync cycle again immediately, but stop at `Observer.max` (default 10) cycles to we don't
     // run infinite loops
@@ -200,7 +201,7 @@ Observer.syncNow = function(callback) {
       }
       Observer.rerun = false;
       // the observer array may increase or decrease in size (remaining observers) during the sync
-      for (var i = 0; i < Observer.observers.length; i++) {
+      for (i = 0; i < Observer.observers.length; i++) {
         Observer.observers[i].sync();
       }
     }
@@ -213,7 +214,7 @@ Observer.syncNow = function(callback) {
       callbacks.shift()();
     }
 
-    for (var i = 0, l = Observer.listeners.length; i < l; i++) {
+    for (i = 0, l = Observer.listeners.length; i < l; i++) {
       var listener = Observer.listeners[i];
       listener();
     }

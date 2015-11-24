@@ -20,12 +20,6 @@ var Observer = require('./observer');
 var patched = false;
 var skipNext = false;
 var wrappedKey = (typeof Symbol !== 'undefined') ? Symbol('wrapped') : '_zonejr$wrapped';
-var elementCallbacks = [
-  'createdCallback',
-  'attachedCallback',
-  'detachedCallback',
-  'attributeChangedCallback'
-];
 
 
 function run(func) {

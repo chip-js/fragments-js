@@ -58,7 +58,7 @@ function listToFragment(list) {
 }
 
 // Converts a string of HTML text into a document fragment.
-function stringToFragment(string) {
+var stringToFragment = function(string) {
   if (!string) {
     var fragment = document.createDocumentFragment();
     fragment.appendChild(document.createTextNode(''));
@@ -68,7 +68,7 @@ function stringToFragment(string) {
   templateElement = document.createElement('template');
   templateElement.innerHTML = string;
   return templateElement.content;
-}
+};
 
 // If HTML Templates are not available (e.g. in IE) then use an older method to work with certain elements.
 if (!document.createElement('template').content instanceof DocumentFragment) {
@@ -91,8 +91,9 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
     wrapMap.th = wrapMap.td;
 
     return function stringToFragment(string) {
+      var fragment;
       if (!string) {
-        var fragment = document.createDocumentFragment();
+        fragment = document.createDocumentFragment();
         fragment.appendChild(document.createTextNode(''));
         return fragment;
       }
@@ -106,7 +107,7 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
       while (depth--) {
         div = div.lastChild;
       }
-      var fragment = document.createDocumentFragment();
+      fragment = document.createDocumentFragment();
       while (div.firstChild) {
         fragment.appendChild(div.firstChild);
       }

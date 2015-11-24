@@ -33,7 +33,7 @@ function compile(fragments, template) {
 // Find all the bindings on a given node (text nodes will only ever have one binding).
 function getBindingsForNode(fragments, node, view) {
   var bindings = [];
-  var Binder, binding, expr, bound, match, attr, i;
+  var Binder, binding, expr, bound, match, attr, i, l;
 
   if (node.nodeType === Node.TEXT_NODE) {
     splitTextNode(fragments, node);
@@ -69,11 +69,11 @@ function getBindingsForNode(fragments, node, view) {
 
     // Find and add any attribute bindings on an element. These can be attributes whose name matches a binding, or
     // they can be attributes which have a binding in the value such as `href="/post/{{ post.id }}"`.
-    var bound = [];
+    bound = [];
     var attributes = slice.call(node.attributes);
     for (i = 0, l = attributes.length; i < l; i++) {
-      var attr = attributes[i];
-      var Binder = fragments.findBinder('attribute', attr.name, attr.value);
+      attr = attributes[i];
+      Binder = fragments.findBinder('attribute', attr.name, attr.value);
       if (Binder) {
         bound.push([ Binder, attr ]);
       }
@@ -84,8 +84,8 @@ function getBindingsForNode(fragments, node, view) {
     bound.sort(sortAttributes);
 
     for (i = 0; i < bound.length; i++) {
-      var Binder = bound[i][0];
-      var attr = bound[i][1];
+      Binder = bound[i][0];
+      attr = bound[i][1];
       if (!node.hasAttribute(attr.name)) {
         // If this was removed already by another binding, don't process.
         continue;
@@ -101,7 +101,9 @@ function getBindingsForNode(fragments, node, view) {
 
       try {
         node.removeAttribute(attr.name);
-      } catch(e) {}
+      } catch(e) {
+        // if the attribute was already removed don't worry
+      }
 
       binding = new Binder({
         node: node,
@@ -138,7 +140,7 @@ function splitTextNode(fragments, node) {
     var content = node.nodeValue;
     if (content.match(regex)) {
       var match, lastIndex = 0, parts = [], fragment = document.createDocumentFragment();
-      while (match = regex.exec(content)) {
+      while ((match = regex.exec(content))) {
         parts.push(content.slice(lastIndex, regex.lastIndex - match[0].length));
         parts.push(match[0]);
         lastIndex = regex.lastIndex;
