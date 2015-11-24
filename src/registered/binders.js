@@ -543,11 +543,12 @@ function registerDefaults(fragments) {
     animated: true,
     updated: function(value) {
       // For performance provide an alternate code path for animation
-      if (this.animate && this.context) {
+      if (this.animate && this.context && !this.firstUpdate) {
         this.updatedAnimated(value);
       } else {
         this.updatedRegular(value);
       }
+      this.firstUpdate = false;
     },
 
     updatedRegular: function(value) {
@@ -581,6 +582,10 @@ function registerDefaults(fragments) {
           onFinish.call(this);
         });
       }
+    },
+
+    bound: function() {
+      this.firstUpdate = true;
     },
 
     unbound: function() {
