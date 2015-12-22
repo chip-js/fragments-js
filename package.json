@@ -1,6 +1,6 @@
 {
   "name": "fragments-js",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
   "keywords": [
     "templates",
@@ -26,6 +26,7 @@
     "url": "git://github.com/chip-js/fragments-js/LICENSE"
   },
   "scripts": {
+    "test": "karma start --singleRun=true",
     "lint": "eslint src",
     "build": "browserify --debug --standalone fragments index.js -o dist/fragments.js",
     "watch": "watchify --debug --standalone fragments index.js -o dist/fragments.js",
@@ -35,14 +36,23 @@
     "postbuild": "npm run compress"
   },
   "dependencies": {
-    "expressions-js": "^0.1.0"
+    "observations-js": "^0.1.0"
   },
   "devDependencies": {
     "browserify": "^10.2.1",
     "chai": "^2.3.0",
     "docco": "^0.7.0",
     "eslint": "^1.10.1",
+    "karma": "^0.13.15",
+    "karma-browserify": "^4.4.2",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^0.2.2",
+    "karma-mocha": "^0.2.1",
+    "karma-phantomjs-launcher": "^0.2.1",
+    "karma-source-map-support": "^1.1.0",
     "mocha": "^2.2.5",
+    "phantomjs": "^1.9.19",
+    "phantomjs2": "^2.0.2",
     "uglify-js": "^2.4.23",
     "watchify": "^3.2.1"
   }

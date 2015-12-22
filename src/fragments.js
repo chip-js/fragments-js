@@ -8,22 +8,19 @@ var View = require('./view');
 var Binding = require('./binding');
 var AnimatedBinding = require('./animatedBinding');
 var compile = require('./compile');
-var registerDefaultBinders = require('./registered/binders');
-var registerDefaultFormatters = require('./registered/formatters');
-var registerDefaultAnimations = require('./registered/animations');
 
 /**
  * A Fragments object serves as a registry for binders and formatters
- * @param {[type]} ObserverClass [description]
+ * @param {Observations} observations An instance of Observations for tracking changes to the data
  */
-function Fragments(ObserverClass) {
-  if (!ObserverClass) {
-    throw new TypeError('Must provide an Observer class to Fragments.');
+function Fragments(observations) {
+  if (!observations) {
+    throw new TypeError('Must provide an observations instance to Fragments.');
   }
 
-  this.Observer = ObserverClass;
-  this.globals = ObserverClass.globals = {};
-  this.formatters = ObserverClass.formatters = {};
+  this.observations = observations;
+  this.globals = observations.globals;
+  this.formatters = observations.formatters;
   this.animations = {};
   this.animateAttribute = 'animate';
 
@@ -46,10 +43,6 @@ function Fragments(ObserverClass) {
       this.element.removeAttribute(this.name);
     }
   });
-
-  registerDefaultBinders(this);
-  registerDefaultFormatters(this);
-  registerDefaultAnimations(this);
 }
 
 Fragments.prototype = {
@@ -104,8 +97,16 @@ Fragments.prototype = {
    * Observes an expression within a given context, calling the callback when it changes and returning the observer.
    */
   observe: function(context, expr, callback, callbackContext) {
-    var observer = new this.Observer(expr, callback, callbackContext);
-    observer.bind(context, true);
+    if (typeof context === 'string') {
+      callbackContext = callback;
+      callback = expr;
+      expr = context;
+      context = null;
+    }
+    var observer = this.observations.createObserver(expr, callback, callbackContext);
+    if (context) {
+      observer.bind(context, true);
+    }
     return observer;
   },
 
@@ -238,7 +239,7 @@ Fragments.prototype = {
     function Binder() {
       superClass.apply(this, arguments);
     }
-    definition.Observer = this.Observer;
+    definition.observations = this.observations;
     superClass.extend(Binder, definition);
 
     var expr;
@@ -538,7 +539,8 @@ Fragments.prototype = {
   /**
    * Sets the delimiters that define an expression. Default is `{{` and `}}` but this may be overridden. If empty
    * strings are passed in (for type "attribute" only) then no delimiters are required for matching attributes, but the
-   * default attribute matcher will not apply to the rest of the attributes.
+   * default attribute matcher will not apply to the rest of the attributes. TODO support different delimiters for the
+   * default attributes vs registered ones (i.e. allow regular attributes to use {{}} when bound ones do not need them)
    */
   setExpressionDelimiters: function(type, pre, post) {
     if (type !== 'attribute' && type !== 'text') {
