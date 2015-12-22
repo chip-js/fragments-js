@@ -51,8 +51,6 @@
     "karma-phantomjs-launcher": "^0.2.1",
     "karma-source-map-support": "^1.1.0",
     "mocha": "^2.2.5",
-    "phantomjs": "^1.9.19",
-    "phantomjs2": "^2.0.2",
     "uglify-js": "^2.4.23",
     "watchify": "^3.2.1"
   }
