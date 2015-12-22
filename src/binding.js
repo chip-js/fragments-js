@@ -45,7 +45,7 @@ extend(Binding, {
   init: function() {
     if (this.expression) {
       // An observer to observe value changes to the expression within a context
-      this.observer = new this.Observer(this.expression, this.updated, this);
+      this.observer = this.observe(this.expression, this.updated);
     }
     this.created();
   },
@@ -141,7 +141,7 @@ extend(Binding, {
   },
 
   observe: function(expression, callback, callbackContext) {
-    return new this.Observer(expression, callback, callbackContext || this);
+    return this.observations.createObserver(expression, callback, callbackContext || this);
   }
 });
 
