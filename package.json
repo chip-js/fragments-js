@@ -1,6 +1,6 @@
 {
   "name": "fragments-js",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
   "keywords": [
     "templates",
@@ -14,16 +14,13 @@
     "email": "jacwright@gmail.com",
     "url": "http://github.com/jacwright"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/chip-js/fragments-js.git"
   },
   "bugs": {
     "url": "https://github.com/chip-js/fragments-js/issues"
-  },
-  "licenses": {
-    "type": "MIT",
-    "url": "git://github.com/chip-js/fragments-js/LICENSE"
   },
   "scripts": {
     "test": "karma start --singleRun=true",
@@ -36,6 +33,7 @@
     "postbuild": "npm run compress"
   },
   "dependencies": {
+    "chip-utils": "^0.2.0",
     "observations-js": "^0.2.0"
   },
   "devDependencies": {
@@ -48,7 +46,6 @@
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^0.2.2",
     "karma-mocha": "^0.2.1",
-    "karma-phantomjs-launcher": "^0.2.1",
     "karma-source-map-support": "^1.1.0",
     "mocha": "^2.2.5",
     "uglify-js": "^2.4.23",

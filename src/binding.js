@@ -1,5 +1,5 @@
 module.exports = Binding;
-var extend = require('./util/extend');
+var Class = require('chip-utils/class');
 
 /**
  * A binding is a link between an element and some data. Subclasses of Binding called binders define what a binding does
@@ -32,7 +32,7 @@ function Binding(properties) {
   this.context = null;
 }
 
-extend(Binding, {
+Class.extend(Binding, {
   /**
    * Default priority binders may override.
    */
