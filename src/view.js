@@ -1,4 +1,5 @@
 module.exports = View;
+var Class = require('chip-utils/class');
 
 
 /**
@@ -19,7 +20,7 @@ function View(template) {
 }
 
 
-View.prototype = {
+Class.extend(View, {
 
   /**
    * Removes a view from the DOM. A view is a DocumentFragment, so `remove()` returns all its nodes to itself.
@@ -75,4 +76,4 @@ View.prototype = {
       binding.unbind();
     });
   }
-};
+});

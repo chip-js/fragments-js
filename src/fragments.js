@@ -1,6 +1,6 @@
 module.exports = Fragments;
 require('./util/polyfills');
-var extend = require('./util/extend');
+var Class = require('chip-utils/class');
 var toFragment = require('./util/toFragment');
 var animation = require('./util/animation');
 var Template = require('./template');
@@ -8,6 +8,8 @@ var View = require('./view');
 var Binding = require('./binding');
 var AnimatedBinding = require('./animatedBinding');
 var compile = require('./compile');
+var hasWildcardExpr = /(^|[^\\])\*/;
+var escapedWildcardExpr = /(^|[^\\])\\\*/;
 
 /**
  * A Fragments object serves as a registry for binders and formatters
@@ -26,7 +28,7 @@ function Fragments(observations) {
 
   this.binders = {
     element: { _wildcards: [] },
-    attribute: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g },
+    attribute: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g, _delimitersOnlyInDefault: false },
     text: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g }
   };
 
@@ -45,7 +47,7 @@ function Fragments(observations) {
   });
 }
 
-Fragments.prototype = {
+Class.extend(Fragments, {
 
   /**
    * Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
@@ -59,7 +61,7 @@ Fragments.prototype = {
     if (fragment.childNodes.length === 0) {
       throw new Error('Cannot create a template from ' + html);
     }
-    var template = extend.make(Template, fragment);
+    var template = Template.makeInstanceOf(fragment);
     template.bindings = compile(this, template);
     return template;
   },
@@ -71,7 +73,7 @@ Fragments.prototype = {
   compileElement: function(element) {
     if (!element.bindings) {
       element.bindings = compile(this, element);
-      extend.make(View, element, element);
+      View.makeInstanceOf(element);
     }
 
     return element;
@@ -215,6 +217,7 @@ Fragments.prototype = {
     return this.registerBinder('text', name, definition);
   },
   registerBinder: function(type, name, definition) {
+    if (!definition) throw new TypeError('Must provide a definition when registering a binder');
     var binders = this.binders[type];
     var superClass = definition.animated ? AnimatedBinding : Binding;
 
@@ -245,8 +248,8 @@ Fragments.prototype = {
     var expr;
     if (name instanceof RegExp) {
       expr = name;
-    } else if (name.indexOf('*') >= 0) {
-      expr = new RegExp('^' + escapeRegExp(name).replace('\\*', '(.*)') + '$');
+    } else if (hasWildcardExpr.test(name)) {
+      expr = new RegExp('^' + escapeRegExp(name).replace(escapedWildcardExpr, '$1(.*)') + '$');
     }
 
     if (expr) {
@@ -321,6 +324,11 @@ Fragments.prototype = {
       value = name;
       name = undefined;
     }
+
+    if (name === this.animateAttribute) {
+      return;
+    }
+
     var binder = this.getBinder(type, name), binders = this.binders[type];
 
     if (!binder) {
@@ -333,17 +341,17 @@ Fragments.prototype = {
       });
     }
 
-    if (binder && type === 'attribute' && binder.prototype.onlyWhenBound && !this.isBound(type, value)) {
-      // don't use the `value` binder if there is no expression in the attribute value (e.g. `value="some text"`)
+    // don't use e.g. the `value` binder if there is no expression in the attribute value (e.g. `value="some text"`)
+    if (binder &&
+        type === 'attribute' &&
+        binder.prototype.onlyWhenBound &&
+        !this.binders[type]._delimitersOnlyInDefault &&
+        !this.isBound(type, value)) {
       return;
     }
 
-    if (name === this.animateAttribute) {
-      return;
-    }
-
+    // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
     if (!binder && value && (type === 'text' || this.isBound(type, value))) {
-      // Test if the attribute value is bound (e.g. `href="/posts/{{ post.id }}"`)
       binder = this.getBinder(type, '__default__');
     }
 
@@ -542,12 +550,15 @@ Fragments.prototype = {
    * default attribute matcher will not apply to the rest of the attributes. TODO support different delimiters for the
    * default attributes vs registered ones (i.e. allow regular attributes to use {{}} when bound ones do not need them)
    */
-  setExpressionDelimiters: function(type, pre, post) {
+  setExpressionDelimiters: function(type, pre, post, onlyInDefault) {
     if (type !== 'attribute' && type !== 'text') {
       throw new TypeError('Expression delimiters must be of type "attribute" or "text"');
     }
 
     this.binders[type]._expr = new RegExp(escapeRegExp(pre) + '(.*?)' + escapeRegExp(post), 'g');
+    if (type === 'attribute') {
+      this.binders[type]._delimitersOnlyInDefault = !!onlyInDefault;
+    }
   },
 
 
@@ -599,7 +610,7 @@ Fragments.prototype = {
     }
   }
 
-};
+});
 
 // Takes a string like "(\*)" or "on-\*" and converts it into a regular expression.
 function escapeRegExp(text) {

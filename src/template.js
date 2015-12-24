@@ -1,6 +1,6 @@
 module.exports = Template;
 var View = require('./view');
-var extend = require('./util/extend');
+var Class = require('chip-utils/class');
 
 
 /**
@@ -16,7 +16,7 @@ function Template() {
 }
 
 
-Template.prototype = {
+Class.extend(Template, {
 
   /**
    * Creates a new view cloned from this template.
@@ -26,7 +26,7 @@ Template.prototype = {
       return this.pool.pop();
     }
 
-    return extend.make(View, document.importNode(this, true), this);
+    return View.makeInstanceOf(document.importNode(this, true), this);
   },
 
   returnView: function(view) {
@@ -34,4 +34,4 @@ Template.prototype = {
       this.pool.push(view);
     }
   }
-};
+});
