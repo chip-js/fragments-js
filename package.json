@@ -1,6 +1,6 @@
 {
   "name": "fragments-js",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
   "keywords": [
     "templates",
@@ -33,8 +33,8 @@
     "postbuild": "npm run compress"
   },
   "dependencies": {
-    "chip-utils": "^0.2.0",
-    "observations-js": "^0.2.0"
+    "chip-utils": "^0.2.2",
+    "observations-js": "^0.2.2"
   },
   "devDependencies": {
     "browserify": "^10.2.1",
