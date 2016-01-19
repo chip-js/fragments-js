@@ -585,9 +585,13 @@ Class.extend(Fragments, {
   /**
    * Converts an inverted expression from `/user/{{user.id}}` to `"/user/" + user.id`
    */
-  codifyExpression: function(type, text) {
+  codifyExpression: function(type, text, notDefault) {
     if (type !== 'attribute' && type !== 'text') {
       throw new TypeError('codifyExpression must use type "attribute" or "text"');
+    }
+
+    if (notDefault && this.binders[type]._delimitersOnlyInDefault) {
+      return text;
     }
 
     var expr = this.binders[type]._expr;
