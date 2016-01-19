@@ -7,10 +7,17 @@ var Class = require('chip-utils/class');
  * A DocumentFragment with bindings.
  */
 function View(template) {
-  this.template = template;
-  this.bindings = this.template.bindings.map(function(binding) {
-    return binding.cloneForView(this);
-  }, this);
+  if (template) {
+    this.template = template;
+    this.bindings = this.template.bindings.map(function(binding) {
+      return binding.cloneForView(this);
+    }, this);
+  } else if (this.bindings) {
+    this.bindings.forEach(function(binding) {
+      binding.init();
+    });
+  }
+
   this.firstViewNode = this.firstChild;
   this.lastViewNode = this.lastChild;
   if (this.firstViewNode) {
