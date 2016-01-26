@@ -127,7 +127,7 @@ function getBindingsForNode(fragments, node, view) {
     }
   }
 
-  return bindings;
+  return bindings.sort(sortBindings);
 }
 
 
@@ -160,8 +160,12 @@ function splitTextNode(fragments, node) {
 }
 
 
+function sortBindings(a, b) {
+  return b.priority - a.priority;
+}
+
 function sortAttributes(a, b) {
-  return b[0].prototype.priority - a[0].prototype.priority;
+  return sortBindings(b[0].prototype, a[0].prototype);
 }
 
 function notEmpty(value) {
