@@ -165,7 +165,7 @@ function sortBindings(a, b) {
 }
 
 function sortAttributes(a, b) {
-  return sortBindings(b[0].prototype, a[0].prototype);
+  return sortBindings(a[0].prototype, b[0].prototype);
 }
 
 function notEmpty(value) {
