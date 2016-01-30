@@ -52,24 +52,16 @@ function getBindingsForNode(fragments, node, view) {
     // If the element is removed from the DOM, stop. Check by looking at its parentNode
     var parent = node.parentNode;
     var DefaultBinder = fragments.getAttributeBinder('__default__');
+    bound = [];
 
     // Find any binding for the element
     Binder = fragments.findBinder('element', node.tagName.toLowerCase());
     if (Binder) {
-      binding = new Binder({ node: node, view: view, fragments: fragments });
-      if (binding.compiled() !== false) {
-        bindings.push(binding);
-      }
-    }
-
-    // If removed, made a template, don't continue processing
-    if (node.parentNode !== parent) {
-      return;
+      bound.push([ Binder ]);
     }
 
     // Find and add any attribute bindings on an element. These can be attributes whose name matches a binding, or
     // they can be attributes which have a binding in the value such as `href="/post/{{ post.id }}"`.
-    bound = [];
     var attributes = slice.call(node.attributes);
     for (i = 0, l = attributes.length; i < l; i++) {
       attr = attributes[i];
@@ -81,42 +73,47 @@ function getBindingsForNode(fragments, node, view) {
 
     // Make sure to create and process them in the correct priority order so if a binding create a template from the
     // node it doesn't process the others.
-    bound.sort(sortAttributes);
+    bound.sort(sortBindings);
 
     for (i = 0; i < bound.length; i++) {
       Binder = bound[i][0];
       attr = bound[i][1];
-      if (!node.hasAttribute(attr.name)) {
-        // If this was removed already by another binding, don't process.
-        continue;
-      }
-      var name = attr.name;
-      var value = attr.value;
-      if (Binder.expr) {
-        match = name.match(Binder.expr);
-        if (match) match = match[1];
+
+      if (attr) {
+        if (!node.hasAttribute(attr.name)) {
+          // If this was removed already by another binding, don't process.
+          continue;
+        }
+        var name = attr.name;
+        var value = attr.value;
+        if (Binder.expr) {
+          match = name.match(Binder.expr);
+          if (match) match = match[1];
+        } else {
+          match = null;
+        }
+
+        try {
+          node.removeAttribute(attr.name);
+        } catch(e) {
+          // if the attribute was already removed don't worry
+          }
+
+        binding = new Binder({
+          node: node,
+          view: view,
+          name: name,
+          match: match,
+          expression: value ? fragments.codifyExpression('attribute', value, Binder !== DefaultBinder) : null,
+          fragments: fragments
+        });
       } else {
-        match = null;
+        binding = new Binder({ node: node, view: view, fragments: fragments });
       }
-
-      try {
-        node.removeAttribute(attr.name);
-      } catch(e) {
-        // if the attribute was already removed don't worry
-      }
-
-      binding = new Binder({
-        node: node,
-        view: view,
-        name: name,
-        match: match,
-        expression: value ? fragments.codifyExpression('attribute', value, Binder !== DefaultBinder) : null,
-        fragments: fragments
-      });
 
       if (binding.compiled() !== false) {
         bindings.push(binding);
-      } else if (Binder !== DefaultBinder && fragments.isBound('attribute', value)) {
+      } else if (attr && Binder !== DefaultBinder && fragments.isBound('attribute', value)) {
         // Revert to default if this binding doesn't take
         bound.push([ DefaultBinder, attr ]);
       }
@@ -127,7 +124,7 @@ function getBindingsForNode(fragments, node, view) {
     }
   }
 
-  return bindings.sort(sortBindings);
+  return bindings;
 }
 
 
@@ -161,11 +158,7 @@ function splitTextNode(fragments, node) {
 
 
 function sortBindings(a, b) {
-  return b.priority - a.priority;
-}
-
-function sortAttributes(a, b) {
-  return sortBindings(a[0].prototype, b[0].prototype);
+  return b[0].prototype.priority - a[0].prototype.priority;
 }
 
 function notEmpty(value) {
