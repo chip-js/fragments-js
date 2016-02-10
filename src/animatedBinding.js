@@ -167,12 +167,14 @@ Binding.extend(AnimatedBinding, {
 
     node.classList.add(classAnimateName);
     node.classList.remove(classWillName);
+    node.dispatchEvent(new Event('animatestart'));
 
     var whenDone = function() {
       if (animateObject && animateObject[methodDidName]) animateObject[methodDidName](node);
       if (callback) callback.call(_this);
       node.classList.remove(classAnimateName);
       if (className) node.classList.remove(className);
+      node.dispatchEvent(new Event('animateend'));
     };
 
     if (animateObject && animateObject[methodAnimateName]) {
