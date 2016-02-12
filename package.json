@@ -24,6 +24,7 @@
   },
   "scripts": {
     "test": "karma start --singleRun=true",
+    "bdd": "karma start",
     "lint": "eslint src",
     "build": "browserify --debug --standalone fragments index.js | exorcist dist/fragments.js.map > dist/fragments.js",
     "watch": "watchify --debug --standalone fragments index.js  | exorcist dist/fragments.js.map > dist/fragments.js",
