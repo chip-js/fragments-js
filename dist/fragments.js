@@ -2463,6 +2463,10 @@ module.exports = toFragment;
 // * A script element with a `type` attribute of `"text/*"` (e.g. `<script type="text/html">My template code!</script>`)
 // * A template element (e.g. `<template>My template code!</template>`)
 function toFragment(html) {
+  if (typeof html === 'function') {
+    html = html();
+  }
+
   if (html instanceof DocumentFragment) {
     return html;
   } else if (typeof html === 'string') {
