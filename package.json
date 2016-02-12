@@ -28,7 +28,7 @@
     "build": "browserify --debug --standalone fragments index.js | exorcist dist/fragments.js.map > dist/fragments.js",
     "watch": "watchify --debug --standalone fragments index.js  | exorcist dist/fragments.js.map > dist/fragments.js",
     "compress": "uglifyjs dist/fragments.js -c -o dist/fragments.min.js",
-    "docs": "docco -o docs src/*.js",
+    "docs": "docco -o api-docs src/*.js",
     "prepublish": "npm run build",
     "postbuild": "npm run compress"
   },
