@@ -59,7 +59,7 @@ Class.extend(Fragments, {
   createTemplate: function(html) {
     var fragment = toFragment(html);
     if (fragment.childNodes.length === 0) {
-      throw new Error('Cannot create a template from ' + html);
+      throw new Error('Cannot create a template from ' + html + ' because it is empty.');
     }
     var template = Template.makeInstanceOf(fragment);
     template.bindings = compile(this, template);
