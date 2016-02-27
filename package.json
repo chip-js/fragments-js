@@ -29,7 +29,6 @@
     "build": "browserify --debug --standalone fragments index.js | exorcist dist/fragments.js.map > dist/fragments.js",
     "watch": "watchify --debug --standalone fragments index.js  | exorcist dist/fragments.js.map > dist/fragments.js",
     "compress": "uglifyjs dist/fragments.js -c -o dist/fragments.min.js",
-    "docs": "docco -o api-docs src/*.js",
     "prepublish": "npm run build",
     "postbuild": "npm run compress"
   },
@@ -40,7 +39,6 @@
   "devDependencies": {
     "browserify": "^10.2.1",
     "chai": "^2.3.0",
-    "docco": "^0.7.0",
     "eslint": "^1.10.1",
     "exorcist": "^0.4.0",
     "karma": "^0.13.15",
