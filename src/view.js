@@ -69,6 +69,7 @@ Class.extend(View, {
    * Binds a view to a given context.
    */
   bind: function(context) {
+    this.context = context;
     this.bindings.forEach(function(binding) {
       binding.bind(context);
     });
@@ -79,6 +80,7 @@ Class.extend(View, {
    * Unbinds a view from any context.
    */
   unbind: function() {
+    this.context = null;
     this.bindings.forEach(function(binding) {
       binding.unbind();
     });
