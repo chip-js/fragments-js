@@ -57,6 +57,9 @@ Class.extend(Fragments, {
    * clone. Nodes and elements passed in will be removed from the DOM.
    */
   createTemplate: function(html) {
+    if (!html) {
+      throw new TypeError('Invalid html, cannot create a template from: ' + html);
+    }
     var fragment = toFragment(html);
     if (fragment.childNodes.length === 0) {
       throw new Error('Cannot create a template from ' + html + ' because it is empty.');

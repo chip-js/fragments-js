@@ -46,13 +46,17 @@ function extend(Subclass /* [, prototype [,prototype]] */) {
     prototypes = slice.call(arguments, 1);
   }
 
-  extendStatics(this, Subclass);
+  if (Object.setPrototypeOf) {
+    Object.setPrototypeOf(Subclass, this);
+  } else {
+    Subclass.__proto__ = this;
+  }
 
   prototypes.forEach(function(proto) {
     if (typeof proto === 'function') {
-      extendStatics(proto, Subclass);
+      addStatics(proto, Subclass);
     } else if (proto.hasOwnProperty('static')) {
-      extendStatics(proto.static, Subclass);
+      addStatics(proto.static, Subclass);
     }
   });
 
@@ -90,11 +94,11 @@ function getDescriptors(objects) {
 }
 
 // Copies static methods over for static inheritance
-function extendStatics(Class, Subclass) {
+function addStatics(statics, Subclass) {
 
   // static method inheritance (including `extend`)
-  Object.keys(Class).forEach(function(key) {
-    var descriptor = Object.getOwnPropertyDescriptor(Class, key);
+  Object.keys(statics).forEach(function(key) {
+    var descriptor = Object.getOwnPropertyDescriptor(statics, key);
     if (!descriptor.configurable) return;
 
     Object.defineProperty(Subclass, key, descriptor);
@@ -1090,9 +1094,7 @@ function create() {
 module.exports = create();
 module.exports.create = create;
 
-},{"./src/fragments":14,"observations-js":20}],10:[function(require,module,exports){
-arguments[4][1][0].apply(exports,arguments)
-},{"dup":1}],11:[function(require,module,exports){
+},{"./src/fragments":13,"observations-js":19}],10:[function(require,module,exports){
 module.exports = AnimatedBinding;
 var animation = require('./util/animation');
 var Binding = require('./binding');
@@ -1339,7 +1341,7 @@ function onAnimationEnd(node, duration, callback) {
   node.addEventListener(transitionEventName, onEnd);
   node.addEventListener(animationEventName, onEnd);
 }
-},{"./binding":12,"./util/animation":16}],12:[function(require,module,exports){
+},{"./binding":11,"./util/animation":15}],11:[function(require,module,exports){
 module.exports = Binding;
 var Class = require('chip-utils/class');
 
@@ -1503,7 +1505,7 @@ function initNodePath(node, view) {
   return path;
 }
 
-},{"chip-utils/class":10}],13:[function(require,module,exports){
+},{"chip-utils/class":1}],12:[function(require,module,exports){
 var slice = Array.prototype.slice;
 module.exports = compile;
 
@@ -1599,11 +1601,9 @@ function getBindingsForNode(fragments, node, view) {
           match = null;
         }
 
-        try {
+        if (attr && node.hasAttribute(attr.name)) {
           node.removeAttribute(attr.name);
-        } catch(e) {
-          // if the attribute was already removed don't worry
-          }
+        }
 
         binding = new Binder({
           node: node,
@@ -1622,6 +1622,8 @@ function getBindingsForNode(fragments, node, view) {
       } else if (attr && Binder !== DefaultBinder && fragments.isBound('attribute', value)) {
         // Revert to default if this binding doesn't take
         bound.push([ DefaultBinder, attr ]);
+      } else if (attr) {
+        node.setAttributeNode(attr);
       }
 
       if (node.parentNode !== parent) {
@@ -1671,7 +1673,7 @@ function notEmpty(value) {
   return Boolean(value);
 }
 
-},{}],14:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 module.exports = Fragments;
 require('./util/polyfills');
 var Class = require('chip-utils/class');
@@ -1731,6 +1733,9 @@ Class.extend(Fragments, {
    * clone. Nodes and elements passed in will be removed from the DOM.
    */
   createTemplate: function(html) {
+    if (!html) {
+      throw new TypeError('Invalid html, cannot create a template from: ' + html);
+    }
     var fragment = toFragment(html);
     if (fragment.childNodes.length === 0) {
       throw new Error('Cannot create a template from ' + html + ' because it is empty.');
@@ -2295,7 +2300,7 @@ function escapeRegExp(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
-},{"./animatedBinding":11,"./binding":12,"./compile":13,"./template":15,"./util/animation":16,"./util/polyfills":17,"./util/toFragment":18,"./view":19,"chip-utils/class":10}],15:[function(require,module,exports){
+},{"./animatedBinding":10,"./binding":11,"./compile":12,"./template":14,"./util/animation":15,"./util/polyfills":16,"./util/toFragment":17,"./view":18,"chip-utils/class":1}],14:[function(require,module,exports){
 module.exports = Template;
 var View = require('./view');
 var Class = require('chip-utils/class');
@@ -2334,7 +2339,7 @@ Class.extend(Template, {
   }
 });
 
-},{"./view":19,"chip-utils/class":10}],16:[function(require,module,exports){
+},{"./view":18,"chip-utils/class":1}],15:[function(require,module,exports){
 // Helper methods for animation
 exports.makeElementAnimatable = makeElementAnimatable;
 exports.getComputedCSS = getComputedCSS;
@@ -2425,7 +2430,7 @@ function animateElement(css, options) {
   return playback;
 }
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 
 
 
@@ -2452,7 +2457,7 @@ if (!Element.prototype.closest) {
   };
 }
 
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 module.exports = toFragment;
 
 // Convert stuff into document fragments. Stuff can be:
@@ -2575,7 +2580,7 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
   })();
 }
 
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 module.exports = View;
 var Class = require('chip-utils/class');
 
@@ -2647,6 +2652,7 @@ Class.extend(View, {
    * Binds a view to a given context.
    */
   bind: function(context) {
+    this.context = context;
     this.bindings.forEach(function(binding) {
       binding.bind(context);
     });
@@ -2657,13 +2663,14 @@ Class.extend(View, {
    * Unbinds a view from any context.
    */
   unbind: function() {
+    this.context = null;
     this.bindings.forEach(function(binding) {
       binding.unbind();
     });
   }
 });
 
-},{"chip-utils/class":10}],20:[function(require,module,exports){
+},{"chip-utils/class":1}],19:[function(require,module,exports){
 
 exports.Observations = require('./src/observations');
 exports.Observer = require('./src/observer');
@@ -2671,7 +2678,9 @@ exports.create = function() {
   return new exports.Observations();
 };
 
-},{"./src/observations":21,"./src/observer":22}],21:[function(require,module,exports){
+},{"./src/observations":21,"./src/observer":22}],20:[function(require,module,exports){
+arguments[4][1][0].apply(exports,arguments)
+},{"dup":1}],21:[function(require,module,exports){
 (function (global){
 module.exports = Observations;
 var Class = require('chip-utils/class');
@@ -2839,7 +2848,7 @@ Class.extend(Observations, {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./observer":22,"chip-utils/class":1}],22:[function(require,module,exports){
+},{"./observer":22,"chip-utils/class":20}],22:[function(require,module,exports){
 module.exports = Observer;
 var Class = require('chip-utils/class');
 var expressions = require('expressions-js');
@@ -2966,6 +2975,6 @@ Class.extend(Observer, {
   }
 });
 
-},{"chip-utils/class":1,"differences-js":2,"expressions-js":4}]},{},[9])(9)
+},{"chip-utils/class":20,"differences-js":2,"expressions-js":4}]},{},[9])(9)
 });
 //# sourceMappingURL=fragments.js.map

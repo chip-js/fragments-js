@@ -93,11 +93,9 @@ function getBindingsForNode(fragments, node, view) {
           match = null;
         }
 
-        try {
+        if (attr && node.hasAttribute(attr.name)) {
           node.removeAttribute(attr.name);
-        } catch(e) {
-          // if the attribute was already removed don't worry
-          }
+        }
 
         binding = new Binder({
           node: node,
@@ -116,6 +114,8 @@ function getBindingsForNode(fragments, node, view) {
       } else if (attr && Binder !== DefaultBinder && fragments.isBound('attribute', value)) {
         // Revert to default if this binding doesn't take
         bound.push([ DefaultBinder, attr ]);
+      } else if (attr) {
+        node.setAttributeNode(attr);
       }
 
       if (node.parentNode !== parent) {
