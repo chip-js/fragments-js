@@ -57,6 +57,7 @@ Class.extend(View, {
     this.bindings.forEach(function(binding) {
       binding.dispose();
     });
+    this.context = null;
 
     this.remove();
     if (this.template) {
@@ -80,9 +81,9 @@ Class.extend(View, {
    * Unbinds a view from any context.
    */
   unbind: function() {
-    this.context = null;
     this.bindings.forEach(function(binding) {
       binding.unbind();
     });
+    this.context = null;
   }
 });
