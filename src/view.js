@@ -29,6 +29,10 @@ function View(template) {
 
 Class.extend(View, {
 
+  get inDOM() {
+    return document.documentElement.contains(this.firstViewNode);
+  },
+
   /**
    * Removes a view from the DOM. A view is a DocumentFragment, so `remove()` returns all its nodes to itself.
    */
@@ -45,7 +49,7 @@ Class.extend(View, {
       }
     }
 
-    return this;
+    this.detached();
   },
 
 
@@ -85,5 +89,31 @@ Class.extend(View, {
       binding.unbind();
     });
     this.context = null;
-  }
+  },
+
+
+  /**
+   * Triggers the attached callback on the binders, call immediately after adding to the DOM
+   */
+  attached: function() {
+    if (!this._attached && this.inDOM) {
+      this._attached = true;
+      this.bindings.forEach(function(binding) {
+        binding.attached();
+      });
+    }
+  },
+
+
+  /**
+   * Triggers the detached callback on the binders, call immediately after removing from the DOM
+   */
+  detached: function() {
+    if (this._attached && !this.inDOM) {
+      this._attached = false;
+      this.bindings.forEach(function(binding) {
+        binding.detached();
+      });
+    }
+  },
 });

@@ -65,6 +65,7 @@ Class.extend(Binding, {
 
     var binding = Object.create(this);
     binding.clonedFrom = this;
+    binding.view = view;
     binding.element = node;
     binding.node = node;
     binding.init();
@@ -110,7 +111,6 @@ Class.extend(Binding, {
       // This will clear it out, nullifying any data stored
       this.observer.sync();
     }
-    this.disposed();
   },
 
 
@@ -129,8 +129,11 @@ Class.extend(Binding, {
   // The function to run when the binding is unbound
   unbound: function() {},
 
-  // The function to run when the binding is disposed
-  disposed: function() {},
+  // The function to run when the binding is attached to the DOM
+  attached: function() {},
+
+  // The function to run when the binding is removed from the DOM
+  detached: function() {},
 
   // Helper methods
 
