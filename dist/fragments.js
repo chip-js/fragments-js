@@ -1409,6 +1409,7 @@ Class.extend(Binding, {
 
     var binding = Object.create(this);
     binding.clonedFrom = this;
+    binding.view = view;
     binding.element = node;
     binding.node = node;
     binding.init();
@@ -1454,7 +1455,6 @@ Class.extend(Binding, {
       // This will clear it out, nullifying any data stored
       this.observer.sync();
     }
-    this.disposed();
   },
 
 
@@ -1473,8 +1473,11 @@ Class.extend(Binding, {
   // The function to run when the binding is unbound
   unbound: function() {},
 
-  // The function to run when the binding is disposed
-  disposed: function() {},
+  // The function to run when the binding is attached to the DOM
+  attached: function() {},
+
+  // The function to run when the binding is removed from the DOM
+  detached: function() {},
 
   // Helper methods
 
@@ -2612,6 +2615,10 @@ function View(template) {
 
 Class.extend(View, {
 
+  get inDOM() {
+    return document.documentElement.contains(this.firstViewNode);
+  },
+
   /**
    * Removes a view from the DOM. A view is a DocumentFragment, so `remove()` returns all its nodes to itself.
    */
@@ -2628,7 +2635,7 @@ Class.extend(View, {
       }
     }
 
-    return this;
+    this.detached();
   },
 
 
@@ -2668,7 +2675,33 @@ Class.extend(View, {
       binding.unbind();
     });
     this.context = null;
-  }
+  },
+
+
+  /**
+   * Triggers the attached callback on the binders, call immediately after adding to the DOM
+   */
+  attached: function() {
+    if (!this._attached && this.inDOM) {
+      this._attached = true;
+      this.bindings.forEach(function(binding) {
+        binding.attached();
+      });
+    }
+  },
+
+
+  /**
+   * Triggers the detached callback on the binders, call immediately after removing from the DOM
+   */
+  detached: function() {
+    if (this._attached && !this.inDOM) {
+      this._attached = false;
+      this.bindings.forEach(function(binding) {
+        binding.detached();
+      });
+    }
+  },
 });
 
 },{"chip-utils/class":1}],19:[function(require,module,exports){
