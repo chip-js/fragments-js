@@ -7,6 +7,7 @@ var Class = require('chip-utils/class');
  * A DocumentFragment with bindings.
  */
 function View(template) {
+  this.context = null;
   if (template) {
     this.template = template;
     this.bindings = this.template.bindings.map(function(binding) {
@@ -116,4 +117,15 @@ Class.extend(View, {
       });
     }
   },
+
+
+  /**
+   * Synchronizes this view against its context
+   */
+  sync: function() {
+    if (this.context === null) return;
+    this.bindings.forEach(function(binding) {
+      binding.sync();
+    });
+  }
 });
