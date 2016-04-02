@@ -12,6 +12,7 @@ var Class = require('chip-utils/class');
  * clone. Nodes and elements passed in will be removed from the DOM.
  */
 function Template() {
+  this.compiled = false;
   this.pool = [];
 }
 

@@ -83,11 +83,8 @@ Class.extend(Binding, {
     if (this.observer) this.observer.context = context;
     this.bound();
 
-    if (this.observer) {
-      if (this.updated !== Binding.prototype.updated) {
-        this.observer.forceUpdateNextSync = true;
-        this.observer.bind(context);
-      }
+    if (this.observer && this.updated !== Binding.prototype.updated) {
+      this.observer.bind(context);
     }
   },
 
@@ -109,6 +106,12 @@ Class.extend(Binding, {
     this.unbind();
     if (this.observer) {
       // This will clear it out, nullifying any data stored
+      this.observer.sync();
+    }
+  },
+
+  sync: function() {
+    if (this.context && this.observer && this.updated !== Binding.prototype.updated) {
       this.observer.sync();
     }
   },
