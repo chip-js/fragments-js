@@ -20,6 +20,7 @@ function Fragments(observations) {
     throw new TypeError('Must provide an observations instance to Fragments.');
   }
 
+  this.compiling = false;
   this.observations = observations;
   this.globals = observations.globals;
   this.formatters = observations.formatters;
@@ -65,7 +66,26 @@ Class.extend(Fragments, {
       throw new Error('Cannot create a template from ' + html + ' because it is empty.');
     }
     var template = Template.makeInstanceOf(fragment);
-    template.bindings = compile(this, template);
+    this.compileTemplate(template);
+    return template;
+  },
+
+
+  /**
+   * Takes a template instance and pre-compiles it
+   * @param  {Template} template A template
+   * @return {Template} The template
+   */
+  compileTemplate: function(template) {
+    if (template && !template.compiled) {
+      // Set compiling flag on fragments, but don't turn it false until the outermost template is done
+      var lastCompilingValue = this.compiling;
+      this.compiling = true;
+      // Set this before compiling so we don't get into infinite loops if there is template recursion
+      template.compiled = true;
+      template.bindings = compile(this, template);
+      this.compiling = lastCompilingValue;
+    }
     return template;
   },
 
