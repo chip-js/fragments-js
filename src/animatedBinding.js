@@ -139,6 +139,7 @@ Binding.extend(AnimatedBinding, {
 
     if (this.animateObject && typeof this.animateObject === 'object') {
       animateObject = this.animateObject;
+      animateObject.fragments = this.fragments;
     } else if (this.animateClassName) {
       className = this.animateClassName;
     } else if (typeof this.animateObject === 'string') {

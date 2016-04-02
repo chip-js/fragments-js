@@ -15,15 +15,15 @@ var escapedWildcardExpr = /(^|[^\\])\\\*/;
  * A Fragments object serves as a registry for binders and formatters
  * @param {Observations} observations An instance of Observations for tracking changes to the data
  */
-function Fragments(observations) {
-  if (!observations) {
-    throw new TypeError('Must provide an observations instance to Fragments.');
+function Fragments(options) {
+  if (!options || !options.observations) {
+    throw new TypeError('Must provide an observations instance to Fragments in options.');
   }
 
   this.compiling = false;
-  this.observations = observations;
-  this.globals = observations.globals;
-  this.formatters = observations.formatters;
+  this.observations = options.observations;
+  this.globals = options.observations.globals;
+  this.formatters = options.observations.formatters;
   this.animations = {};
   this.animateAttribute = 'animate';
 
@@ -46,9 +46,19 @@ function Fragments(observations) {
       this.element.removeAttribute(this.name);
     }
   });
+
+  this.addOptions(options);
 }
 
 Class.extend(Fragments, {
+
+  addOptions: function(options) {
+    if (options) {
+      processOption(options.binders, this, 'registerAttribute');
+      processOption(options.formatters, this, 'registerFormatter');
+      processOption(options.animations, this, 'registerAnimation');
+    }
+  },
 
   /**
    * Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
@@ -642,4 +652,12 @@ Class.extend(Fragments, {
 // Takes a string like "(\*)" or "on-\*" and converts it into a regular expression.
 function escapeRegExp(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
+function processOption(obj, fragments, methodName) {
+  if (obj) {
+    Object.keys(obj).forEach(function(name) {
+      fragments[methodName](name, obj[name]);
+    });
+  }
 }

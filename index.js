@@ -1,9 +1,11 @@
 var Fragments = require('./src/fragments');
 var Observations = require('observations-js');
 
-function create() {
+function create(options) {
+  options = options || {};
   var observations = Observations.create();
-  var fragments = new Fragments(observations);
+  options.observations = observations;
+  var fragments = new Fragments(options);
   fragments.sync = observations.sync.bind(observations);
   fragments.syncNow = observations.syncNow.bind(observations);
   fragments.afterSync = observations.afterSync.bind(observations);
@@ -13,5 +15,4 @@ function create() {
 }
 
 // Create an instance of fragments with the default observer
-module.exports = create();
-module.exports.create = create;
+exports.create = create;

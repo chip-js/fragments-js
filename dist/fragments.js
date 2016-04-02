@@ -1079,9 +1079,11 @@ exports.putInStrings = function(expr) {
 var Fragments = require('./src/fragments');
 var Observations = require('observations-js');
 
-function create() {
+function create(options) {
+  options = options || {};
   var observations = Observations.create();
-  var fragments = new Fragments(observations);
+  options.observations = observations;
+  var fragments = new Fragments(options);
   fragments.sync = observations.sync.bind(observations);
   fragments.syncNow = observations.syncNow.bind(observations);
   fragments.afterSync = observations.afterSync.bind(observations);
@@ -1091,8 +1093,7 @@ function create() {
 }
 
 // Create an instance of fragments with the default observer
-module.exports = create();
-module.exports.create = create;
+exports.create = create;
 
 },{"./src/fragments":13,"observations-js":19}],10:[function(require,module,exports){
 module.exports = AnimatedBinding;
@@ -1236,6 +1237,7 @@ Binding.extend(AnimatedBinding, {
 
     if (this.animateObject && typeof this.animateObject === 'object') {
       animateObject = this.animateObject;
+      animateObject.fragments = this.fragments;
     } else if (this.animateClassName) {
       className = this.animateClassName;
     } else if (typeof this.animateObject === 'string') {
@@ -1697,15 +1699,15 @@ var escapedWildcardExpr = /(^|[^\\])\\\*/;
  * A Fragments object serves as a registry for binders and formatters
  * @param {Observations} observations An instance of Observations for tracking changes to the data
  */
-function Fragments(observations) {
-  if (!observations) {
-    throw new TypeError('Must provide an observations instance to Fragments.');
+function Fragments(options) {
+  if (!options || !options.observations) {
+    throw new TypeError('Must provide an observations instance to Fragments in options.');
   }
 
   this.compiling = false;
-  this.observations = observations;
-  this.globals = observations.globals;
-  this.formatters = observations.formatters;
+  this.observations = options.observations;
+  this.globals = options.observations.globals;
+  this.formatters = options.observations.formatters;
   this.animations = {};
   this.animateAttribute = 'animate';
 
@@ -1728,9 +1730,19 @@ function Fragments(observations) {
       this.element.removeAttribute(this.name);
     }
   });
+
+  this.addOptions(options);
 }
 
 Class.extend(Fragments, {
+
+  addOptions: function(options) {
+    if (options) {
+      processOption(options.binders, this, 'registerAttribute');
+      processOption(options.formatters, this, 'registerFormatter');
+      processOption(options.animations, this, 'registerAnimation');
+    }
+  },
 
   /**
    * Takes an HTML string, an element, an array of elements, or a document fragment, and compiles it into a template.
@@ -2326,6 +2338,13 @@ function escapeRegExp(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
+function processOption(obj, fragments, methodName) {
+  if (obj) {
+    Object.keys(obj).forEach(function(name) {
+      fragments[methodName](name, obj[name]);
+    });
+  }
+}
 },{"./animatedBinding":10,"./binding":11,"./compile":12,"./template":14,"./util/animation":15,"./util/polyfills":16,"./util/toFragment":17,"./view":18,"chip-utils/class":1}],14:[function(require,module,exports){
 module.exports = Template;
 var View = require('./view');
