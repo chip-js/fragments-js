@@ -1427,11 +1427,8 @@ Class.extend(Binding, {
     if (this.observer) this.observer.context = context;
     this.bound();
 
-    if (this.observer) {
-      if (this.updated !== Binding.prototype.updated) {
-        this.observer.forceUpdateNextSync = true;
-        this.observer.bind(context);
-      }
+    if (this.observer && this.updated !== Binding.prototype.updated) {
+      this.observer.bind(context);
     }
   },
 
@@ -1453,6 +1450,12 @@ Class.extend(Binding, {
     this.unbind();
     if (this.observer) {
       // This will clear it out, nullifying any data stored
+      this.observer.sync();
+    }
+  },
+
+  sync: function() {
+    if (this.context && this.observer && this.updated !== Binding.prototype.updated) {
       this.observer.sync();
     }
   },
@@ -1699,6 +1702,7 @@ function Fragments(observations) {
     throw new TypeError('Must provide an observations instance to Fragments.');
   }
 
+  this.compiling = false;
   this.observations = observations;
   this.globals = observations.globals;
   this.formatters = observations.formatters;
@@ -1744,7 +1748,26 @@ Class.extend(Fragments, {
       throw new Error('Cannot create a template from ' + html + ' because it is empty.');
     }
     var template = Template.makeInstanceOf(fragment);
-    template.bindings = compile(this, template);
+    this.compileTemplate(template);
+    return template;
+  },
+
+
+  /**
+   * Takes a template instance and pre-compiles it
+   * @param  {Template} template A template
+   * @return {Template} The template
+   */
+  compileTemplate: function(template) {
+    if (template && !template.compiled) {
+      // Set compiling flag on fragments, but don't turn it false until the outermost template is done
+      var lastCompilingValue = this.compiling;
+      this.compiling = true;
+      // Set this before compiling so we don't get into infinite loops if there is template recursion
+      template.compiled = true;
+      template.bindings = compile(this, template);
+      this.compiling = lastCompilingValue;
+    }
     return template;
   },
 
@@ -2318,6 +2341,7 @@ var Class = require('chip-utils/class');
  * clone. Nodes and elements passed in will be removed from the DOM.
  */
 function Template() {
+  this.compiled = false;
   this.pool = [];
 }
 
@@ -2593,6 +2617,7 @@ var Class = require('chip-utils/class');
  * A DocumentFragment with bindings.
  */
 function View(template) {
+  this.context = null;
   if (template) {
     this.template = template;
     this.bindings = this.template.bindings.map(function(binding) {
@@ -2702,6 +2727,17 @@ Class.extend(View, {
       });
     }
   },
+
+
+  /**
+   * Synchronizes this view against its context
+   */
+  sync: function() {
+    if (this.context === null) return;
+    this.bindings.forEach(function(binding) {
+      binding.sync();
+    });
+  }
 });
 
 },{"chip-utils/class":1}],19:[function(require,module,exports){
