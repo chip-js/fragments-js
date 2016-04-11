@@ -1374,6 +1374,7 @@ function Binding(properties) {
   this.match = properties.match;
   this.expression = properties.expression;
   this.fragments = properties.fragments;
+  this.observations = this.fragments.observations;
   this.context = null;
 }
 
@@ -1493,6 +1494,14 @@ Class.extend(Binding, {
 
   observe: function(expression, callback, callbackContext) {
     return this.observations.createObserver(expression, callback, callbackContext || this);
+  },
+
+  get: function(expression) {
+    return this.observations.get(this.context, expression);
+  },
+
+  set: function(expression, value) {
+    return this.observations.set(this.context, expression, value);
   }
 });
 
@@ -1601,8 +1610,8 @@ function getBindingsForNode(fragments, node, view) {
         }
         var name = attr.name;
         var value = attr.value;
-        if (Binder.expr) {
-          match = name.match(Binder.expr);
+        if (Binder.expression) {
+          match = name.match(Binder.expression);
           if (match) match = match[1];
         } else {
           match = null;
@@ -1958,7 +1967,6 @@ Class.extend(Fragments, {
     function Binder() {
       superClass.apply(this, arguments);
     }
-    definition.observations = this.observations;
     superClass.extend(Binder, definition);
 
     var expr;
@@ -1969,7 +1977,7 @@ Class.extend(Fragments, {
     }
 
     if (expr) {
-      Binder.expr = expr;
+      Binder.expression = expr;
       binders._wildcards.push(Binder);
       binders._wildcards.sort(this.bindingSort);
     }
@@ -1996,7 +2004,7 @@ Class.extend(Fragments, {
   unregisterBinder: function(type, name) {
     var binder = this.getBinder(type, name), binders = this.binders[type];
     if (!binder) return;
-    if (binder.expr) {
+    if (binder.expression) {
       var index = binders._wildcards.indexOf(binder);
       if (index >= 0) binders._wildcards.splice(index, 1);
     }
@@ -2050,7 +2058,7 @@ Class.extend(Fragments, {
     if (!binder) {
       var toMatch = (type === 'text') ? value : name;
       binders._wildcards.some(function(wildcardBinder) {
-        if (toMatch.match(wildcardBinder.expr)) {
+        if (toMatch.match(wildcardBinder.expression)) {
           binder = wildcardBinder;
           return true;
         }
@@ -2766,13 +2774,364 @@ exports.create = function() {
   return new exports.Observations();
 };
 
-},{"./src/observations":21,"./src/observer":22}],20:[function(require,module,exports){
+},{"./src/observations":26,"./src/observer":27}],20:[function(require,module,exports){
 arguments[4][1][0].apply(exports,arguments)
 },{"dup":1}],21:[function(require,module,exports){
+module.exports = AsyncProperty;
+var ComputedProperty = require('./computed-property');
+var expressions = require('expressions-js');
+
+/**
+ * Calls the async expression and assigns the results to the object's property when the `whenExpression` changes value
+ * to anything other than a falsey value such as undefined. The return value of the async expression should be a
+ * Promise.
+ * @param {String} whenExpression The conditional expression use to determine when to call the `asyncExpression`
+ * @param {String} asyncExpression The expression which will be executed when the `when` value changes and the result of
+ * the returned promise is set on the object.
+ */
+function AsyncProperty(whenExpression, asyncExpression) {
+  if (!asyncExpression) {
+    this.whenExpression = 'true';
+    this.runAsyncMethod = expressions.parse(whenExpression);
+  } else {
+    this.whenExpression = whenExpression;
+    this.runAsyncMethod = expressions.parse(asyncExpression);
+  }
+  this.observer = null;
+}
+
+
+ComputedProperty.extend(AsyncProperty, {
+
+  addTo: function(computedObject, propertyName) {
+    var observations = this.observations;
+
+    return observations.createObserver(this.whenExpression, function(value) {
+      if (value) {
+        var promise = this.runAsyncMethod.call(computedObject);
+        if (promise && promise.then) {
+          promise.then(function(value) {
+            computedObject[propertyName] = value;
+            observations.sync();
+          }, function(err) {
+            computedObject[propertyName] = undefined;
+            observations.sync();
+          });
+        }
+      } else {
+        computedObject[propertyName] = undefined;
+      }
+    }, this);
+  }
+});
+
+},{"./computed-property":22,"expressions-js":4}],22:[function(require,module,exports){
+module.exports = ComputedProperty;
+var Class = require('chip-utils/class');
+
+
+/**
+ * An object which will be replaced by its computed value
+ */
+function ComputedProperty() {}
+
+Class.extend(ComputedProperty, {
+
+  get isComputedProperty() {
+    return true;
+  },
+
+  /**
+   * Add a computed property to a computed object
+   * @param {Object} computedObject The object which this property is being added to
+   * @param {String} propertyName The name of the property on the object that will be set
+   * @return {Observer} An observer which can be bound to the computed object
+   */
+  addTo: function(computedObject, propertyName) {
+    throw new Error('Abstract function is not implemented');
+  }
+});
+
+},{"chip-utils/class":20}],23:[function(require,module,exports){
+module.exports = IfProperty;
+var ComputedProperty = require('./computed-property');
+
+/**
+ * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
+ * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
+ * @param {String|ComputedProperty} thenExpression The expression which will be executed when `if` is truthy and the
+ *                                                 result set on the object. May also nest computed properties.
+ */
+function IfProperty(ifExpression, thenExpression) {
+  this.ifExpression = ifExpression;
+  this.thenExpression = thenExpression;
+  this.observer = null;
+}
+
+
+ComputedProperty.extend(IfProperty, {
+
+  addTo: function(computedObject, propertyName) {
+    if (this.thenExpression.isComputedProperty) {
+      this.observer = this.thenExpression.addTo(computedObject, propertyName);
+    } else {
+      this.observer = this.observations.createObserver(this.thenExpression, function(value) {
+        computedObject[propertyName] = value;
+      });
+    }
+
+    return this.observations.createObserver(this.ifExpression, function(value) {
+      if (value && !this.observer.context) {
+        this.observer.bind(computedObject);
+      } else if (!value && this.observer.context) {
+        this.observer.unbind();
+        this.observer.sync();
+      }
+    }, this);
+  }
+});
+
+},{"./computed-property":22}],24:[function(require,module,exports){
+module.exports = MapProperty;
+var ComputedProperty = require('./computed-property');
+var expressions = require('expressions-js');
+
+/**
+ * Creates an object hash with the key being the value of the `key` property of each item in `sourceExpression` and the
+ * value being the result of `expression`. `key` is optional, defaulting to "id" when not provided. `sourceExpression`
+ * can resolve to an array or an object hash.
+ * @param {Array|Object} sourceExpression An array or object whose members will be added to the map.
+ * @param {String} keyExpression The name of the property to key against as values are added to the map.
+ *                               Defaults to "id"
+ * @param {String} resultExpression [Optional] The expression evaluated against the array/object member whose value is
+ *                                  added to the map. If not provided, the member will be added.
+ * @return {Object} The object map of key=>value
+ */
+function MapProperty(sourceExpression, keyExpression, resultExpression) {
+  this.sourceExpression = sourceExpression;
+  this.getKey = expressions.parse(keyExpression);
+  this.resultExpression = resultExpression;
+}
+
+
+ComputedProperty.extend(MapProperty, {
+
+  addTo: function(computedObject, propertyName) {
+    var map = {};
+    var observers = {};
+    computedObject[propertyName] = map;
+    var add = this.addItem.bind(this, computedObject, map, observers);
+    var remove = this.removeItem.bind(this, computedObject, map, observers);
+    return this.observations.observeMembers(this.sourceExpression, add, remove, this);
+  },
+
+  addItem: function(computedObject, map, observers, item) {
+    var key = item && this.getKey.call(item);
+    if (!key) {
+      return;
+    }
+
+    if (key in observers) {
+      removeObserver(observers, key);
+    }
+
+    if (this.resultExpression) {
+      var observer;
+      if (this.resultExpression.isComputedProperty) {
+        observer = this.resultExpression.addTo(map, key);
+      } else if (typeof this.resultExpression === 'string') {
+        observer = this.observations.createObserver(this.resultExpression, function(value) {
+          if (value === undefined) {
+            delete map[key];
+          } else {
+            map[key] = value;
+          }
+        }, this);
+      } else {
+        throw new TypeError('Invalid resultExpression for computed.map');
+      }
+
+      var proxy = Object.create(item);
+      proxy.$$ = computedObject;
+      observer.bind(proxy);
+      observers[key] = observer;
+    } else {
+      map[key] = item;
+    }
+  },
+
+  removeItem: function(computedObject, map, observers, item) {
+    var key = item && this.getKey.call(item);
+    if (key) {
+      removeObserver(observers, key);
+      delete map[key];
+    }
+  },
+
+  removeObserver: function(observers, key) {
+    var observer = observers[key];
+    if (observer) {
+      observer.unbind();
+      delete observers[key];
+    }
+  }
+});
+
+},{"./computed-property":22,"expressions-js":4}],25:[function(require,module,exports){
+var ComputedProperty = require('./computed-properties/computed-property');
+var MapProperty = require('./computed-properties/map');
+var IfProperty = require('./computed-properties/if');
+var AsyncProperty = require('./computed-properties/async');
+
+
+exports.create = function(observations) {
+
+  /**
+   * Create an object whose properties are dynamically updated with the values of the mapped expressions. An expression
+   * can be a simple JavaScript expression with formatters (see https://github.com/chip-js/expressions-js) or it can be
+   * a URL for watching the REST APIs. The object will have an array named `computedObservers` which contain all the
+   * observers created to watch the properties. The `computedObservers` array has two additional methods, `enable` and
+   * `disable` which will turn the binding on/off. When disabled the properties are reset to undefined.
+   * @param {Object} map A hash of computed properties, expressions or URLs, that will be set and updated on the object
+   * @param {Object} options Options for this computed object:
+   *   * enabled {Boolean} Whether to enable this computed object. Default is true.
+   * @return {Object} An object which will contain all the values of the computed properties
+   */
+  function computed(map, options) {
+    return computed.extend({}, map, options);
+  }
+
+
+  /**
+   * Extends an existing object with the values of the computed properties in the map.
+   * @param {Object} obj The object to extend, will create, update, and delete properties from the object as they change
+   * @param {Object} map A hash of computed properties that will be mapped onto the object
+   * @param {Object} options Options for this computed object:
+   *   * enabled {Boolean} Whether to enable this computed object. Default is true.
+   * @return {Object} Returns the object passed in
+   */
+  computed.extend = function(obj, map, options) {
+    ensureObservers(obj, options);
+
+    Object.keys(map).forEach(function(property) {
+      var expression = map[property];
+      var observer;
+
+      if (typeof expression === 'string') {
+        // This is a computed expression
+        observer = observations.createObserver(expression, function(value) {
+          obj[property] = value;
+        });
+      } else if (expression.isComputedProperty) {
+        // Add ComputedProperty's observer to the observers and bind if enabled
+        expression.observations = observations;
+        observer = expression.addTo(obj, property);
+      } else {
+        obj[property] = expression;
+      }
+
+      if (observer) {
+        obj.computedObservers.push(observer);
+        if (obj.computedObservers.enabled) {
+          observer.bind(obj);
+        }
+      }
+    });
+
+    return obj;
+  };
+
+
+  /**
+   * Creates an object hash with the key being the value of the `key` property of each item in `sourceExpression` and the
+   * value being the result of `expression`. `key` is optional, defaulting to "id" when not provided. `sourceExpression`
+   * can resolve to an array or an object hash.
+   * @param {Array|Object} sourceExpression An array or object whose members will be added to the map.
+   * @param {String} keyName [Optional] The name of the property to key against as values are added to the map. Defaults
+   *                         to "id"
+   * @param {String} expression The expression evaluated against the array/object member whose value is added to the map.
+   * @return {Object} The object map of key=>value
+   */
+  computed.map = function(sourceExpression, keyName, resultExpression) {
+    return new MapProperty(sourceExpression, keyName, resultExpression);
+  };
+
+
+  /**
+   * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
+   * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
+   * @param {String} thenExpression The expression which will be executed when `if` is truthy and the result set on the
+   * object.
+   */
+  computed.if = function(ifExpression, thenExpression) {
+    return new IfProperty(ifExpression, thenExpression);
+  };
+
+
+  /**
+   * Calls the async expression and assigns the results to the object's property when the `whenExpression` changes value
+   * to anything other than a falsey value such as undefined. The return value of the async expression should be a
+   * Promise.
+   * @param {String} whenExpression The conditional expression use to determine when to call the `asyncExpression`
+   * @param {String} asyncExpression The expression which will be executed when the `when` value changes and the result of
+   * the returned promise is set on the object.
+   */
+  computed.async = function(whenExpression, asyncExpression) {
+    return new AsyncProperty(whenExpression, asyncExpression);
+  };
+
+
+  // Make the ComputedProperty class available for extension
+  computed.ComputedProperty = ComputedProperty;
+
+  return computed;
+};
+
+
+/**
+ * Ensures the observers array exists on an object, creating it if not and adding disable/enable functions to enable and
+ * disable observing.
+ * @param {Object} obj The object which ought to have an observers array on it
+ * @param {Object} options Options for this computed object:
+ *   * enabled {Boolean} Whether to enable this computed object. Default is true.
+ * @return {Object} The `obj` that was passed in
+ */
+function ensureObservers(obj, options) {
+  if (!obj.computedObservers) {
+    Object.defineProperty(obj, 'computedObservers', { value: [] });
+    obj.computedObservers.enabled = (!options || options.enabled !== false);
+
+    // Restarts observing changes
+    obj.computedObservers.enable = function() {
+      if (!this.enabled) {
+        this.enabled = true;
+        this.forEach(function(observer) {
+          observer.bind(obj);
+        });
+      }
+    };
+
+    // Stops observing changes and resets all computed properties to undefined
+    obj.computedObservers.disable = function() {
+      if (this.enabled) {
+        this.enabled = false;
+        this.forEach(function(observer) {
+          observer.unbind();
+          observer.sync();
+        });
+      }
+    };
+  }
+  return obj;
+}
+
+},{"./computed-properties/async":21,"./computed-properties/computed-property":22,"./computed-properties/if":23,"./computed-properties/map":24}],26:[function(require,module,exports){
 (function (global){
 module.exports = Observations;
 var Class = require('chip-utils/class');
 var Observer = require('./observer');
+var computed = require('./computed');
+var expressions = require('expressions-js');
 var requestAnimationFrame = global.requestAnimationFrame || setTimeout;
 var cancelAnimationFrame = global.cancelAnimationFrame || clearTimeout;
 
@@ -2791,6 +3150,8 @@ function Observations() {
   this.timeout = null;
   this.pendingSync = null;
   this.syncNow = this.syncNow.bind(this);
+  this.computed = computed.create(this);
+  this.expressions = expressions;
 }
 
 
@@ -2798,8 +3159,76 @@ Class.extend(Observations, {
 
   // Creates a new observer attached to this observations object. When the observer is bound to a context it will be added
   // to this `observations` and synced when this `observations.sync` is called.
-  createObserver: function(expr, callback, callbackContext) {
-    return new Observer(this, expr, callback, callbackContext);
+  createObserver: function(expression, callback, callbackContext) {
+    return new Observer(this, expression, callback, callbackContext);
+  },
+
+  /**
+   * Observe an expression and trigger `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer for observing the source. Bind against a source object.
+   */
+  observeMembers: function(expression, onAdd, onRemove, callbackContext) {
+    if (!onAdd) onAdd = function(){};
+    if (!onRemove) onRemove = function(){};
+
+    var observer = this.createObserver(expression, function(source, oldValue, changes) {
+      if (changes) {
+        changes.forEach(function(change) {
+          if (change.removed) {
+            change.removed.forEach(onRemove, callbackContext);
+            source.slice(change.index, change.index + change.addedCount).forEach(onAdd, callbackContext);
+          } else if (change.type === 'add') {
+            onAdd.call(callbackContext, source[change.name]);
+          } else if (change.type === 'update') {
+            onRemove.call(callbackContext, change.oldValue);
+            onAdd.call(callbackContext, source[change.name]);
+          } else if (change.type === 'delete') {
+            onRemove.call(callbackContext, change.oldValue);
+          }
+        });
+      } else if (Array.isArray(source)) {
+        source.forEach(onAdd, callbackContext);
+      } else if (source && typeof source === 'object') {
+        Object.keys(source).forEach(function(key) {
+          onAdd.call(callbackContext, source[key]);
+        });
+      } else if (Array.isArray(oldValue)) {
+        oldValue.forEach(onRemove, callbackContext);
+      } else if (oldValue && typeof oldValue === 'object') {
+        // If undefined (or something that isn't an array/object) remove the observers
+        Object.keys(oldValue).forEach(function(key) {
+          onRemove.call(callbackContext, oldValue[key]);
+        });
+      }
+    });
+
+    observer.getChangeRecords = true;
+    return observer;
+  },
+
+
+  /**
+   * Gets the value of an expression from the given context object
+   * @param {Object} context The context object the expression will be evaluated against
+   * @param {String} expression The expression to evaluate
+   * @return {mixed} The result of the expression against the context
+   */
+  get: function(context, expression) {
+    return expressions.parse(expression).call(context);
+  },
+
+
+  /**
+   * Sets the value on the expression in the given context object
+   * @param {Object} context The context object the expression will be evaluated against
+   * @param {String} expression The expression to set a value with
+   * @param {mixed} value The value to set on the expression
+   * @return {mixed} The result of the expression against the context
+   */
+  set: function(source, expression, value) {
+    return expressions.parseSetter(expression).call(source, value);
   },
 
 
@@ -2936,7 +3365,7 @@ Class.extend(Observations, {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./observer":22,"chip-utils/class":20}],22:[function(require,module,exports){
+},{"./computed":25,"./observer":27,"chip-utils/class":20,"expressions-js":4}],27:[function(require,module,exports){
 module.exports = Observer;
 var Class = require('chip-utils/class');
 var expressions = require('expressions-js');
@@ -2951,15 +3380,15 @@ var diff = require('differences-js');
 // receives an array of splices (for an array), or an array of change objects (for an object) which are the same
 // format that `Array.observe` and `Object.observe` return
 // <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/observe>.
-function Observer(observations, expr, callback, callbackContext) {
-  if (typeof expr === 'function') {
-    this.getter = expr;
-    this.setter = expr;
+function Observer(observations, expression, callback, callbackContext) {
+  if (typeof expression === 'function') {
+    this.getter = expression;
+    this.setter = expression;
   } else {
-    this.getter = expressions.parse(expr, observations.globals, observations.formatters);
+    this.getter = expressions.parse(expression, observations.globals, observations.formatters);
   }
   this.observations = observations;
-  this.expr = expr;
+  this.expression = expression;
   this.callback = callback;
   this.callbackContext = callbackContext;
   this.skip = false;
@@ -3004,8 +3433,8 @@ Class.extend(Observer, {
     if (this.setter === false) return;
     if (!this.setter) {
       try {
-        this.setter = typeof this.expr === 'string'
-          ? expressions.parseSetter(this.expr, this.observations.globals, this.observations.formatters)
+        this.setter = typeof this.expression === 'string'
+          ? expressions.parseSetter(this.expression, this.observations.globals, this.observations.formatters)
           : false;
       } catch (e) {
         this.setter = false;
@@ -3048,7 +3477,7 @@ Class.extend(Observer, {
                          Array.isArray(this.oldValue);
 
       if (useCompareBy) {
-        var expr = this.compareBy;
+        var compareExpression = this.compareBy;
         var name = this.compareByName;
         var index = this.compareByIndex || '__index__';
         var ctx = this.context;
@@ -3058,10 +3487,10 @@ Class.extend(Observer, {
         if (!name) {
           name = '__item__';
           // Turn "id" into "__item__.id"
-          expr = name + '.' + expr;
+          compareExpression = name + '.' + compareExpression;
         }
 
-        var getCompareValue = expressions.parse(expr, globals, formatters, name, index);
+        var getCompareValue = expressions.parse(compareExpression, globals, formatters, name, index);
         changed = diff.values(value.map(getCompareValue, ctx), oldValue.map(getCompareValue, ctx));
       } else {
         changed = diff.values(value, this.oldValue);

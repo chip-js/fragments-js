@@ -275,7 +275,6 @@ Class.extend(Fragments, {
     function Binder() {
       superClass.apply(this, arguments);
     }
-    definition.observations = this.observations;
     superClass.extend(Binder, definition);
 
     var expr;

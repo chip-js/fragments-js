@@ -29,6 +29,7 @@ function Binding(properties) {
   this.match = properties.match;
   this.expression = properties.expression;
   this.fragments = properties.fragments;
+  this.observations = this.fragments.observations;
   this.context = null;
 }
 
@@ -148,6 +149,14 @@ Class.extend(Binding, {
 
   observe: function(expression, callback, callbackContext) {
     return this.observations.createObserver(expression, callback, callbackContext || this);
+  },
+
+  get: function(expression) {
+    return this.observations.get(this.context, expression);
+  },
+
+  set: function(expression, value) {
+    return this.observations.set(this.context, expression, value);
   }
 });
 
