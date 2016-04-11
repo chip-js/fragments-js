@@ -86,8 +86,8 @@ function getBindingsForNode(fragments, node, view) {
         }
         var name = attr.name;
         var value = attr.value;
-        if (Binder.expr) {
-          match = name.match(Binder.expr);
+        if (Binder.expression) {
+          match = name.match(Binder.expression);
           if (match) match = match[1];
         } else {
           match = null;

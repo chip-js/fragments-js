@@ -286,7 +286,7 @@ Class.extend(Fragments, {
     }
 
     if (expr) {
-      Binder.expr = expr;
+      Binder.expression = expr;
       binders._wildcards.push(Binder);
       binders._wildcards.sort(this.bindingSort);
     }
@@ -313,7 +313,7 @@ Class.extend(Fragments, {
   unregisterBinder: function(type, name) {
     var binder = this.getBinder(type, name), binders = this.binders[type];
     if (!binder) return;
-    if (binder.expr) {
+    if (binder.expression) {
       var index = binders._wildcards.indexOf(binder);
       if (index >= 0) binders._wildcards.splice(index, 1);
     }
@@ -367,7 +367,7 @@ Class.extend(Fragments, {
     if (!binder) {
       var toMatch = (type === 'text') ? value : name;
       binders._wildcards.some(function(wildcardBinder) {
-        if (toMatch.match(wildcardBinder.expr)) {
+        if (toMatch.match(wildcardBinder.expression)) {
           binder = wildcardBinder;
           return true;
         }

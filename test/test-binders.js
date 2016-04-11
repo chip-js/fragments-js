@@ -1,4 +1,4 @@
-var fragments = require('../index');
+var fragments = require('../index').create();
 
 describe('binder', function() {
 
