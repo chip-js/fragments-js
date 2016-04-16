@@ -271,6 +271,10 @@ Class.extend(Fragments, {
       definition.priority = -100;
     }
 
+    if (binders[name]) {
+      this.unregisterBinder(type, name);
+    }
+
     // Create a subclass of Binding (or another binder) with the definition
     function Binder() {
       superClass.apply(this, arguments);
