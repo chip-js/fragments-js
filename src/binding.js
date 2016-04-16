@@ -109,6 +109,7 @@ Class.extend(Binding, {
       // This will clear it out, nullifying any data stored
       this.observer.sync();
     }
+    this.disposed();
   },
 
   sync: function() {
@@ -138,6 +139,9 @@ Class.extend(Binding, {
 
   // The function to run when the binding is removed from the DOM
   detached: function() {},
+
+  // The function to run when the binding is disposed
+  disposed: function() {},
 
   // Helper methods
 
