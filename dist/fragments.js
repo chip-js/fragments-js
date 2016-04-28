@@ -2436,12 +2436,15 @@ function getComputedCSS(styleName) {
  * only supports duration, delay, and easing. Returns an object with a property onfinish.
  */
 function animateElement(css, options) {
-  if (!Array.isArray(css) || css.length !== 2) {
-    throw new TypeError('animate polyfill requires an array for css with an initial and final state');
-  }
+  var playback = { onfinish: null };
 
-  if (!options || !options.hasOwnProperty('duration')) {
-    throw new TypeError('animate polyfill requires options with a duration');
+  if (!Array.isArray(css) || css.length !== 2 || !options || !options.hasOwnProperty('duration')) {
+    Promise.resolve().then(function() {
+      if (playback.onfinish) {
+        playback.onfinish();
+      }
+    });
+    return playback;
   }
 
   var element = this;
@@ -2451,7 +2454,6 @@ function animateElement(css, options) {
   var initialCss = css[0];
   var finalCss = css[1];
   var allCss = {};
-  var playback = { onfinish: null };
 
   Object.keys(initialCss).forEach(function(key) {
     allCss[key] = true;
@@ -2820,6 +2822,8 @@ ComputedProperty.extend(AsyncProperty, {
             computedObject[propertyName] = undefined;
             observations.sync();
           });
+        } else {
+          computedObject[propertyName] = promise;
         }
       } else {
         computedObject[propertyName] = undefined;
@@ -2941,10 +2945,11 @@ var expressions = require('expressions-js');
  *                                  added to the map. If not provided, the member will be added.
  * @return {Object} The object map of key=>value
  */
-function MapProperty(sourceExpression, keyExpression, resultExpression) {
+function MapProperty(sourceExpression, keyExpression, resultExpression, removeExpression) {
   this.sourceExpression = sourceExpression;
   this.getKey = expressions.parse(keyExpression);
   this.resultExpression = resultExpression;
+  this.removeExpression = removeExpression;
 }
 
 
@@ -2955,7 +2960,7 @@ ComputedProperty.extend(MapProperty, {
     var observers = {};
     computedObject[propertyName] = map;
     var add = this.addItem.bind(this, observations, computedObject, map, observers);
-    var remove = this.removeItem.bind(this, computedObject, map, observers);
+    var remove = this.removeItem.bind(this, observations, computedObject, map, observers);
     return observations.observeMembers(this.sourceExpression, add, remove, this);
   },
 
@@ -2984,10 +2989,13 @@ ComputedProperty.extend(MapProperty, {
     }
   },
 
-  removeItem: function(computedObject, map, observers, item) {
+  removeItem: function(observations, computedObject, map, observers, item) {
     var key = item && this.getKey.call(item);
     if (key) {
       this.removeObserver(observers, key);
+      if (this.removeExpression) {
+        observations.get(computedObject, this.removeExpression);
+      }
       delete map[key];
     }
   },
@@ -3086,8 +3094,8 @@ exports.create = function(observations) {
    * @param {String} expression The expression evaluated against the array/object member whose value is added to the map.
    * @return {ComputedProperty}
    */
-  computed.map = function(sourceExpression, keyName, resultExpression) {
-    return new MapProperty(sourceExpression, keyName, resultExpression);
+  computed.map = function(sourceExpression, keyName, resultExpression, removeExpression) {
+    return new MapProperty(sourceExpression, keyName, resultExpression, removeExpression);
   };
 
 

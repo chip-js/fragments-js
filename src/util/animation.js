@@ -33,12 +33,15 @@ function getComputedCSS(styleName) {
  * only supports duration, delay, and easing. Returns an object with a property onfinish.
  */
 function animateElement(css, options) {
-  if (!Array.isArray(css) || css.length !== 2) {
-    throw new TypeError('animate polyfill requires an array for css with an initial and final state');
-  }
+  var playback = { onfinish: null };
 
-  if (!options || !options.hasOwnProperty('duration')) {
-    throw new TypeError('animate polyfill requires options with a duration');
+  if (!Array.isArray(css) || css.length !== 2 || !options || !options.hasOwnProperty('duration')) {
+    Promise.resolve().then(function() {
+      if (playback.onfinish) {
+        playback.onfinish();
+      }
+    });
+    return playback;
   }
 
   var element = this;
@@ -48,7 +51,6 @@ function animateElement(css, options) {
   var initialCss = css[0];
   var finalCss = css[1];
   var allCss = {};
-  var playback = { onfinish: null };
 
   Object.keys(initialCss).forEach(function(key) {
     allCss[key] = true;
