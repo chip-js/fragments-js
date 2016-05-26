@@ -31,7 +31,11 @@ function View(template) {
 Class.extend(View, {
 
   get inDOM() {
-    return document.documentElement.contains(this.firstViewNode);
+    var parent = this.firstViewNode;
+    while (parent && parent !== document) {
+      parent = parent.parentNode || parent.host;
+    }
+    return parent === document;
   },
 
   /**

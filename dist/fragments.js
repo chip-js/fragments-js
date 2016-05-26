@@ -541,6 +541,9 @@ exports.globals = {};
 
 
 exports.parse = function(expr, globals, formatters) {
+  if (typeof expr !== 'string') {
+    throw new TypeError('Invalid expr, must be type String');
+  }
   var extraArgs = slice.call(arguments, 3);
   var cacheKey = expr + '|' + extraArgs.join(',');
   // Returns the cached function for this expression if it exists.
@@ -2677,7 +2680,11 @@ function View(template) {
 Class.extend(View, {
 
   get inDOM() {
-    return document.documentElement.contains(this.firstViewNode);
+    var parent = this.firstViewNode;
+    while (parent && parent !== document) {
+      parent = parent.parentNode || parent.host;
+    }
+    return parent === document;
   },
 
   /**
@@ -3201,8 +3208,19 @@ function Observations() {
 
 Class.extend(Observations, {
 
-  // Creates a new observer attached to this observations object. When the observer is bound to a context it will be added
-  // to this `observations` and synced when this `observations.sync` is called.
+  /**
+   * Observes any changes to the result of the expression on the context object and calls the callback.
+   */
+  observe: function(context, expression, callback, callbackContext) {
+    var observer = this.createObserver(expression, callback, callbackContext);
+    observer.bind(context);
+    return observer;
+  },
+
+  /**
+   * Creates a new observer attached to this observations object. When the observer is bound to a context it will be
+   * added to this `observations` and synced when this `observations.sync` is called.
+   */
   createObserver: function(expression, callback, callbackContext) {
     return new Observer(this, expression, callback, callbackContext);
   },
@@ -3435,6 +3453,7 @@ function Observer(observations, expression, callback, callbackContext) {
   this.expression = expression;
   this.callback = callback;
   this.callbackContext = callbackContext;
+  this.getChangeRecords = false;
   this.skip = false;
   this.forceUpdateNextSync = false;
   this.context = null;
@@ -3536,8 +3555,10 @@ Class.extend(Observer, {
 
         var getCompareValue = expressions.parse(compareExpression, globals, formatters, name, index);
         changed = diff.values(value.map(getCompareValue, ctx), oldValue.map(getCompareValue, ctx));
-      } else {
+      } else if (this.getChangeRecords) {
         changed = diff.values(value, this.oldValue);
+      } else {
+        changed = diff.basic(value, this.oldValue);
       }
 
 
