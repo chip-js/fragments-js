@@ -1392,9 +1392,13 @@ Class.extend(Binding, {
    * Initialize a cloned binding. This happens after a compiled binding on a template is cloned for a view.
    */
   init: function() {
+    Object.defineProperties(this, {
+      _observers: { configurable: true, value: [] },
+      _listeners: { configurable: true, value: [] }
+    });
     if (this.expression) {
       // An observer to observe value changes to the expression within a context
-      this.observer = this.observe(this.expression, this.updated);
+      this.observer = this.observations.createObserver(this.expression, this.updated, this);
     }
     this.created();
   },
@@ -1435,6 +1439,14 @@ Class.extend(Binding, {
     if (this.observer && this.updated !== Binding.prototype.updated) {
       this.observer.bind(context);
     }
+
+    this._observers.forEach(function(observer) {
+      observer.bind(context);
+    });
+
+    this._listeners.forEach(function(item) {
+      item.target.addEventListener(item.eventName, item.listener);
+    });
   },
 
 
@@ -1445,6 +1457,15 @@ Class.extend(Binding, {
     }
 
     if (this.observer) this.observer.unbind();
+
+    this._observers.forEach(function(observer) {
+      observer.unbind();
+    });
+
+    this._listeners.forEach(function(item) {
+      item.target.removeEventListener(item.eventName, item.listener);
+    });
+
     this.unbound();
     this.context = null;
   },
@@ -1457,6 +1478,9 @@ Class.extend(Binding, {
       // This will clear it out, nullifying any data stored
       this.observer.sync();
     }
+    this._observers.forEach(function(observer) {
+      observer.sync();
+    });
     this.disposed();
   },
 
@@ -1500,7 +1524,45 @@ Class.extend(Binding, {
   },
 
   observe: function(expression, callback, callbackContext) {
-    return this.observations.createObserver(expression, callback, callbackContext || this);
+    if (typeof callback !== 'function') {
+      throw new TypeError('callback must be a function');
+    }
+
+    var observer = this.observations.createObserver(expression, callback, callbackContext || this);
+    this._observers.push(observer);
+    if (this.context) {
+      // If not bound will bind on attachment
+      observer.bind(this.context);
+    }
+    return observer;
+  },
+
+  listen: function(target, eventName, listener, context) {
+    if (typeof target === 'string') {
+      context = listener;
+      listener = eventName;
+      eventName = target;
+      target = this.element;
+    }
+
+    if (typeof listener !== 'function') {
+      throw new TypeError('listener must be a function');
+    }
+
+    listener = listener.bind(context || this);
+
+    var listenerData = {
+      target: target,
+      eventName: eventName,
+      listener: listener
+    };
+
+    this._listeners.push(listenerData);
+
+    if (this.context) {
+      // If not bound will add on attachment
+      target.addEventListener(eventName, listener);
+    }
   },
 
   get: function(expression) {
@@ -1705,7 +1767,7 @@ var animation = require('./util/animation');
 var Template = require('./template');
 var View = require('./view');
 var Binding = require('./binding');
-var AnimatedBinding = require('./animatedBinding');
+var AnimatedBinding = require('./animated-binding');
 var compile = require('./compile');
 var hasWildcardExpr = /(^|[^\\])\*/;
 var escapedWildcardExpr = /(^|[^\\])\\\*/;
@@ -2363,7 +2425,7 @@ function processOption(obj, fragments, methodName) {
     });
   }
 }
-},{"./animatedBinding":10,"./binding":11,"./compile":12,"./template":14,"./util/animation":15,"./util/polyfills":16,"./util/toFragment":17,"./view":18,"chip-utils/class":1}],14:[function(require,module,exports){
+},{"./animated-binding":10,"./binding":11,"./compile":12,"./template":14,"./util/animation":15,"./util/polyfills":16,"./util/toFragment":17,"./view":18,"chip-utils/class":1}],14:[function(require,module,exports){
 module.exports = Template;
 var View = require('./view');
 var Class = require('chip-utils/class');
