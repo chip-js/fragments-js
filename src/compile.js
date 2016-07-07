@@ -43,6 +43,10 @@ function getBindingsForNode(fragments, node, view) {
       expr = fragments.codifyExpression('text', node.nodeValue);
       node.nodeValue = '';
       Binder = fragments.findBinder('text', expr);
+      if (Binder.expression) {
+        // the expression is the wildcard inside a text binder
+        expr = expr.match(Binder.expression)[1];
+      }
       binding = new Binder({ node: node, view: view, expression: expr, fragments: fragments });
       if (binding.compiled() !== false) {
         bindings.push(binding);

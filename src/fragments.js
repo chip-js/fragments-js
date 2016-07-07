@@ -29,13 +29,26 @@ function Fragments(options) {
 
   this.binders = {
     element: { _wildcards: [] },
-    attribute: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g, _delimitersOnlyInDefault: false },
-    text: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}/g }
+    attribute: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}(?!})/g, _delimitersOnlyInDefault: false },
+    text: { _wildcards: [], _expr: /{{\s*(.*?)\s*}}(?!})/g }
   };
 
   // Text binder for text nodes with expressions in them
   this.registerText('__default__', function(value) {
     this.element.textContent = (value != null) ? value : '';
+  });
+
+  // Text binder for text nodes with expressions in them to be converted to HTML
+  this.registerText('{*}', function(value) {
+    if (this.view) {
+      this.view.remove();
+      this.view = null;
+    }
+
+    if (typeof value === 'string' && value) {
+      this.view = View.makeInstanceOf(toFragment(value));
+      this.element.parentNode.insertBefore(this.view, this.element.nextSibling);
+    }
   });
 
   // Catchall attribute binder for regular attributes with expressions in them
