@@ -185,7 +185,10 @@ Binding.extend(AnimatedBinding, {
       if (duration) {
         onAnimationEnd(node, duration, whenDone);
       } else {
-        whenDone();
+        // Takes a couple frames to really take hold (at least on chrome)
+        requestAnimationFrame(function() {
+          requestAnimationFrame(whenDone);
+        });
       }
     }
   }

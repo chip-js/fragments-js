@@ -264,7 +264,7 @@ var diff = exports;
   // ```javascript
   // {
   //   object: object,
-  //   type: 'deleted|updated|new',
+  //   type: 'delete|update|add',
   //   name: 'propertyName',
   //   oldValue: oldValue
   // }
@@ -723,6 +723,13 @@ var defaultGlobals = {
   isNaN: null,
   Array: null,
   typeof: null,
+  encodeURI: null,
+  encodeURIComponent: null,
+  Boolean: null,
+  String: null,
+  Number: null,
+  Infinity: null,
+  NaN: null,
   _globals_: null,
   _formatters_: null,
   _value_: null,
@@ -1288,7 +1295,10 @@ Binding.extend(AnimatedBinding, {
       if (duration) {
         onAnimationEnd(node, duration, whenDone);
       } else {
-        whenDone();
+        // Takes a couple frames to really take hold (at least on chrome)
+        requestAnimationFrame(function() {
+          requestAnimationFrame(whenDone);
+        });
       }
     }
   }
@@ -2874,57 +2884,6 @@ exports.create = function() {
 };
 
 },{"./src/observations":26,"./src/observer":27}],20:[function(require,module,exports){
-module.exports = AsyncProperty;
-var ComputedProperty = require('./computed-property');
-
-/**
- * Calls the async expression and assigns the results to the object's property when the `whenExpression` changes value
- * to anything other than a falsey value such as undefined. The return value of the async expression should be a
- * Promise.
- * @param {String} whenExpression The conditional expression use to determine when to call the `asyncExpression`
- * @param {String} asyncExpression The expression which will be executed when the `when` value changes and the result of
- * the returned promise is set on the object.
- */
-function AsyncProperty(whenExpression, asyncExpression) {
-  if (!asyncExpression) {
-    asyncExpression = whenExpression;
-    whenExpression = 'true';
-  }
-
-  this.whenExpression = whenExpression;
-  this.asyncExpression = asyncExpression;
-}
-
-
-ComputedProperty.extend(AsyncProperty, {
-
-  addTo: function(observations, computedObject, propertyName) {
-    if (!this.runAsyncMethod) {
-      this.runAsyncMethod = observations.getExpression(this.asyncExpression);
-    }
-
-    return observations.createObserver(this.whenExpression, function(value) {
-      if (value) {
-        var promise = this.runAsyncMethod.call(computedObject);
-        if (promise && promise.then) {
-          promise.then(function(value) {
-            computedObject[propertyName] = value;
-            observations.sync();
-          }, function(err) {
-            computedObject[propertyName] = undefined;
-            observations.sync();
-          });
-        } else {
-          computedObject[propertyName] = promise;
-        }
-      } else {
-        computedObject[propertyName] = undefined;
-      }
-    }, this);
-  }
-});
-
-},{"./computed-property":21}],21:[function(require,module,exports){
 module.exports = ComputedProperty;
 var Class = require('chip-utils/class');
 
@@ -2946,11 +2905,11 @@ Class.extend(ComputedProperty, {
    * @param {String} propertyName The name of the property on the object that will be set
    * @return {Observer} An observer which can be bound to the computed object
    */
-  addTo: function(computedObject, propertyName) {
+  addTo: function(observations, computedObject, propertyName, context) {
     throw new Error('Abstract function is not implemented');
   },
 
-  watch: function(observations, expression, obj, property) {
+  watch: function(observations, expression, obj, property, context) {
     if (typeof expression === 'string') {
       // This is a computed expression
       return observations.createObserver(expression, function(value) {
@@ -2962,12 +2921,12 @@ Class.extend(ComputedProperty, {
       });
     } else if (expression.isComputedProperty) {
       // Add ComputedProperty's observer to the observers and bind if enabled
-      return expression.addTo(observations, obj, property);
+      return expression.addTo(observations, obj, property, context);
     }
   }
 });
 
-},{"chip-utils/class":1}],22:[function(require,module,exports){
+},{"chip-utils/class":1}],21:[function(require,module,exports){
 module.exports = ExprProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -2984,12 +2943,12 @@ function ExprProperty(expression) {
 
 ComputedProperty.extend(ExprProperty, {
 
-  addTo: function(observations, computedObject, propertyName) {
-    return this.watch(observations, this.expression, computedObject, propertyName);
+  addTo: function(observations, computedObject, propertyName, context) {
+    return this.watch(observations, this.expression, computedObject, propertyName, context);
   }
 });
 
-},{"./computed-property":21}],23:[function(require,module,exports){
+},{"./computed-property":20}],22:[function(require,module,exports){
 module.exports = IfProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -3007,12 +2966,12 @@ function IfProperty(ifExpression, thenExpression) {
 
 ComputedProperty.extend(IfProperty, {
 
-  addTo: function(observations, computedObject, propertyName) {
-    var observer = this.watch(observations, this.thenExpression, computedObject, propertyName);
+  addTo: function(observations, computedObject, propertyName, context) {
+    var observer = this.watch(observations, this.thenExpression, computedObject, propertyName, context);
 
     return observations.createObserver(this.ifExpression, function(value) {
       if (value && !observer.context) {
-        observer.bind(computedObject);
+        observer.bind(context);
       } else if (!value && observer.context) {
         observer.unbind();
         observer.sync();
@@ -3021,7 +2980,7 @@ ComputedProperty.extend(IfProperty, {
   }
 });
 
-},{"./computed-property":21}],24:[function(require,module,exports){
+},{"./computed-property":20}],23:[function(require,module,exports){
 module.exports = MapProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -3036,7 +2995,9 @@ var ComputedProperty = require('./computed-property');
  * @return {Object} The object map of key=>value
  */
 function MapProperty(sourceExpression, keyExpression, resultExpression, removeExpression) {
-  this.sourceExpression = sourceExpression;
+  var parts = sourceExpression.split(/\s+in\s+/);
+  this.sourceExpression = parts.pop();
+  this.itemName = parts.pop();
   this.keyExpression = keyExpression;
   this.resultExpression = resultExpression;
   this.removeExpression = removeExpression;
@@ -3045,37 +3006,44 @@ function MapProperty(sourceExpression, keyExpression, resultExpression, removeEx
 
 ComputedProperty.extend(MapProperty, {
 
-  addTo: function(observations, computedObject, propertyName) {
+  addTo: function(observations, computedObject, propertyName, context) {
     var map = {};
     var observers = {};
     computedObject[propertyName] = map;
-    var add = this.addItem.bind(this, observations, computedObject, map, observers);
-    var remove = this.removeItem.bind(this, observations, computedObject, map, observers);
+    var add = this.addItem.bind(this, observations, computedObject, map, observers, context);
+    var remove = this.removeItem.bind(this, observations, computedObject, map, observers, context);
     return observations.observeMembers(this.sourceExpression, add, remove, this);
   },
 
-  addItem: function(observations, computedObject, map, observers, item) {
+  addItem: function(observations, computedObject, map, observers, context, item) {
     if (!this.getKey) {
       this.getKey = observations.getExpression(this.keyExpression);
     }
 
-    var key = item && this.getKey.call(item);
+    var proxy;
+    if (this.itemName) {
+      proxy = Object.create(context);
+      proxy[this.itemName] = item;
+    } else {
+      proxy = Object.create(item);
+      proxy.$$ = context;
+    }
+
+    var key = item && this.getKey.call(proxy);
     if (!key) {
       return;
     }
 
-    if (key in observers) {
-      removeObserver(observers, key);
+    if (observers.hasOwnProperty(key)) {
+      this.removeObserver(observers, key);
     }
 
     if (this.resultExpression) {
-      var observer = this.watch(observations, this.resultExpression, map, key);
+      var observer = this.watch(observations, this.resultExpression, map, key, proxy);
       if (!observer) {
         throw new TypeError('Invalid resultExpression for computed.map');
       }
 
-      var proxy = Object.create(item);
-      proxy.$$ = computedObject;
       observer.bind(proxy);
       observers[key] = observer;
     } else {
@@ -3083,12 +3051,12 @@ ComputedProperty.extend(MapProperty, {
     }
   },
 
-  removeItem: function(observations, computedObject, map, observers, item) {
+  removeItem: function(observations, computedObject, map, observers, context, item) {
     var key = item && this.getKey.call(item);
     if (key) {
       this.removeObserver(observers, key);
       if (this.removeExpression) {
-        observations.get(computedObject, this.removeExpression);
+        observations.get(context, this.removeExpression);
       }
       delete map[key];
     }
@@ -3103,12 +3071,63 @@ ComputedProperty.extend(MapProperty, {
   }
 });
 
-},{"./computed-property":21}],25:[function(require,module,exports){
+},{"./computed-property":20}],24:[function(require,module,exports){
+module.exports = WhenProperty;
+var ComputedProperty = require('./computed-property');
+
+/**
+ * Calls the `thenExpression` and assigns the results to the object's property when the `whenExpression` changes value
+ * to anything other than a falsey value such as undefined. The return value of the `thenExpression` may be a Promise.
+ *
+ * @param {String} whenExpression The conditional expression use to determine when to call the `thenExpression`
+ * @param {String} thenExpression The expression which will be executed when the `when` value changes and the result (or
+ * the result of the returned promise) is set on the object.
+ */
+function WhenProperty(whenExpression, thenExpression) {
+  if (!thenExpression) {
+    thenExpression = whenExpression;
+    whenExpression = 'true';
+  }
+
+  this.whenExpression = whenExpression;
+  this.thenExpression = thenExpression;
+}
+
+
+ComputedProperty.extend(WhenProperty, {
+
+  addTo: function(observations, computedObject, propertyName, context) {
+    if (!this.thenMethod) {
+      this.thenMethod = observations.getExpression(this.thenExpression);
+    }
+
+    return observations.createObserver(this.whenExpression, function(value) {
+      if (value) {
+        var result = this.thenMethod.call(context);
+        if (result && result.then) {
+          result.then(function(value) {
+            computedObject[propertyName] = value;
+            observations.sync();
+          }, function(err) {
+            computedObject[propertyName] = undefined;
+            observations.sync();
+          });
+        } else {
+          computedObject[propertyName] = result;
+        }
+      } else {
+        computedObject[propertyName] = undefined;
+      }
+    }, this);
+  }
+});
+
+},{"./computed-property":20}],25:[function(require,module,exports){
 var ComputedProperty = require('./computed-properties/computed-property');
 var ExprProperty = require('./computed-properties/expr');
 var MapProperty = require('./computed-properties/map');
 var IfProperty = require('./computed-properties/if');
-var AsyncProperty = require('./computed-properties/async');
+var WhenProperty = require('./computed-properties/when');
 
 
 exports.create = function(observations) {
@@ -3151,7 +3170,7 @@ exports.create = function(observations) {
         });
       } else if (expression && expression.isComputedProperty) {
         // Add ComputedProperty's observer to the observers and bind if enabled
-        observer = expression.addTo(observations, obj, property);
+        observer = expression.addTo(observations, obj, property, obj);
       } else {
         obj[property] = expression;
       }
@@ -3206,17 +3225,18 @@ exports.create = function(observations) {
 
 
   /**
-   * Calls the async expression and assigns the results to the object's property when the `whenExpression` changes value
-   * to anything other than a falsey value such as undefined. The return value of the async expression should be a
-   * Promise.
-   * @param {String} whenExpression The conditional expression use to determine when to call the `asyncExpression`
-   * @param {String} asyncExpression The expression which will be executed when the `when` value changes and the result of
-   * the returned promise is set on the object.
+   * Calls the `thenExpression` and assigns the results to the object's property when the `whenExpression` changes value
+   * to anything other than a falsey value such as undefined. The return value of the `thenExpression` may be a Promise.
+   * @param {String} whenExpression The conditional expression use to determine when to call the `thenExpression`
+   * @param {String} thenExpression The expression which will be executed when the `when` value changes and the result
+   * (or the result of the returned promise) is set on the object.
    * @return {ComputedProperty}
    */
-  computed.async = function(whenExpression, asyncExpression) {
-    return new AsyncProperty(whenExpression, asyncExpression);
+  computed.when = function(whenExpression, thenExpression) {
+    return new WhenProperty(whenExpression, thenExpression);
   };
+  // Alias when to async for readability and backwards compatability
+  computed.async = computed.when;
 
 
   // Make the ComputedProperty class available for extension
@@ -3263,7 +3283,7 @@ function ensureObservers(obj, options) {
   return obj;
 }
 
-},{"./computed-properties/async":20,"./computed-properties/computed-property":21,"./computed-properties/expr":22,"./computed-properties/if":23,"./computed-properties/map":24}],26:[function(require,module,exports){
+},{"./computed-properties/computed-property":20,"./computed-properties/expr":21,"./computed-properties/if":22,"./computed-properties/map":23,"./computed-properties/when":24}],26:[function(require,module,exports){
 (function (global){
 module.exports = Observations;
 var Class = require('chip-utils/class');
