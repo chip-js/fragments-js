@@ -6,11 +6,11 @@ function create(options) {
   var observations = Observations.create();
   options.observations = observations;
   var fragments = new Fragments(options);
-  fragments.sync = observations.sync.bind(observations);
-  fragments.syncNow = observations.syncNow.bind(observations);
-  fragments.afterSync = observations.afterSync.bind(observations);
-  fragments.onSync = observations.onSync.bind(observations);
-  fragments.offSync = observations.offSync.bind(observations);
+  fragments.sync = observations.sync;
+  fragments.syncNow = observations.syncNow;
+  fragments.afterSync = observations.afterSync;
+  fragments.onSync = observations.onSync;
+  fragments.offSync = observations.offSync;
   return fragments;
 }
 

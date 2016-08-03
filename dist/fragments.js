@@ -1096,11 +1096,11 @@ function create(options) {
   var observations = Observations.create();
   options.observations = observations;
   var fragments = new Fragments(options);
-  fragments.sync = observations.sync.bind(observations);
-  fragments.syncNow = observations.syncNow.bind(observations);
-  fragments.afterSync = observations.afterSync.bind(observations);
-  fragments.onSync = observations.onSync.bind(observations);
-  fragments.offSync = observations.offSync.bind(observations);
+  fragments.sync = observations.sync;
+  fragments.syncNow = observations.syncNow;
+  fragments.afterSync = observations.afterSync;
+  fragments.onSync = observations.onSync;
+  fragments.offSync = observations.offSync;
   return fragments;
 }
 
@@ -2879,11 +2879,12 @@ Class.extend(View, {
 
 exports.Observations = require('./src/observations');
 exports.Observer = require('./src/observer');
+exports.ObservableHash = require('./src/observable-hash');
 exports.create = function() {
   return new exports.Observations();
 };
 
-},{"./src/observations":26,"./src/observer":27}],20:[function(require,module,exports){
+},{"./src/observable-hash":26,"./src/observations":27,"./src/observer":28}],20:[function(require,module,exports){
 module.exports = ComputedProperty;
 var Class = require('chip-utils/class');
 
@@ -3012,7 +3013,7 @@ ComputedProperty.extend(MapProperty, {
     computedObject[propertyName] = map;
     var add = this.addItem.bind(this, observations, computedObject, map, observers, context);
     var remove = this.removeItem.bind(this, observations, computedObject, map, observers, context);
-    return observations.observeMembers(this.sourceExpression, add, remove, this);
+    return observations.createMemberObserver(this.sourceExpression, add, remove, this);
   },
 
   addItem: function(observations, computedObject, map, observers, context, item) {
@@ -3157,6 +3158,9 @@ exports.create = function(observations) {
    * @return {Object} Returns the object passed in
    */
   computed.extend = function(obj, map, options) {
+    if (!obj || !map) {
+      throw new TypeError('computed.extend expects `obj` and `map` to be objects');
+    }
     ensureObservers(obj, options);
 
     Object.keys(map).forEach(function(property) {
@@ -3284,17 +3288,218 @@ function ensureObservers(obj, options) {
 }
 
 },{"./computed-properties/computed-property":20,"./computed-properties/expr":21,"./computed-properties/if":22,"./computed-properties/map":23,"./computed-properties/when":24}],26:[function(require,module,exports){
+module.exports = ObservableHash;
+var Class = require('chip-utils/class');
+var deepDelimiter = /(?:\[\]|\{\})\.?/i;
+
+/**
+ * An object for storing data to be accessed by an application. Has methods for easily computing and watching data
+ * changes.
+ * @param {Observations} observations An instance of the Observations class this has is bound to
+ */
+function ObservableHash(observations) {
+  var enabled = true;
+  var _observers = [];
+  _observers.enabled = true;
+
+  Object.defineProperties(this, {
+    _observations: { value: observations },
+    _namespaces: { value: [] },
+    _observers: { value: _observers },
+    computedObservers: { value: _observers } // alias to work with the computed system
+  });
+}
+
+
+Class.extend(ObservableHash, {
+
+  /**
+   * Whether or not this hash is currently enabled and running the observations/computations. When disabled, watchers
+   * and all computed properties will be cleared out with `undefined`. The hash will be ready for garbage collection.
+   * @return {Boolean} If the hash is enabled, default `true`
+   */
+  get observersEnabled() {
+    return this._observers.enabled;
+  },
+  set observersEnabled(value) {
+    if (this.enabled === value) return;
+    this._observers.enabled = value;
+
+    // Bind/unbind the observers for this hash
+    if (value) {
+      this._observers.forEach(function(observer) {
+        observer.bind(this);
+      }, this);
+    } else {
+      this._observers.forEach(function(observer) {
+        observer.unbind();
+        observer.sync();
+      });
+    }
+
+    // Set namespaced hashes to the same value
+    this._namespaces.forEach(function(namespace) {
+      this[namespace].observersEnabled = value;
+    }, this);
+  },
+
+  /**
+   * Add computed properties to this hash. If `name` is provided it will add the computed properties to that namespace
+   * on the hash. Otherwise they will be added directly to the hash.
+   * @param {String} name [OPTIONAL] The namespace to add the computed properties under
+   * @param {Object} map The map of computed properties that will be set on this ObservableHash
+   */
+  addComputed: function(namespace, map) {
+    if (typeof namespace === 'string' && typeof map === 'object') {
+      if (!this[namespace]) {
+        this[namespace] = new ObservableHash(this._observations);
+        this[namespace].observersEnabled = this.observersEnabled;
+        this._namespaces.push(namespace);
+      }
+      this._observations.computed.extend(this[namespace], map);
+    } else if (namespace && typeof namespace === 'object') {
+      this._observations.computed.extend(this, namespace);
+    } else {
+      throw new TypeError('addComputed must have a map object');
+    }
+    return this;
+  },
+
+  /**
+   * Watch this object for changes in the value of the expression
+   * @param {String} expression The expression to observe
+   * @param {Function} onChange The function which will be called when the expression value changes
+   * @return {Observer} The observer created
+   */
+  watch: function(expression, onChange, callbackContext) {
+    var observer = this._observations.createObserver(expression, onChange, callbackContext || this);
+    this._observers.push(observer);
+    if (this.observersEnabled) observer.bind(this);
+    return observer;
+  },
+
+  /**
+   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {String} expression The expression to observe
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer created
+   */
+  track: function(expression, onAdd, onRemove, callbackContext) {
+    if (deepDelimiter.test(expression)) {
+      return this.trackDeeply(expression, onAdd, onRemove, callbackContext);
+    }
+    var observer = this._observations.createMemberObserver(expression, onAdd, onRemove, callbackContext || this);
+    this._observers.push(observer);
+    if (this.observersEnabled) observer.bind(this);
+    return observer;
+  },
+
+  /**
+   * Works like `track` but allows it to track deeply using `[]` and `{}` in the expression. Example:
+   * ```
+   * data.addComputed({
+   *   widgets: 'getArrayOfWidgets()',
+   *   widgetTags: computed.map('w in widgets', 'w.id', 'w.tags')
+   * });
+   * // know when a tag is added
+   * data.trackDeeply('widgets[].tags[].tagName', function(tagAdded) { console.log('tag added', tagAdded )});
+   * // widgetTags is an object hash of arrays, so we need to use two levels next to each other
+   * data.trackDeeply('widgetTags{}[].tagName', function(tagAdded) { console.log('tag added', tagAdded )});
+   * ```
+   * @param {String} expression The expression to observe with `{}` and `[]` indicating
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer created
+   */
+  trackDeeply: function(expression, onAdd, onRemove, callbackContext) {
+    if (!deepDelimiter.test(expression)) {
+      return this.track(expression, onAdd, onRemove, callbackContext);
+    }
+    var observers = new WeakMap();
+    var observations = this._observations;
+    var steps = expression.split(deepDelimiter);
+    var lastIndex = steps.length - 1;
+
+    var removedCallback = function(item) {
+      var observer = observers.get(item);
+      if (observer) {
+        observer.unbind();
+        observer.sync();
+        observers.delete(item);
+      }
+    };
+
+    // Add a unique onAdd callback for each step of the observation
+    var addedCallbacks = steps.slice(1, -1).map(function(expr, index) {
+      // Observe the next set of members
+      return function(item) {
+        if (!item) return;
+        var observer = observations.observeMembers(
+          expr || 'this',
+          addedCallbacks[index + 1],
+          removedCallbacks[index + 1]
+        );
+        observers.set(item, observer);
+        observer.bind(item);
+        return observer;
+      };
+    });
+
+    // Removed callbacks are all the same except the last
+    var removedCallbacks = steps.map(function() {
+      return removedCallback;
+    });
+
+    // Add last callback
+    if (steps[lastIndex]) {
+      // Observe the item's property
+      addedCallbacks.push(function(item) {
+        if (!item) return;
+        var observer = observations.createObserver(steps[lastIndex], function(value, oldValue) {
+          if (oldValue != null && typeof onRemove === 'function') {
+            onRemove(oldValue);
+          }
+          if (value != null && typeof onAdd === 'function') {
+            onAdd(value);
+          }
+        });
+        observers.set(item, observer);
+        observer.bind(item);
+        return observer;
+      });
+    } else {
+      addedCallbacks.push(onAdd);
+      removedCallbacks[lastIndex] = onRemove;
+    }
+
+    var observer = observations.observeMembers(steps[0], addedCallbacks[0], removedCallbacks[0]);
+    this._observers.push(observer);
+    if (this.observersEnabled) observer.bind(this);
+    return observer;
+  }
+
+});
+
+},{"chip-utils/class":1}],27:[function(require,module,exports){
 (function (global){
 module.exports = Observations;
 var Class = require('chip-utils/class');
 var Observer = require('./observer');
 var computed = require('./computed');
+var ObservableHash = require('./observable-hash');
 var expressions = require('expressions-js');
 var requestAnimationFrame = global.requestAnimationFrame || setTimeout;
 var cancelAnimationFrame = global.cancelAnimationFrame || clearTimeout;
 
 
 function Observations() {
+  // Bind all methods to this instance
+  Object.getOwnPropertyNames(this.constructor.prototype).forEach(function(name) {
+    if (typeof this[name] === 'function') {
+      this[name] = this[name].bind(this);
+    }
+  }, this);
   this.globals = {};
   this.formatters = {};
   this.observers = [];
@@ -3307,7 +3512,6 @@ function Observations() {
   this.maxCycles = 10;
   this.timeout = null;
   this.pendingSync = null;
-  this.syncNow = this.syncNow.bind(this);
   this.computed = computed.create(this);
   this.expressions = expressions;
 }
@@ -3316,59 +3520,117 @@ function Observations() {
 Class.extend(Observations, {
 
   /**
-   * Observes any changes to the result of the expression on the context object and calls the callback.
+   * Creates a new ObservableHash with useful methods for managing data using watch, track, and computed.
+   * @param {Object} computedMap [OPTIONAL] An initial computed map for this hash
+   * @return {ObservableHash} An object for putting your data on for accessibility
    */
-  observe: function(context, expression, callback, callbackContext) {
-    var observer = this.createObserver(expression, callback, callbackContext);
+  createHash: function(computedMap) {
+    var hash = new ObservableHash(this);
+    if (computedMap) hash.addComputed(computedMap);
+    return hash;
+  },
+
+  /**
+   * Observes any changes to the result of the expression on the context object and calls the callback.
+   * @param {Object} context The context to bind the expression against
+   * @param {String} expression The expression to observe
+   * @param {Function} onChange The function which will be called when the expression value changes
+   * @return {Observer} The observer created
+   */
+  watch: function(context, expression, onChange, callbackContext) {
+    var observer = this.createObserver(expression, onChange, callbackContext || context);
     observer.bind(context);
     return observer;
+  },
+
+  // Alias for `watch`, DEPRECATED
+  observe: function(context, expression, onChange, callbackContext) {
+    return this.watch(context, expression, onChange, callbackContext);
+  },
+
+  /**
+   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {Object} context The context to bind the expression against
+   * @param {String} expression The expression to observe
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer created
+   */
+  track: function(context, expression, onAdd, onRemove, callbackContext) {
+    var observer = this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
+    observer.bind(context);
+    return observer;
+  },
+
+  // Alias for `createMemberObserver`, DEPRECATED
+  observeMembers: function(expression, onAdd, onRemove, callbackContext) {
+    return this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
   },
 
   /**
    * Creates a new observer attached to this observations object. When the observer is bound to a context it will be
    * added to this `observations` and synced when this `observations.sync` is called.
+   * @param {String} expression The expression to observe
+   * @param {Function} callback The function which will be called when the expression value changes
+   * @return {Observer} The observer
    */
   createObserver: function(expression, callback, callbackContext) {
     return new Observer(this, expression, callback, callbackContext);
   },
 
   /**
-   * Observe an expression and trigger `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {String} expression The expression to observe
    * @param {Function} onAdd The function which will be called when a member is added to the source
    * @param {Function} onRemove The function which will be called when a member is removed from the source
-   * @return {Observer} The observer for observing the source. Bind against a source object.
+   * @return {Observer} The observer
    */
-  observeMembers: function(expression, onAdd, onRemove, callbackContext) {
+  createMemberObserver: function(expression, onAdd, onRemove, callbackContext) {
     if (!onAdd) onAdd = function(){};
     if (!onRemove) onRemove = function(){};
 
     var observer = this.createObserver(expression, function(source, oldValue, changes) {
       if (changes) {
+        // call onRemoved on everything first
         changes.forEach(function(change) {
-          if (change.removed) {
+          if (change.type === 'splice') {
             change.removed.forEach(onRemove, callbackContext);
+          } else {
+            if (change.oldValue != null) {
+              onRemove.call(callbackContext, change.oldValue);
+            }
+          }
+        });
+
+        // call onAdded second, allowing for items that changed location to be accurately processed
+        changes.forEach(function(change) {
+          if (change.type === 'splice') {
             source.slice(change.index, change.index + change.addedCount).forEach(onAdd, callbackContext);
-          } else if (change.type === 'add') {
-            onAdd.call(callbackContext, source[change.name]);
-          } else if (change.type === 'update') {
-            onRemove.call(callbackContext, change.oldValue);
-            onAdd.call(callbackContext, source[change.name]);
-          } else if (change.type === 'delete') {
-            onRemove.call(callbackContext, change.oldValue);
+          } else {
+            var value = source[change.name];
+            if (value != null) {
+              onAdd.call(callbackContext, value);
+            }
           }
         });
       } else if (Array.isArray(source)) {
         source.forEach(onAdd, callbackContext);
       } else if (source && typeof source === 'object') {
         Object.keys(source).forEach(function(key) {
-          onAdd.call(callbackContext, source[key]);
+          var value = source[key];
+          if (value != null) {
+            onAdd.call(callbackContext, value);
+          }
         });
       } else if (Array.isArray(oldValue)) {
         oldValue.forEach(onRemove, callbackContext);
       } else if (oldValue && typeof oldValue === 'object') {
         // If undefined (or something that isn't an array/object) remove the observers
         Object.keys(oldValue).forEach(function(key) {
-          onRemove.call(callbackContext, oldValue[key]);
+          var value = oldValue[key];
+          if (value != null) {
+            onRemove.call(callbackContext, value);
+          }
         });
       }
     });
@@ -3537,8 +3799,10 @@ Class.extend(Observations, {
     this.observers.push(observer);
     if (!skipUpdate) {
       observer.forceUpdateNextSync = true;
-      observer.sync();
+    } else {
+      observer.skipNextSync();
     }
+    observer.sync();
   },
 
 
@@ -3556,7 +3820,7 @@ Class.extend(Observations, {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./computed":25,"./observer":27,"chip-utils/class":1,"expressions-js":4}],27:[function(require,module,exports){
+},{"./computed":25,"./observable-hash":26,"./observer":28,"chip-utils/class":1,"expressions-js":4}],28:[function(require,module,exports){
 module.exports = Observer;
 var Class = require('chip-utils/class');
 var expressions = require('expressions-js');
