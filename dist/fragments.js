@@ -765,8 +765,11 @@ var chainLinksRegex = /\.|\[/g;
 // the property name part of links
 var chainLinkRegex = /\.|\[|\(/;
 
-var andRegex = / and /g;
-var orRegex = / or /g;
+var substitutions = {
+  ' && ': / and /g,
+  ' || ': / or /g,
+  ' === ': / is /g
+};
 
 
 exports.parseExpression = function(expr, _globals) {
@@ -778,7 +781,7 @@ exports.parseExpression = function(expr, _globals) {
   continuation = false;
   globals = _globals;
 
-  expr = replaceAndsAndOrs(expr);
+  expr = replaceSubstitutions(expr);
   if (expr.indexOf(' = ') !== -1) {
     var parts = expr.split(' = ');
     var setter = parts[0];
@@ -1024,8 +1027,11 @@ function parsePart(part, index) {
 }
 
 
-function replaceAndsAndOrs(expr) {
-  return expr.replace(andRegex, ' && ').replace(orRegex, ' || ');
+function replaceSubstitutions(expr) {
+  Object.keys(substitutions).forEach(function(replacement) {
+    expr = expr.replace(substitutions[replacement], replacement);
+  });
+  return expr;
 }
 
 
@@ -1360,7 +1366,7 @@ function onAnimationEnd(node, duration, callback) {
 }
 },{"./binding":11,"./util/animation":15}],11:[function(require,module,exports){
 module.exports = Binding;
-var Class = require('chip-utils/class');
+var ObservableHash = require('observations-js').ObservableHash;
 
 /**
  * A binding is a link between an element and some data. Subclasses of Binding called binders define what a binding does
@@ -1390,11 +1396,11 @@ function Binding(properties) {
   this.match = properties.match;
   this.expression = properties.expression;
   this.fragments = properties.fragments;
-  this.observations = this.fragments.observations;
+  this.observations = properties.fragments.observations;
   this.context = null;
 }
 
-Class.extend(Binding, {
+ObservableHash.extend(Binding, {
   /**
    * Default priority binders may override.
    */
@@ -1405,13 +1411,16 @@ Class.extend(Binding, {
    * Initialize a cloned binding. This happens after a compiled binding on a template is cloned for a view.
    */
   init: function() {
+    ObservableHash.call(this, this.observations);
+    this.observersEnabled = false;
+
     Object.defineProperties(this, {
-      _observers: { configurable: true, value: [] },
       _listeners: { configurable: true, value: [] }
     });
-    if (this.expression) {
+
+    if (this.expression && this.updated !== Binding.prototype.updated) {
       // An observer to observe value changes to the expression within a context
-      this.observer = this.observations.createObserver(this.expression, this.updated, this);
+      this.observer = this.watch(this.expression, this.updated, this);
     }
     this.created();
   },
@@ -1445,17 +1454,10 @@ Class.extend(Binding, {
       return;
     }
 
-    this.context = context;
-    if (this.observer) this.observer.context = context;
+    this.context = this._context = context;
     this.bound();
 
-    if (this.observer && this.updated !== Binding.prototype.updated) {
-      this.observer.bind(context);
-    }
-
-    this._observers.forEach(function(observer) {
-      observer.bind(context);
-    });
+    this.observersEnabled = true;
 
     this._listeners.forEach(function(item) {
       item.target.addEventListener(item.eventName, item.listener);
@@ -1471,16 +1473,14 @@ Class.extend(Binding, {
 
     if (this.observer) this.observer.unbind();
 
-    this._observers.forEach(function(observer) {
-      observer.unbind();
-    });
+    this.observersEnabled = false;
 
     this._listeners.forEach(function(item) {
       item.target.removeEventListener(item.eventName, item.listener);
     });
 
     this.unbound();
-    this.context = null;
+    this.context = this._context = null;
   },
 
 
@@ -1537,17 +1537,7 @@ Class.extend(Binding, {
   },
 
   observe: function(expression, callback, callbackContext) {
-    if (typeof callback !== 'function') {
-      throw new TypeError('callback must be a function');
-    }
-
-    var observer = this.observations.createObserver(expression, callback, callbackContext || this);
-    this._observers.push(observer);
-    if (this.context) {
-      // If not bound will bind on attachment
-      observer.bind(this.context);
-    }
-    return observer;
+    return this.watch(expression, callback, callbackContext);
   },
 
   listen: function(target, eventName, listener, context) {
@@ -1576,14 +1566,6 @@ Class.extend(Binding, {
       // If not bound will add on attachment
       target.addEventListener(eventName, listener);
     }
-  },
-
-  get: function(expression) {
-    return this.observations.get(this.context, expression);
-  },
-
-  set: function(expression, value) {
-    return this.observations.set(this.context, expression, value);
   }
 });
 
@@ -1603,7 +1585,7 @@ function initNodePath(node, view) {
   return path;
 }
 
-},{"chip-utils/class":1}],12:[function(require,module,exports){
+},{"observations-js":19}],12:[function(require,module,exports){
 var slice = Array.prototype.slice;
 module.exports = compile;
 
@@ -3182,7 +3164,7 @@ exports.create = function(observations) {
       if (observer) {
         obj.computedObservers.push(observer);
         if (obj.computedObservers.enabled) {
-          observer.bind(obj);
+          observer.bind(options && options.context || obj);
         }
       }
     });
@@ -3268,7 +3250,7 @@ function ensureObservers(obj, options) {
       if (!this.enabled) {
         this.enabled = true;
         this.forEach(function(observer) {
-          observer.bind(obj);
+          observer.bind(options && options.context || obj);
         });
       }
     };
@@ -3303,6 +3285,7 @@ function ObservableHash(observations) {
   _observers.enabled = true;
 
   Object.defineProperties(this, {
+    _context: { writable: true, value: this },
     _observations: { value: observations },
     _namespaces: { value: [] },
     _observers: { value: _observers },
@@ -3328,7 +3311,7 @@ Class.extend(ObservableHash, {
     // Bind/unbind the observers for this hash
     if (value) {
       this._observers.forEach(function(observer) {
-        observer.bind(this);
+        observer.bind(this._context);
       }, this);
     } else {
       this._observers.forEach(function(observer) {
@@ -3344,6 +3327,24 @@ Class.extend(ObservableHash, {
   },
 
   /**
+   * Get the value of an expression
+   * @param {String} expression The JavaScript expression to evaluate
+   * @return {mixed} The value of the expression
+   */
+  get: function(expression) {
+    return this._observations.get(this._context, expression);
+  },
+
+  /**
+   * Set the value of an expression
+   * @param {String} expression The JavaScript expression to set
+   * @param {mixed} value The value you'd like to set the expression to
+   */
+  set: function(expression, value) {
+    return this._observations.set(this._context, expression, value);
+  },
+
+  /**
    * Add computed properties to this hash. If `name` is provided it will add the computed properties to that namespace
    * on the hash. Otherwise they will be added directly to the hash.
    * @param {String} name [OPTIONAL] The namespace to add the computed properties under
@@ -3356,13 +3357,14 @@ Class.extend(ObservableHash, {
         this[namespace].observersEnabled = this.observersEnabled;
         this._namespaces.push(namespace);
       }
-      this._observations.computed.extend(this[namespace], map);
+      this._observations.computed.extend(this[namespace], map, { context: this._context });
+      return this[namespace];
     } else if (namespace && typeof namespace === 'object') {
-      this._observations.computed.extend(this, namespace);
+      this._observations.computed.extend(this, namespace, { context: this._context });
+      return this;
     } else {
       throw new TypeError('addComputed must have a map object');
     }
-    return this;
   },
 
   /**
@@ -3374,7 +3376,7 @@ Class.extend(ObservableHash, {
   watch: function(expression, onChange, callbackContext) {
     var observer = this._observations.createObserver(expression, onChange, callbackContext || this);
     this._observers.push(observer);
-    if (this.observersEnabled) observer.bind(this);
+    if (this.observersEnabled) observer.bind(this._context);
     return observer;
   },
 
@@ -3391,7 +3393,7 @@ Class.extend(ObservableHash, {
     }
     var observer = this._observations.createMemberObserver(expression, onAdd, onRemove, callbackContext || this);
     this._observers.push(observer);
-    if (this.observersEnabled) observer.bind(this);
+    if (this.observersEnabled) observer.bind(this._context);
     return observer;
   },
 
@@ -3438,7 +3440,8 @@ Class.extend(ObservableHash, {
         var observer = observations.observeMembers(
           expr || 'this',
           addedCallbacks[index + 1],
-          removedCallbacks[index + 1]
+          removedCallbacks[index + 1],
+          callbackContext
         );
         observers.set(item, observer);
         observer.bind(item);
@@ -3454,14 +3457,14 @@ Class.extend(ObservableHash, {
     // Add last callback
     if (steps[lastIndex]) {
       // Observe the item's property
-      addedCallbacks.push(function(item) {
+      addedCallbacks.push(function(item, key) {
         if (!item) return;
         var observer = observations.createObserver(steps[lastIndex], function(value, oldValue) {
           if (oldValue != null && typeof onRemove === 'function') {
-            onRemove(oldValue);
+            onRemove.call(callbackContext, oldValue, key);
           }
           if (value != null && typeof onAdd === 'function') {
-            onAdd(value);
+            onAdd.call(callbackContext, value, key);
           }
         });
         observers.set(item, observer);
@@ -3473,9 +3476,9 @@ Class.extend(ObservableHash, {
       removedCallbacks[lastIndex] = onRemove;
     }
 
-    var observer = observations.observeMembers(steps[0], addedCallbacks[0], removedCallbacks[0]);
+    var observer = observations.observeMembers(steps[0], addedCallbacks[0], removedCallbacks[0], callbackContext);
     this._observers.push(observer);
-    if (this.observersEnabled) observer.bind(this);
+    if (this.observersEnabled) observer.bind(this._context);
     return observer;
   }
 
@@ -3518,6 +3521,7 @@ function Observations() {
 
 
 Class.extend(Observations, {
+  ObservableHash: ObservableHash,
 
   /**
    * Creates a new ObservableHash with useful methods for managing data using watch, track, and computed.
@@ -3594,10 +3598,12 @@ Class.extend(Observations, {
         // call onRemoved on everything first
         changes.forEach(function(change) {
           if (change.type === 'splice') {
-            change.removed.forEach(onRemove, callbackContext);
+            change.removed.forEach(function(item, index) {
+              onRemove(item, index + change.index);
+            }, callbackContext);
           } else {
             if (change.oldValue != null) {
-              onRemove.call(callbackContext, change.oldValue);
+              onRemove.call(callbackContext, change.oldValue, change.name);
             }
           }
         });
@@ -3605,11 +3611,13 @@ Class.extend(Observations, {
         // call onAdded second, allowing for items that changed location to be accurately processed
         changes.forEach(function(change) {
           if (change.type === 'splice') {
-            source.slice(change.index, change.index + change.addedCount).forEach(onAdd, callbackContext);
+            source.slice(change.index, change.index + change.addedCount).forEach(function(item, index) {
+              onAdd(item, index + change.index);
+            }, callbackContext);
           } else {
             var value = source[change.name];
             if (value != null) {
-              onAdd.call(callbackContext, value);
+              onAdd.call(callbackContext, value, change.name);
             }
           }
         });
@@ -3619,7 +3627,7 @@ Class.extend(Observations, {
         Object.keys(source).forEach(function(key) {
           var value = source[key];
           if (value != null) {
-            onAdd.call(callbackContext, value);
+            onAdd.call(callbackContext, value, key);
           }
         });
       } else if (Array.isArray(oldValue)) {
@@ -3629,7 +3637,7 @@ Class.extend(Observations, {
         Object.keys(oldValue).forEach(function(key) {
           var value = oldValue[key];
           if (value != null) {
-            onRemove.call(callbackContext, value);
+            onRemove.call(callbackContext, value, key);
           }
         });
       }
@@ -3799,10 +3807,8 @@ Class.extend(Observations, {
     this.observers.push(observer);
     if (!skipUpdate) {
       observer.forceUpdateNextSync = true;
-    } else {
-      observer.skipNextSync();
+      observer.sync();
     }
-    observer.sync();
   },
 
 

@@ -1,5 +1,5 @@
 module.exports = Binding;
-var Class = require('chip-utils/class');
+var ObservableHash = require('observations-js').ObservableHash;
 
 /**
  * A binding is a link between an element and some data. Subclasses of Binding called binders define what a binding does
@@ -29,11 +29,11 @@ function Binding(properties) {
   this.match = properties.match;
   this.expression = properties.expression;
   this.fragments = properties.fragments;
-  this.observations = this.fragments.observations;
+  this.observations = properties.fragments.observations;
   this.context = null;
 }
 
-Class.extend(Binding, {
+ObservableHash.extend(Binding, {
   /**
    * Default priority binders may override.
    */
@@ -44,13 +44,16 @@ Class.extend(Binding, {
    * Initialize a cloned binding. This happens after a compiled binding on a template is cloned for a view.
    */
   init: function() {
+    ObservableHash.call(this, this.observations);
+    this.observersEnabled = false;
+
     Object.defineProperties(this, {
-      _observers: { configurable: true, value: [] },
       _listeners: { configurable: true, value: [] }
     });
-    if (this.expression) {
+
+    if (this.expression && this.updated !== Binding.prototype.updated) {
       // An observer to observe value changes to the expression within a context
-      this.observer = this.observations.createObserver(this.expression, this.updated, this);
+      this.observer = this.watch(this.expression, this.updated, this);
     }
     this.created();
   },
@@ -84,17 +87,10 @@ Class.extend(Binding, {
       return;
     }
 
-    this.context = context;
-    if (this.observer) this.observer.context = context;
+    this.context = this._context = context;
     this.bound();
 
-    if (this.observer && this.updated !== Binding.prototype.updated) {
-      this.observer.bind(context);
-    }
-
-    this._observers.forEach(function(observer) {
-      observer.bind(context);
-    });
+    this.observersEnabled = true;
 
     this._listeners.forEach(function(item) {
       item.target.addEventListener(item.eventName, item.listener);
@@ -110,16 +106,14 @@ Class.extend(Binding, {
 
     if (this.observer) this.observer.unbind();
 
-    this._observers.forEach(function(observer) {
-      observer.unbind();
-    });
+    this.observersEnabled = false;
 
     this._listeners.forEach(function(item) {
       item.target.removeEventListener(item.eventName, item.listener);
     });
 
     this.unbound();
-    this.context = null;
+    this.context = this._context = null;
   },
 
 
@@ -176,17 +170,7 @@ Class.extend(Binding, {
   },
 
   observe: function(expression, callback, callbackContext) {
-    if (typeof callback !== 'function') {
-      throw new TypeError('callback must be a function');
-    }
-
-    var observer = this.observations.createObserver(expression, callback, callbackContext || this);
-    this._observers.push(observer);
-    if (this.context) {
-      // If not bound will bind on attachment
-      observer.bind(this.context);
-    }
-    return observer;
+    return this.watch(expression, callback, callbackContext);
   },
 
   listen: function(target, eventName, listener, context) {
@@ -215,14 +199,6 @@ Class.extend(Binding, {
       // If not bound will add on attachment
       target.addEventListener(eventName, listener);
     }
-  },
-
-  get: function(expression) {
-    return this.observations.get(this.context, expression);
-  },
-
-  set: function(expression, value) {
-    return this.observations.set(this.context, expression, value);
   }
 });
 
