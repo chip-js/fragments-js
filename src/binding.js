@@ -1,5 +1,5 @@
 module.exports = Binding;
-var ObservableHash = require('observations-js').ObservableHash;
+var ElementController = require('./element-controller');
 
 /**
  * A binding is a link between an element and some data. Subclasses of Binding called binders define what a binding does
@@ -33,7 +33,7 @@ function Binding(properties) {
   this.context = null;
 }
 
-ObservableHash.extend(Binding, {
+ElementController.extend(Binding, {
   /**
    * Default priority binders may override.
    */
@@ -44,12 +44,9 @@ ObservableHash.extend(Binding, {
    * Initialize a cloned binding. This happens after a compiled binding on a template is cloned for a view.
    */
   init: function() {
-    ObservableHash.call(this, this.observations);
+    ElementController.call(this, this.observations);
     this.observersEnabled = false;
-
-    Object.defineProperties(this, {
-      _listeners: { configurable: true, value: [] }
-    });
+    this.listenersEnabled = false;
 
     if (this.expression && this.updated !== Binding.prototype.updated) {
       // An observer to observe value changes to the expression within a context
@@ -91,10 +88,6 @@ ObservableHash.extend(Binding, {
     this.bound();
 
     this.observersEnabled = true;
-
-    this._listeners.forEach(function(item) {
-      item.target.addEventListener(item.eventName, item.listener);
-    });
   },
 
 
@@ -103,30 +96,25 @@ ObservableHash.extend(Binding, {
     if (this.context === null) {
       return;
     }
-
-    if (this.observer) this.observer.unbind();
-
-    this.observersEnabled = false;
-
-    this._listeners.forEach(function(item) {
-      item.target.removeEventListener(item.eventName, item.listener);
-    });
-
+    this.observersStop();
     this.unbound();
     this.context = this._context = null;
   },
 
+  attach: function() {
+    this.listenersEnabled = true;
+    this.attached();
+  },
+
+  detach: function() {
+    this.listenersEnabled = false;
+    this.detached();
+  },
 
   // Cleans up binding completely
   dispose: function() {
     this.unbind();
-    if (this.observer) {
-      // This will clear it out, nullifying any data stored
-      this.observer.sync();
-    }
-    this._observers.forEach(function(observer) {
-      observer.sync();
-    });
+    this.observersEnabled = false;
     this.disposed();
   },
 
@@ -171,35 +159,8 @@ ObservableHash.extend(Binding, {
 
   observe: function(expression, callback, callbackContext) {
     return this.watch(expression, callback, callbackContext);
-  },
-
-  listen: function(target, eventName, listener, context) {
-    if (typeof target === 'string') {
-      context = listener;
-      listener = eventName;
-      eventName = target;
-      target = this.element;
-    }
-
-    if (typeof listener !== 'function') {
-      throw new TypeError('listener must be a function');
-    }
-
-    listener = listener.bind(context || this);
-
-    var listenerData = {
-      target: target,
-      eventName: eventName,
-      listener: listener
-    };
-
-    this._listeners.push(listenerData);
-
-    if (this.context) {
-      // If not bound will add on attachment
-      target.addEventListener(eventName, listener);
-    }
   }
+
 });
 
 

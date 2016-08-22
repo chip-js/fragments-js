@@ -32,10 +32,11 @@ Class.extend(View, {
 
   get inDOM() {
     var parent = this.firstViewNode;
-    while (parent && parent !== document) {
+    var doc = parent.ownerDocument;
+    while (parent && parent !== doc) {
       parent = parent.parentNode || parent.host;
     }
-    return parent === document;
+    return parent === doc;
   },
 
   /**
@@ -104,7 +105,7 @@ Class.extend(View, {
     if (!this._attached && this.inDOM) {
       this._attached = true;
       this.bindings.forEach(function(binding) {
-        binding.attached();
+        binding.attach();
       });
     }
   },
@@ -117,7 +118,7 @@ Class.extend(View, {
     if (this._attached && !this.inDOM) {
       this._attached = false;
       this.bindings.forEach(function(binding) {
-        binding.detached();
+        binding.detach();
       });
     }
   },
