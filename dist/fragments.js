@@ -2802,16 +2802,11 @@ var Class = require('chip-utils/class');
  */
 function View(template) {
   this.context = null;
-  if (template) {
-    this.template = template;
-    this.bindings = this.template.bindings.map(function(binding) {
-      return binding.cloneForView(this);
-    }, this);
-  } else if (this.bindings) {
-    this.bindings.forEach(function(binding) {
-      binding.init();
-    });
-  }
+  if (!template) template = this;
+  this.template = template;
+  this.bindings = this.template.bindings.map(function(binding) {
+    return binding.cloneForView(this);
+  }, this);
 
   this.firstViewNode = this.firstChild;
   this.lastViewNode = this.lastChild;
@@ -3444,7 +3439,7 @@ Class.extend(ObservableHash, {
         this[namespace].observersEnabled = this.observersEnabled;
         this._namespaces.push(namespace);
       }
-      this._observations.computed.extend(this[namespace], map, { context: this._context });
+      this._observations.computed.extend(this[namespace], map, { context: this[namespace]._context });
       return this[namespace];
     } else if (namespace && typeof namespace === 'object') {
       this._observations.computed.extend(this, namespace, { context: this._context });
@@ -3947,6 +3942,17 @@ function Observer(observations, expression, callback, callbackContext) {
 }
 
 Class.extend(Observer, {
+
+  get getChangeRecords() {
+    return this._getChangeRecords;
+  },
+
+  set getChangeRecords(value) {
+    this._getChangeRecords = Boolean(value);
+    if (value && this.oldValue) {
+      this.oldValue = diff.clone(this.oldValue);
+    }
+  },
 
   // Binds this expression to a given context
   bind: function(context, skipUpdate) {

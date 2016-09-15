@@ -8,16 +8,11 @@ var Class = require('chip-utils/class');
  */
 function View(template) {
   this.context = null;
-  if (template) {
-    this.template = template;
-    this.bindings = this.template.bindings.map(function(binding) {
-      return binding.cloneForView(this);
-    }, this);
-  } else if (this.bindings) {
-    this.bindings.forEach(function(binding) {
-      binding.init();
-    });
-  }
+  if (!template) template = this;
+  this.template = template;
+  this.bindings = this.template.bindings.map(function(binding) {
+    return binding.cloneForView(this);
+  }, this);
 
   this.firstViewNode = this.firstChild;
   this.lastViewNode = this.lastChild;
