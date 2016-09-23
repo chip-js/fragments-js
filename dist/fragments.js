@@ -1284,14 +1284,14 @@ Binding.extend(AnimatedBinding, {
 
     node.classList.add(classAnimateName);
     node.classList.remove(classWillName);
-    node.dispatchEvent(new Event('animatestart'));
+    node.dispatchEvent(new Event('animatestart' + direction));
 
     var whenDone = function() {
       if (animateObject && animateObject[methodDidName]) animateObject[methodDidName](node);
       if (callback) callback.call(_this);
       node.classList.remove(classAnimateName);
       if (className) node.classList.remove(className);
-      node.dispatchEvent(new Event('animateend'));
+      node.dispatchEvent(new Event('animateend' + direction));
     };
 
     if (animateObject && animateObject[methodAnimateName]) {
@@ -1344,7 +1344,7 @@ function getDuration(node, direction) {
                            parseFloat(styles[animationDurationName] || 0) +
                            parseFloat(styles[animationDelayName] || 0));
     milliseconds = seconds * 1000 || 0;
-    this.clonedFrom.__animationDuration__ = milliseconds;
+    this.clonedFrom['__animationDuration' + direction] = milliseconds;
   }
   return milliseconds;
 }
@@ -1876,7 +1876,7 @@ function Fragments(options) {
       this.view = null;
     }
 
-    if (typeof value === 'string' && value) {
+    if (typeof value === 'string' && value || value instanceof Node) {
       this.view = View.makeInstanceOf(toFragment(value));
       this.element.parentNode.insertBefore(this.view, this.element.nextSibling);
     }
@@ -2804,6 +2804,7 @@ function View(template) {
   this.context = null;
   if (!template) template = this;
   this.template = template;
+  if (!this.template.bindings) this.template.bindings = [];
   this.bindings = this.template.bindings.map(function(binding) {
     return binding.cloneForView(this);
   }, this);
@@ -4024,6 +4025,15 @@ Class.extend(Observer, {
     // Don't call the callback if `skipNextSync` was called on the observer
     if (this.skip || !this.callback) {
       this.skip = false;
+
+      if (this.getChangeRecords) {
+        // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
+        // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+        // in bind-each)
+        this.oldValue = diff.clone(value);
+      } else {
+        this.oldValue = value;
+      }
     } else {
       var change;
       var useCompareBy = this.getChangeRecords &&
@@ -4053,24 +4063,25 @@ Class.extend(Observer, {
         changed = diff.basic(value, this.oldValue);
       }
 
+      var oldValue = this.oldValue;
+
+      if (this.getChangeRecords) {
+        // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
+        // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+        // in bind-each)
+        this.oldValue = diff.clone(value);
+      } else {
+        this.oldValue = value;
+      }
 
       // If an array has changed calculate the splices and call the callback.
       if (!changed && !this.forceUpdateNextSync) return;
       this.forceUpdateNextSync = false;
       if (Array.isArray(changed)) {
-        this.callback.call(this.callbackContext, value, this.oldValue, changed);
+        this.callback.call(this.callbackContext, value, oldValue, changed);
       } else {
-        this.callback.call(this.callbackContext, value, this.oldValue);
+        this.callback.call(this.callbackContext, value, oldValue);
       }
-    }
-
-    if (this.getChangeRecords) {
-      // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
-      // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
-      // in bind-each)
-      this.oldValue = diff.clone(value);
-    } else {
-      this.oldValue = value;
     }
   }
 });
