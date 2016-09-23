@@ -10,6 +10,7 @@ function View(template) {
   this.context = null;
   if (!template) template = this;
   this.template = template;
+  if (!this.template.bindings) this.template.bindings = [];
   this.bindings = this.template.bindings.map(function(binding) {
     return binding.cloneForView(this);
   }, this);

@@ -45,7 +45,7 @@ function Fragments(options) {
       this.view = null;
     }
 
-    if (typeof value === 'string' && value) {
+    if (typeof value === 'string' && value || value instanceof Node) {
       this.view = View.makeInstanceOf(toFragment(value));
       this.element.parentNode.insertBefore(this.view, this.element.nextSibling);
     }
