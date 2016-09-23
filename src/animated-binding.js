@@ -168,14 +168,14 @@ Binding.extend(AnimatedBinding, {
 
     node.classList.add(classAnimateName);
     node.classList.remove(classWillName);
-    node.dispatchEvent(new Event('animatestart'));
+    node.dispatchEvent(new Event('animatestart' + direction));
 
     var whenDone = function() {
       if (animateObject && animateObject[methodDidName]) animateObject[methodDidName](node);
       if (callback) callback.call(_this);
       node.classList.remove(classAnimateName);
       if (className) node.classList.remove(className);
-      node.dispatchEvent(new Event('animateend'));
+      node.dispatchEvent(new Event('animateend' + direction));
     };
 
     if (animateObject && animateObject[methodAnimateName]) {
@@ -228,7 +228,7 @@ function getDuration(node, direction) {
                            parseFloat(styles[animationDurationName] || 0) +
                            parseFloat(styles[animationDelayName] || 0));
     milliseconds = seconds * 1000 || 0;
-    this.clonedFrom.__animationDuration__ = milliseconds;
+    this.clonedFrom['__animationDuration' + direction] = milliseconds;
   }
   return milliseconds;
 }
