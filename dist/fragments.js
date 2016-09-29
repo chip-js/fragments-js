@@ -1871,14 +1871,14 @@ function Fragments(options) {
 
   // Text binder for text nodes with expressions in them to be converted to HTML
   this.registerText('{*}', function(value) {
-    if (this.view) {
-      this.view.remove();
-      this.view = null;
+    if (this.content) {
+      this.content.remove();
+      this.content = null;
     }
 
     if (typeof value === 'string' && value || value instanceof Node) {
-      this.view = View.makeInstanceOf(toFragment(value));
-      this.element.parentNode.insertBefore(this.view, this.element.nextSibling);
+      this.content = View.makeInstanceOf(toFragment(value));
+      this.element.parentNode.insertBefore(this.content, this.element.nextSibling);
     }
   });
 
@@ -3695,12 +3695,12 @@ Class.extend(Observations, {
         changes.forEach(function(change) {
           if (change.type === 'splice') {
             source.slice(change.index, change.index + change.addedCount).forEach(function(item, index) {
-              onAdd(item, index + change.index);
+              onAdd(item, index + change.index, source);
             }, callbackContext);
           } else {
             var value = source[change.name];
             if (value != null) {
-              onAdd.call(callbackContext, value, change.name);
+              onAdd.call(callbackContext, value, change.name, source);
             }
           }
         });
@@ -3710,7 +3710,7 @@ Class.extend(Observations, {
         Object.keys(source).forEach(function(key) {
           var value = source[key];
           if (value != null) {
-            onAdd.call(callbackContext, value, key);
+            onAdd.call(callbackContext, value, key, source);
           }
         });
       } else if (Array.isArray(oldValue)) {
@@ -3720,7 +3720,7 @@ Class.extend(Observations, {
         Object.keys(oldValue).forEach(function(key) {
           var value = oldValue[key];
           if (value != null) {
-            onRemove.call(callbackContext, value, key);
+            onRemove.call(callbackContext, value, key, oldValue);
           }
         });
       }

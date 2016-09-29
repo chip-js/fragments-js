@@ -40,14 +40,14 @@ function Fragments(options) {
 
   // Text binder for text nodes with expressions in them to be converted to HTML
   this.registerText('{*}', function(value) {
-    if (this.view) {
-      this.view.remove();
-      this.view = null;
+    if (this.content) {
+      this.content.remove();
+      this.content = null;
     }
 
     if (typeof value === 'string' && value || value instanceof Node) {
-      this.view = View.makeInstanceOf(toFragment(value));
-      this.element.parentNode.insertBefore(this.view, this.element.nextSibling);
+      this.content = View.makeInstanceOf(toFragment(value));
+      this.element.parentNode.insertBefore(this.content, this.element.nextSibling);
     }
   });
 
