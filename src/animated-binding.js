@@ -134,7 +134,7 @@ Binding.extend(AnimatedBinding, {
    * Allow an element to use CSS3 transitions or animations to animate in or out of the page.
    */
   animateNode: function(direction, node, callback) {
-    var animateObject, className, classAnimateName, classWillName,
+    var animateObject, className, classAnimateName, classWillName, whenDone,
         methodAnimateName, methodWillName, methodDidName, dir, _this = this;
 
     if (this.animateObject && typeof this.animateObject === 'object') {
@@ -152,43 +152,37 @@ Binding.extend(AnimatedBinding, {
     methodAnimateName = 'animate' + dir;
     methodWillName = 'willAnimate' + dir;
     methodDidName = 'didAnimate' + dir;
-
-    if (className) node.classList.add(className);
-    node.classList.add(classWillName);
-
-    if (animateObject) {
-      animation.makeElementAnimatable(node);
-      if (animateObject[methodWillName]) {
-        animateObject[methodWillName](node);
-      }
-    }
-
-    // trigger reflow
-    node.offsetWidth = node.offsetWidth;
-
-    node.classList.add(classAnimateName);
-    node.classList.remove(classWillName);
-    node.dispatchEvent(new Event('animatestart' + direction));
-
-    var whenDone = function() {
+    whenDone = function() {
       if (animateObject && animateObject[methodDidName]) animateObject[methodDidName](node);
-      if (callback) callback.call(_this);
       node.classList.remove(classAnimateName);
       if (className) node.classList.remove(className);
+      if (callback) callback.call(_this);
       node.dispatchEvent(new Event('animateend' + direction));
     };
 
-    if (animateObject && animateObject[methodAnimateName]) {
-      animateObject[methodAnimateName](node, whenDone);
+    if (className) node.classList.add(className);
+
+    node.dispatchEvent(new Event('animatestart' + direction));
+
+    if (animateObject) {
+      animation.makeElementAnimatable(node);
+      if (typeof animateObject[methodWillName] === 'function') {
+        animateObject[methodWillName](node);
+      }
+      if (typeof animateObject[methodAnimateName] === 'function') {
+        node.classList.add(classAnimateName);
+        animateObject[methodAnimateName](node, whenDone);
+      }
     } else {
-      var duration = getDuration.call(this, node, direction);
+      node.classList.add(classWillName);
+      node.offsetWidth = node.offsetWidth;
+      node.classList.remove(classWillName);
+      node.classList.add(classAnimateName);
+      var duration = getDuration.call(_this, node, direction);
       if (duration) {
         onAnimationEnd(node, duration, whenDone);
       } else {
-        // Takes a couple frames to really take hold (at least on chrome)
-        requestAnimationFrame(function() {
-          requestAnimationFrame(whenDone);
-        });
+        requestAnimationFrame(whenDone);
       }
     }
   }
@@ -235,7 +229,10 @@ function getDuration(node, direction) {
 
 
 function onAnimationEnd(node, duration, callback) {
-  var onEnd = function() {
+  var onEnd = function(event) {
+    if (!event) {
+      console.error(transitionEventName, 'did not fire when it should have!');
+    }
     node.removeEventListener(transitionEventName, onEnd);
     node.removeEventListener(animationEventName, onEnd);
     clearTimeout(timeout);
