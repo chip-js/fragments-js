@@ -1346,9 +1346,6 @@ function getDuration(node, direction) {
 
 function onAnimationEnd(node, duration, callback) {
   var onEnd = function(event) {
-    if (!event) {
-      console.error(transitionEventName, 'did not fire when it should have!');
-    }
     node.removeEventListener(transitionEventName, onEnd);
     node.removeEventListener(animationEventName, onEnd);
     clearTimeout(timeout);
@@ -1356,7 +1353,7 @@ function onAnimationEnd(node, duration, callback) {
   };
 
   // contingency plan
-  var timeout = setTimeout(onEnd, duration + 10);
+  var timeout = setTimeout(onEnd, duration);
 
   node.addEventListener(transitionEventName, onEnd);
   node.addEventListener(animationEventName, onEnd);
