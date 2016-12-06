@@ -2527,16 +2527,19 @@ Class.extend(Template, {
   /**
    * Creates a new view cloned from this template.
    */
-  createView: function() {
-    if (this.pool.length) {
+  createView: function(doc) {
+    if (!doc) {
+      doc = document;
+    }
+    if (doc === document && this.pool.length) {
       return this.pool.pop();
     }
 
-    return View.makeInstanceOf(document.importNode(this, true), this);
+    return View.makeInstanceOf(doc.importNode(this, true), this);
   },
 
   returnView: function(view) {
-    if (this.pool.indexOf(view) === -1) {
+    if (view.ownerDocument === document && this.pool.indexOf(view) === -1) {
       this.pool.push(view);
     }
   }
