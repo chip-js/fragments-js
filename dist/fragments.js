@@ -2569,7 +2569,7 @@ function makeElementAnimatable(element) {
  * Get the computed style on an element.
  */
 function getComputedCSS(styleName) {
-  if (this.ownerDocument.defaultView.opener) {
+  if (this.ownerDocument.defaultView && this.ownerDocument.defaultView.opener) {
     return this.ownerDocument.defaultView.getComputedStyle(this)[styleName];
   }
   return window.getComputedStyle(this)[styleName];
