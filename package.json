@@ -1,6 +1,6 @@
 {
   "name": "fragments-js",
-  "version": "0.6.25",
+  "version": "0.6.26",
   "description": "Fragments is an ultra-fast templating and data-binding library for front-end JavaScript applications.",
   "keywords": [
     "templates",
