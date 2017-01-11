@@ -34,9 +34,11 @@ function Fragments(options) {
   };
 
   // Text binder for text nodes with expressions in them
-  this.registerText('__default__', function(value) {
+  this.registerText('__default__', registerTextDefault);
+
+  function registerTextDefault(value) {
     this.element.textContent = (value != null) ? value : '';
-  });
+  }
 
   // Text binder for text nodes with expressions in them to be converted to HTML
   this.registerText('{*}', function(value) {

@@ -11,9 +11,7 @@ function View(template) {
   if (!template) template = this;
   this.template = template;
   if (!this.template.bindings) this.template.bindings = [];
-  this.bindings = this.template.bindings.map(function(binding) {
-    return binding.cloneForView(this);
-  }, this);
+  this.bindings = this.template.bindings.map(mapBinding.bind(this), this);
 
   this.firstViewNode = this.firstChild;
   this.lastViewNode = this.lastChild;
@@ -21,6 +19,10 @@ function View(template) {
     this.firstViewNode.view = this;
     this.lastViewNode.view = this;
   }
+}
+
+function mapBinding(binding) {
+  return binding.cloneForView(this);
 }
 
 
@@ -60,9 +62,7 @@ Class.extend(View, {
    */
   dispose: function() {
     // Make sure the view is removed from the DOM
-    this.bindings.forEach(function(binding) {
-      binding.dispose();
-    });
+    this.bindings.forEach(this.disposeHelper);
     this.context = null;
 
     this.remove();
@@ -71,15 +71,21 @@ Class.extend(View, {
     }
   },
 
+  disposeHelper: function(binding) {
+    binding.dispose();
+  },
+
 
   /**
    * Binds a view to a given context.
    */
   bind: function(context) {
     this.context = context;
-    this.bindings.forEach(function(binding) {
-      binding.bind(context);
-    });
+    this.bindings.forEach(this.bindHelper.bind(this, context));
+  },
+
+  bindHelper: function(context, binding) {
+    binding.bind(context);
   },
 
 
@@ -87,10 +93,12 @@ Class.extend(View, {
    * Unbinds a view from any context.
    */
   unbind: function() {
-    this.bindings.forEach(function(binding) {
-      binding.unbind();
-    });
+    this.bindings.forEach(this.unbindHelper);
     this.context = null;
+  },
+
+  unbindHelper: function(binding) {
+    binding.unbind();
   },
 
 
@@ -100,10 +108,12 @@ Class.extend(View, {
   attached: function() {
     if (!this._attached && this.inDOM) {
       this._attached = true;
-      this.bindings.forEach(function(binding) {
-        binding.attach();
-      });
+      this.bindings.forEach(this.attachedHelper);
     }
+  },
+
+  attachedHelper: function(binding) {
+    binding.attach();
   },
 
 
@@ -113,10 +123,12 @@ Class.extend(View, {
   detached: function() {
     if (this._attached && !this.inDOM) {
       this._attached = false;
-      this.bindings.forEach(function(binding) {
-        binding.detach();
-      });
+      this.bindings.forEach(this.detachedHelper);
     }
+  },
+
+  detachedHelper: function(binding) {
+    binding.detach();
   },
 
 
@@ -125,8 +137,10 @@ Class.extend(View, {
    */
   sync: function() {
     if (this.context === null) return;
-    this.bindings.forEach(function(binding) {
-      binding.sync();
-    });
+    this.bindings.forEach(this.syncHelper);
+  },
+
+  syncHelper: function(binding) {
+    binding.sync();
   }
 });
