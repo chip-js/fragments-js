@@ -116,9 +116,7 @@ Binding.extend(AnimatedBinding, {
   animateOut: function(node, callback) {
     if (node.firstViewNode) node = node.firstViewNode;
 
-    this.animateNode('out', node, function() {
-      if (callback) callback.call(this);
-    });
+    this.animateNode('out', node, callback);
   },
 
   /**
