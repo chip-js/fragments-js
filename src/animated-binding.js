@@ -81,9 +81,9 @@ Binding.extend(AnimatedBinding, {
     _super.init.call(this);
 
     if (this.animateExpression) {
-      this.animateObserver = new this.Observer(this.animateExpression, function(value) {
+      this.animateObserver = new this.watch(this.animateExpression, function(value) {
         this.animateObject = value;
-      }, this);
+      });
     }
   },
 

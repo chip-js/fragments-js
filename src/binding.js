@@ -50,7 +50,7 @@ ElementController.extend(Binding, {
 
     if (this.expression && this.updated !== Binding.prototype.updated) {
       // An observer to observe value changes to the expression within a context
-      this.observer = this.watch(this.expression, this.updated, this);
+      this.observer = this.watch(this.expression, this.updated);
     }
     this.created();
   },
