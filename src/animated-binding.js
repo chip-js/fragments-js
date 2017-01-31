@@ -81,9 +81,9 @@ Binding.extend(AnimatedBinding, {
     _super.init.call(this);
 
     if (this.animateExpression) {
-      this.animateObserver = new this.Observer(this.animateExpression, function(value) {
+      this.animateObserver = new this.watch(this.animateExpression, function(value) {
         this.animateObject = value;
-      }, this);
+      });
     }
   },
 
@@ -135,13 +135,24 @@ Binding.extend(AnimatedBinding, {
     var animateObject, className, classAnimateName, classWillName, whenDone,
         methodAnimateName, methodWillName, methodDidName, dir, _this = this;
 
+    if (this.fragments.disableAnimations) {
+      return callback.call(_this);
+    }
+
     if (this.animateObject && typeof this.animateObject === 'object') {
       animateObject = this.animateObject;
       animateObject.fragments = this.fragments;
     } else if (this.animateClassName) {
       className = this.animateClassName;
+    } else if (this.animateObject === false) {
+      return callback.call(_this);
     } else if (typeof this.animateObject === 'string') {
-      className = this.animateObject;
+      if (this.animateObject[0] === '.') {
+        className = this.animateObject.slice(1);
+      } else if (this.animateObject) {
+        animateObject = fragments.getAnimation(this.animateObject);
+        if (typeof animateObject === 'function') animateObject = new animateObject(this);
+      }
     }
 
     classAnimateName = 'animate-' + direction;
