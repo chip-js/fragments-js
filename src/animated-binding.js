@@ -79,34 +79,6 @@ function AnimatedBinding(properties) {
 Binding.extend(AnimatedBinding, {
   init: function() {
     _super.init.call(this);
-
-    if (this.animateExpression) {
-      this.animateObserver = new this.watch(this.animateExpression, function(value) {
-        this.animateObject = value;
-      });
-    }
-  },
-
-  bind: function(context) {
-    if (this.context == context) {
-      return;
-    }
-    _super.bind.call(this, context);
-
-    if (this.animateObserver) {
-      this.animateObserver.bind(context);
-    }
-  },
-
-  unbind: function() {
-    if (this.context === null) {
-      return;
-    }
-    _super.unbind.call(this);
-
-    if (this.animateObserver) {
-      this.animateObserver.unbind();
-    }
   },
 
   /**
@@ -139,8 +111,13 @@ Binding.extend(AnimatedBinding, {
       return callback.call(_this);
     }
 
-    if (this.animateObject && typeof this.animateObject === 'object') {
+    if (this.animateExpression) {
+      animateObject = this.get(this.animateExpression);
+    } else {
       animateObject = this.animateObject;
+    }
+
+    if (animateObject && typeof animateObject === 'object') {
       animateObject.fragments = this.fragments;
     } else if (this.animateClassName) {
       className = this.animateClassName;
@@ -176,10 +153,19 @@ Binding.extend(AnimatedBinding, {
     if (animateObject) {
       animation.makeElementAnimatable(node);
       if (typeof animateObject[methodWillName] === 'function') {
+        node.classList.add(classWillName);
         animateObject[methodWillName](node);
+        node.offsetWidth = node.offsetWidth;
+        node.classList.remove(classWillName);
       }
       if (typeof animateObject[methodAnimateName] === 'function') {
         node.classList.add(classAnimateName);
+        var duration = getDuration.call(_this, node, direction);
+        if (duration) {
+          onAnimationEnd(node, duration, whenDone);
+        } else {
+          requestAnimationFrame(whenDone);
+        }
         animateObject[methodAnimateName](node, whenDone);
       }
     } else {
@@ -226,10 +212,25 @@ function getDuration(node, direction) {
   if (!milliseconds) {
     // Recalc if node was out of DOM before and had 0 duration, assume there is always SOME duration.
     var styles = window.getComputedStyle(node);
-    var seconds = Math.max(parseFloat(styles[transitionDurationName] || 0) +
-                           parseFloat(styles[transitionDelayName] || 0),
-                           parseFloat(styles[animationDurationName] || 0) +
-                           parseFloat(styles[animationDelayName] || 0));
+    var tDuration = 0;
+    var aDuration = 0;
+
+    var tDurations = styles[transitionDurationName];
+    if (tDurations) {
+      var tDelays = styles[transitionDelayName].split(',');
+      tDuration = Math.max.apply(Math, tDurations.split(',').map(function(dur, i) {
+        return (parseFloat(dur) || 0) + (parseFloat(tDelays[i]) || 0);
+      }));
+    }
+    var aDurations = styles[animationDurationName];
+    if (aDurations) {
+      var aDelays = styles[animationDelayName].split(',');
+      aDuration = Math.max.apply(Math, aDurations.split(',').map(function(dur, i) {
+        return (parseFloat(dur) || 0) + (parseFloat(aDelays[i]) || 0);
+      }));
+    }
+
+    var seconds = Math.max(tDuration, aDuration);
     milliseconds = seconds * 1000 || 0;
     this.clonedFrom['__animationDuration' + direction] = milliseconds;
   }
@@ -239,6 +240,7 @@ function getDuration(node, direction) {
 
 function onAnimationEnd(node, duration, callback) {
   var onEnd = function(event) {
+    if (event && event.target !== node) return;
     node.removeEventListener(transitionEventName, onEnd);
     node.removeEventListener(animationEventName, onEnd);
     clearTimeout(timeout);

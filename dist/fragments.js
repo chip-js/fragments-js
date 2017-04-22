@@ -75,22 +75,27 @@ function extend(Subclass /* [, prototype [,prototype]] */) {
 function getDescriptors(objects) {
   var descriptors = {};
 
-  objects.forEach(function(object) {
-    if (typeof object === 'function') object = object.prototype;
+  objects.forEach(getDescriptorsHelper.bind(this, descriptors));
 
-    Object.getOwnPropertyNames(object).forEach(function(name) {
-      if (name === 'static') return;
-
-      var descriptor = Object.getOwnPropertyDescriptor(object, name);
-
-      if (typeof descriptor.value === 'function') {
-        descriptor.enumerable = false;
-      }
-
-      descriptors[name] = descriptor;
-    });
-  });
   return descriptors;
+}
+
+function getDescriptorsHelper(descriptors, object) {
+  if (typeof object === 'function') object = object.prototype;
+
+  Object.getOwnPropertyNames(object).forEach(getDescriptorsNameHelper.bind(this, descriptors, object));
+}
+
+function getDescriptorsNameHelper(descriptors, object, name) {
+  if (name === 'static') return;
+
+  var descriptor = Object.getOwnPropertyDescriptor(object, name);
+
+  if (typeof descriptor.value === 'function') {
+    descriptor.enumerable = false;
+  }
+
+  descriptors[name] = descriptor;
 }
 
 // Copies static methods over for static inheritance
@@ -118,9 +123,110 @@ function makeInstanceOf(object) {
 }
 
 },{}],2:[function(require,module,exports){
+module.exports = LinkedList;
+var Class = require('./class');
+var nodeDescriptors = {
+  __linkedList: {
+    writable: true,
+    configurable: true,
+    value: null
+  },
+  __prev: {
+    writable: true,
+    configurable: true,
+    value: null
+  },
+  __next: {
+    writable: true,
+    configurable: true,
+    value: null
+  },
+};
+
+
+/**
+ * A doubley-linked linked list that uses objects as the nodes adding 3 properties, __linkedList, __next, and __prev.
+ * For use when needing to add/remove items from a list frequently and needing to keep the order.
+ */
+function LinkedList() {
+  this.head = null;
+  this.tail = null;
+}
+
+
+Class.extend(LinkedList, {
+
+  static: {
+    makeNode: function(node) {
+      Object.defineProperties(node, nodeDescriptors);
+    }
+  },
+
+  add: function(node) {
+    if (!node) {
+      return;
+    }
+
+    if (node.__linkedList) {
+      node.__linkedList.remove(node);
+    } else if (!node.hasOwnProperty('__linkedList')) {
+      LinkedList.makeNode(node);
+    }
+
+    node.__linkedList = this;
+
+    if (this.tail) {
+      node.__prev = this.tail;
+      this.tail.__next = node;
+      this.tail = node;
+    } else {
+      this.head = this.tail = node;
+    }
+  },
+
+  remove: function(node) {
+    if (!node || node.__linkedList !== this) {
+      return;
+    }
+
+    if (!node.__prev) {
+      this.head = node.__next;
+    } else {
+      node.__prev.__next = node.__next;
+    }
+
+    if (!node.__next) {
+      this.tail = node.__prev;
+    } else {
+      node.__next.__prev = node.__prev;
+    }
+
+    node.__linkedList = null;
+    node.__prev = null;
+    node.__next = null;
+  },
+
+  forEach: function(iter, context) {
+    var node = this.head, index = 0;
+    while (node) {
+      iter.call(context, node, index++, this);
+      node = node.__next;
+    }
+  },
+
+  toArray: function() {
+    var array = [];
+    this.forEach(function(node) {
+      array.push(node);
+    });
+    return array;
+  }
+});
+
+},{"./class":1}],3:[function(require,module,exports){
 module.exports = require('./src/diff');
 
-},{"./src/diff":3}],3:[function(require,module,exports){
+},{"./src/diff":4}],4:[function(require,module,exports){
 /*
 Copyright (c) 2015 Jacob Wright <jacwright@gmail.com>
 
@@ -526,10 +632,10 @@ var diff = exports;
   }
 })();
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 module.exports = require('./src/expressions');
 
-},{"./src/expressions":5}],5:[function(require,module,exports){
+},{"./src/expressions":6}],6:[function(require,module,exports){
 var slice = Array.prototype.slice;
 var strings = require('./strings');
 var formatterParser = require('./formatters');
@@ -630,7 +736,7 @@ function bindArguments(func) {
   }
 }
 
-},{"./formatters":6,"./property-chains":7,"./strings":8}],6:[function(require,module,exports){
+},{"./formatters":7,"./property-chains":8,"./strings":9}],7:[function(require,module,exports){
 
 // finds pipes that are not ORs (i.e. ` | ` not ` || `) for formatters
 var pipeRegex = /\|(\|)?/g;
@@ -660,7 +766,7 @@ exports.parseFormatters = function(expr) {
   });
 
   // splits the string by "@@@", pulls of the first as the expr, the remaining are formatters
-  formatters = expr.split(placeholderRegex);
+  var formatters = expr.split(placeholderRegex);
   expr = formatters.shift();
   if (!formatters.length) return expr;
 
@@ -702,7 +808,7 @@ exports.parseFormatters = function(expr) {
   return setter + value;
 };
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 var referenceCount = 0;
 var currentReference = 0;
 var currentIndex = 0;
@@ -880,8 +986,7 @@ function parseChain(prefix, propChain, postfix, paren, expr) {
   var newChain = '';
 
   if (links.length === 1 && !continuation && !parens[paren]) {
-    link = links[0];
-    newChain = addThisOrGlobal(link);
+    newChain = addThisOrGlobal(links[0]);
   } else {
     if (!continuation) {
       newChain = '(';
@@ -1048,7 +1153,7 @@ function addReferences(expr) {
   return expr;
 }
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 // finds all quoted strings
 var quoteRegex = /(['"\/])(\\\1|[^\1])*?\1/g;
 
@@ -1094,7 +1199,7 @@ exports.putInStrings = function(expr) {
   return expr;
 };
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var Fragments = require('./src/fragments');
 var Observations = require('observations-js');
 
@@ -1114,7 +1219,7 @@ function create(options) {
 // Create an instance of fragments with the default observer
 exports.create = create;
 
-},{"./src/fragments":14,"observations-js":20}],10:[function(require,module,exports){
+},{"./src/fragments":15,"observations-js":21}],11:[function(require,module,exports){
 module.exports = AnimatedBinding;
 var animation = require('./util/animation');
 var Binding = require('./binding');
@@ -1196,34 +1301,6 @@ function AnimatedBinding(properties) {
 Binding.extend(AnimatedBinding, {
   init: function() {
     _super.init.call(this);
-
-    if (this.animateExpression) {
-      this.animateObserver = new this.watch(this.animateExpression, function(value) {
-        this.animateObject = value;
-      });
-    }
-  },
-
-  bind: function(context) {
-    if (this.context == context) {
-      return;
-    }
-    _super.bind.call(this, context);
-
-    if (this.animateObserver) {
-      this.animateObserver.bind(context);
-    }
-  },
-
-  unbind: function() {
-    if (this.context === null) {
-      return;
-    }
-    _super.unbind.call(this);
-
-    if (this.animateObserver) {
-      this.animateObserver.unbind();
-    }
   },
 
   /**
@@ -1256,8 +1333,11 @@ Binding.extend(AnimatedBinding, {
       return callback.call(_this);
     }
 
-    if (this.animateObject && typeof this.animateObject === 'object') {
-      animateObject = this.animateObject;
+    if (this.animateExpression) {
+      animateObject = this.get(this.animateExpression);
+    }
+
+    if (animateObject && typeof animateObject === 'object') {
       animateObject.fragments = this.fragments;
     } else if (this.animateClassName) {
       className = this.animateClassName;
@@ -1293,10 +1373,25 @@ Binding.extend(AnimatedBinding, {
     if (animateObject) {
       animation.makeElementAnimatable(node);
       if (typeof animateObject[methodWillName] === 'function') {
-        animateObject[methodWillName](node);
+        if (animateObject.useClasses) {
+          node.classList.add(classWillName);
+          animateObject[methodWillName](node);
+          node.offsetWidth = node.offsetWidth;
+          node.classList.remove(classWillName);
+        } else {
+          animateObject[methodWillName](node);
+        }
       }
       if (typeof animateObject[methodAnimateName] === 'function') {
-        node.classList.add(classAnimateName);
+        if (animateObject.useClasses) {
+          node.classList.add(classAnimateName);
+          var duration = getDuration.call(_this, node, direction);
+          if (duration) {
+            onAnimationEnd(node, duration, whenDone);
+          } else {
+            requestAnimationFrame(whenDone);
+          }
+        }
         animateObject[methodAnimateName](node, whenDone);
       }
     } else {
@@ -1343,10 +1438,25 @@ function getDuration(node, direction) {
   if (!milliseconds) {
     // Recalc if node was out of DOM before and had 0 duration, assume there is always SOME duration.
     var styles = window.getComputedStyle(node);
-    var seconds = Math.max(parseFloat(styles[transitionDurationName] || 0) +
-                           parseFloat(styles[transitionDelayName] || 0),
-                           parseFloat(styles[animationDurationName] || 0) +
-                           parseFloat(styles[animationDelayName] || 0));
+    var tDuration = 0;
+    var aDuration = 0;
+
+    var tDurations = styles[transitionDurationName];
+    if (tDurations) {
+      var tDelays = styles[transitionDelayName].split(',');
+      tDuration = Math.max.apply(Math, tDurations.split(',').map(function(dur, i) {
+        return (parseFloat(dur) || 0) + (parseFloat(tDelays[i]) || 0);
+      }));
+    }
+    var aDurations = styles[animationDurationName];
+    if (aDurations) {
+      var aDelays = styles[animationDelayName].split(',');
+      aDuration = Math.max.apply(Math, aDurations.split(',').map(function(dur, i) {
+        return (parseFloat(dur) || 0) + (parseFloat(aDelays[i]) || 0);
+      }));
+    }
+
+    var seconds = Math.max(tDuration, aDuration);
     milliseconds = seconds * 1000 || 0;
     this.clonedFrom['__animationDuration' + direction] = milliseconds;
   }
@@ -1356,6 +1466,7 @@ function getDuration(node, direction) {
 
 function onAnimationEnd(node, duration, callback) {
   var onEnd = function(event) {
+    if (event && event.target !== node) return;
     node.removeEventListener(transitionEventName, onEnd);
     node.removeEventListener(animationEventName, onEnd);
     clearTimeout(timeout);
@@ -1369,7 +1480,7 @@ function onAnimationEnd(node, duration, callback) {
   node.addEventListener(animationEventName, onEnd);
 }
 
-},{"./binding":11,"./util/animation":16}],11:[function(require,module,exports){
+},{"./binding":12,"./util/animation":17}],12:[function(require,module,exports){
 module.exports = Binding;
 var ElementController = require('./element-controller');
 
@@ -1551,7 +1662,7 @@ function initNodePath(node, view) {
   return path;
 }
 
-},{"./element-controller":13}],12:[function(require,module,exports){
+},{"./element-controller":14}],13:[function(require,module,exports){
 var slice = Array.prototype.slice;
 module.exports = compile;
 
@@ -1723,7 +1834,7 @@ function notEmpty(value) {
   return Boolean(value);
 }
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 module.exports = ElementController;
 var ObservableHash = require('observations-js').ObservableHash;
 
@@ -1833,7 +1944,7 @@ function removeListener(target, eventName, listener) {
   }
 }
 
-},{"observations-js":20}],14:[function(require,module,exports){
+},{"observations-js":21}],15:[function(require,module,exports){
 module.exports = Fragments;
 require('./util/polyfills');
 var Class = require('chip-utils/class');
@@ -2516,7 +2627,7 @@ function processOption(obj, fragments, methodName) {
   }
 }
 
-},{"./animated-binding":10,"./binding":11,"./compile":12,"./template":15,"./util/animation":16,"./util/polyfills":17,"./util/toFragment":18,"./view":19,"chip-utils/class":1}],15:[function(require,module,exports){
+},{"./animated-binding":11,"./binding":12,"./compile":13,"./template":16,"./util/animation":17,"./util/polyfills":18,"./util/toFragment":19,"./view":20,"chip-utils/class":1}],16:[function(require,module,exports){
 module.exports = Template;
 var View = require('./view');
 var Class = require('chip-utils/class');
@@ -2559,7 +2670,7 @@ Class.extend(Template, {
   }
 });
 
-},{"./view":19,"chip-utils/class":1}],16:[function(require,module,exports){
+},{"./view":20,"chip-utils/class":1}],17:[function(require,module,exports){
 // Helper methods for animation
 exports.makeElementAnimatable = makeElementAnimatable;
 exports.getComputedCSS = getComputedCSS;
@@ -2652,7 +2763,7 @@ function animateElement(css, options) {
   return playback;
 }
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 
 
 
@@ -2679,7 +2790,7 @@ if (!Element.prototype.closest) {
   };
 }
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 module.exports = toFragment;
 
 // Convert stuff into document fragments. Stuff can be:
@@ -2802,7 +2913,7 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
   })();
 }
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 module.exports = View;
 var Class = require('chip-utils/class');
 
@@ -2950,7 +3061,7 @@ Class.extend(View, {
   }
 });
 
-},{"chip-utils/class":1}],20:[function(require,module,exports){
+},{"chip-utils/class":1}],21:[function(require,module,exports){
 
 exports.Observations = require('./src/observations');
 exports.Observer = require('./src/observer');
@@ -2960,7 +3071,7 @@ exports.create = function() {
   return new exports.Observations();
 };
 
-},{"./src/computed-properties/computed-property":21,"./src/observable-hash":27,"./src/observations":28,"./src/observer":29}],21:[function(require,module,exports){
+},{"./src/computed-properties/computed-property":22,"./src/observable-hash":28,"./src/observations":29,"./src/observer":31}],22:[function(require,module,exports){
 module.exports = ComputedProperty;
 var Class = require('chip-utils/class');
 
@@ -3003,7 +3114,7 @@ Class.extend(ComputedProperty, {
   }
 });
 
-},{"chip-utils/class":1}],22:[function(require,module,exports){
+},{"chip-utils/class":1}],23:[function(require,module,exports){
 module.exports = ExprProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -3025,7 +3136,7 @@ ComputedProperty.extend(ExprProperty, {
   }
 });
 
-},{"./computed-property":21}],23:[function(require,module,exports){
+},{"./computed-property":22}],24:[function(require,module,exports){
 module.exports = IfProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -3057,7 +3168,7 @@ ComputedProperty.extend(IfProperty, {
   }
 });
 
-},{"./computed-property":21}],24:[function(require,module,exports){
+},{"./computed-property":22}],25:[function(require,module,exports){
 module.exports = MapProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -3148,7 +3259,7 @@ ComputedProperty.extend(MapProperty, {
   }
 });
 
-},{"./computed-property":21}],25:[function(require,module,exports){
+},{"./computed-property":22}],26:[function(require,module,exports){
 module.exports = WhenProperty;
 var ComputedProperty = require('./computed-property');
 
@@ -3199,7 +3310,7 @@ ComputedProperty.extend(WhenProperty, {
   }
 });
 
-},{"./computed-property":21}],26:[function(require,module,exports){
+},{"./computed-property":22}],27:[function(require,module,exports){
 var ComputedProperty = require('./computed-properties/computed-property');
 var ExprProperty = require('./computed-properties/expr');
 var MapProperty = require('./computed-properties/map');
@@ -3363,7 +3474,7 @@ function ensureObservers(obj, options) {
   return obj;
 }
 
-},{"./computed-properties/computed-property":21,"./computed-properties/expr":22,"./computed-properties/if":23,"./computed-properties/map":24,"./computed-properties/when":25}],27:[function(require,module,exports){
+},{"./computed-properties/computed-property":22,"./computed-properties/expr":23,"./computed-properties/if":24,"./computed-properties/map":25,"./computed-properties/when":26}],28:[function(require,module,exports){
 module.exports = ObservableHash;
 var Class = require('chip-utils/class');
 var deepDelimiter = /(?:\[\]|\{\})\.?/i;
@@ -3602,10 +3713,11 @@ Class.extend(ObservableHash, {
 
 });
 
-},{"chip-utils/class":1}],28:[function(require,module,exports){
+},{"chip-utils/class":1}],29:[function(require,module,exports){
 (function (global){
 module.exports = Observations;
 var Class = require('chip-utils/class');
+var ObserverChain = require('./observer-chain');
 var Observer = require('./observer');
 var computed = require('./computed');
 var ObservableHash = require('./observable-hash');
@@ -3623,7 +3735,7 @@ function Observations() {
   }, this);
   this.globals = {};
   this.formatters = {};
-  this.observers = [];
+  this.observers = new ObserverChain();
   this.callbacks = [];
   this.listeners = [];
   this.syncing = false;
@@ -3872,9 +3984,7 @@ Class.extend(Observations, {
       }
       this.rerun = false;
       // the observer array may increase or decrease in size (remaining observers) during the sync
-      for (i = 0; i < this.observers.length; i++) {
-        this.observers[i].sync();
-      }
+      this.observers.sync();
     }
 
     this.callbacksRunning = true;
@@ -3934,7 +4044,7 @@ Class.extend(Observations, {
   // Adds a new observer to be synced with changes. If `skipUpdate` is true then the callback will only be called when a
   // change is made, not initially.
   add: function(observer, skipUpdate) {
-    this.observers.push(observer);
+    this.observers.appendObserver(observer);
     if (!skipUpdate) {
       observer.forceUpdateNextSync = true;
       observer.sync();
@@ -3944,13 +4054,7 @@ Class.extend(Observations, {
 
   // Removes an observer, stopping it from being run
   remove: function(observer) {
-    var index = this.observers.indexOf(observer);
-    if (index !== -1) {
-      this.observers.splice(index, 1);
-      return true;
-    } else {
-      return false;
-    }
+    this.observers.removeObserver(observer);
   },
 
   removeClosed: function(win) {
@@ -3969,11 +4073,214 @@ Class.extend(Observations, {
   },
 });
 
+function syncObserver(observer) {
+  observer.sync();
+}
+
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./computed":26,"./observable-hash":27,"./observer":29,"chip-utils/class":1,"expressions-js":4}],29:[function(require,module,exports){
+},{"./computed":27,"./observable-hash":28,"./observer":31,"./observer-chain":30,"chip-utils/class":1,"expressions-js":5}],30:[function(require,module,exports){
+module.exports = ObserverChain;
+var Class = require('chip-utils/class');
+
+/**
+ * Creates a chain of observers with a start and an end observer. This chain can be part of a larger chain.
+ * @return {ObserverChain} An object with the properties:
+ *                            @property {Observer} head The first observer in this chain
+ *                            @property {Observer} tail The last observer in this chain
+ *
+ * Chains can be inserted into other chains to collapse a hierarchy into a flat linked list. Child chains can be
+ * inserted anywhere within a parent except before the head. This means they may be inserted after the tail.
+ *
+ * Example:
+ * Take a template with 5 observers watching for changes to data. The 2nd and 5th observer belong to `if` binders. The
+ * first `if` binder contains 2 observer in its template, and the second contains 3.
+ *
+ * Before either `if` binder equates `true` the observer chain will look like this:
+ * Legend: H for head, T for tail, O for Observer
+ *
+ *   H       T
+ *   O-O-O-O-O
+ *
+ * When the first `if` binder becomes true, its observers will be inserted into the chain right after the `if` observer:
+ *
+ *   H       T
+ *   O-O-O-O-O
+ *      ^
+ *     H T
+ *     O-O
+ *
+ * Making one longer chain of the two, while still keeping track of them separately:
+ *
+ *   H           T
+ *   |   H T     |
+ *   O-O-O-O-O-O-O
+ *
+ * When the second `if` is added, because it is at the end or the tail, it extends the tail of the original:
+ *
+ *   H           T
+ *   |   H T     |
+ *   O-O-O-O-O-O-O
+ *                ^
+ *                H   T
+ *                O-O-O
+ *
+ * Becoming:
+ *   H                 T
+ *   |   H T       H   T
+ *   O-O-O-O-O-O-O-O-O-O
+ *
+ * If the first `if` binder becomes false, it is removed:
+ *
+ *   H             T
+ *   |         H   T
+ *   O-O-O-O-O-O-O-O
+ *      |
+ *     H T
+ *     O-O
+ *
+ * And finally the if the second `if` binder is false and its template/observers removed:
+ *
+ *   H       T
+ *   O-O-O-O-O
+ *      |     |
+ *     H T    H   T
+ *     O-O    O-O-O
+ */
+function ObserverChain(observers) {
+  this.parent = null;
+  this.head = null;
+  this.tail = null;
+
+  var length = observers && observers.length || 0;
+  if (length) {
+    this.head = observers[0];
+    this.tail = observers[length - 1];
+    if (length > 1) {
+      observers.forEach(linkObserver);
+    }
+  }
+}
+
+
+Class.extend(ObserverChain, {
+  /**
+   * Check the value of every observer in this chain.
+   * @param  {Observer} observer    The first observer to update
+   * @param  {Observer} endObserver The last observer to update, or undefined if updating all
+   */
+  sync: function() {
+    var observer = this.head;
+    while (observer) {
+      observer.sync();
+      if (observer === this.tail) break;
+      observer = observer.next;
+    }
+  },
+
+  /**
+   * Insert a child chain into this parent chain after the specified observer.
+   * @param  {ObserverChain} chain The chain that is being inserted into this parent
+   * @param  {Observer}      after The observer which this chain is being inserted directly after
+   */
+  insertChain: function(chain, after) {
+    chain.parent = this;
+    var head = chain.head;
+    var tail = chain.tail;
+    var prev = after || null;
+    var next = prev ? prev.next : this.head;
+    head.prev = prev;
+    tail.next = next;
+    if (prev) prev.next = head;
+    if (next) next.prev = tail;
+
+    // Extend the head of this chain if the child chain was prepended to the head
+    if (next === this.head) {
+      var parent = this;
+      while (parent) {
+        parent.head = head;
+        parent = parent.parent;
+      }
+    }
+
+    // Extend the tail of this chain if the child chain was appended to the tail
+    if (prev === this.tail) {
+      var parent = this;
+      while (parent) {
+        parent.tail = tail;
+        parent = parent.parent;
+      }
+    }
+  },
+
+  /**
+   * Remove this chain from its parent.
+   */
+  remove: function() {
+    var parent = this.parent;
+    if (!parent) return;
+    var head = this.head;
+    var tail = this.tail;
+    var prev = head.prev;
+    var next = tail.next;
+    this.parent = null;
+    head.prev = null;
+    tail.next = null;
+    if (prev) prev.next = next;
+    if (next) next.prev = prev;
+
+    // Reduce the head of the parent chains if the chain was removed from the head
+    if (parent.head === head) {
+      while (parent) {
+        parent.head = next;
+        parent = parent.parent;
+      }
+    }
+
+    // Reduce the tail of the parent chains if the chain was removed from the tail
+    if (parent.tail === tail) {
+      while (parent) {
+        parent.tail = prev;
+        parent = parent.parent;
+      }
+    }
+  },
+
+  appendObserver: function(observer) {
+    if (this.tail) {
+      observer.prev = this.tail;
+      this.tail.next = observer;
+      this.tail = observer;
+    } else {
+      this.head = this.tail = observer;
+    }
+  },
+
+  removeObserver: function(observer) {
+    var next = observer.next;
+    var prev = observer.prev;
+    observer.prev = null;
+    observer.next = null;
+    if (next) next.prev = prev;
+    if (prev) prev.next = next;
+    if (this.head === observer) this.head = next;
+    if (this.tail === observer) this.tail = prev;
+  }
+});
+
+// Add an observer to the observer chain, setting up the head/tail/next/prev properties correctly
+function linkObserver(observer, i, observers) {
+  var next = observers[i + 1];
+  if (next) {
+    observer.next = next;
+    next.prev = observer;
+  }
+}
+
+},{"chip-utils/class":1}],31:[function(require,module,exports){
 module.exports = Observer;
 var Class = require('chip-utils/class');
+var LinkedList = require('chip-utils/linked-list');
 var expressions = require('expressions-js');
 var diff = require('differences-js');
 
@@ -4002,6 +4309,8 @@ function Observer(observations, expression, callback, callbackContext) {
   this.forceUpdateNextSync = false;
   this.context = null;
   this.oldValue = undefined;
+  this.next = null;
+  this.prev = null;
 }
 
 Class.extend(Observer, {
@@ -4154,6 +4463,6 @@ function mapToProperty(property) {
   }
 }
 
-},{"chip-utils/class":1,"differences-js":2,"expressions-js":4}]},{},[9])(9)
+},{"chip-utils/class":1,"chip-utils/linked-list":2,"differences-js":3,"expressions-js":5}]},{},[10])(10)
 });
 //# sourceMappingURL=fragments.js.map
