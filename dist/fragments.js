@@ -1335,6 +1335,8 @@ Binding.extend(AnimatedBinding, {
 
     if (this.animateExpression) {
       animateObject = this.get(this.animateExpression);
+    } else {
+      animateObject = this.animateObject;
     }
 
     if (animateObject && typeof animateObject === 'object') {
@@ -1373,24 +1375,18 @@ Binding.extend(AnimatedBinding, {
     if (animateObject) {
       animation.makeElementAnimatable(node);
       if (typeof animateObject[methodWillName] === 'function') {
-        if (animateObject.useClasses) {
-          node.classList.add(classWillName);
-          animateObject[methodWillName](node);
-          node.offsetWidth = node.offsetWidth;
-          node.classList.remove(classWillName);
-        } else {
-          animateObject[methodWillName](node);
-        }
+        node.classList.add(classWillName);
+        animateObject[methodWillName](node);
+        node.offsetWidth = node.offsetWidth;
+        node.classList.remove(classWillName);
       }
       if (typeof animateObject[methodAnimateName] === 'function') {
-        if (animateObject.useClasses) {
-          node.classList.add(classAnimateName);
-          var duration = getDuration.call(_this, node, direction);
-          if (duration) {
-            onAnimationEnd(node, duration, whenDone);
-          } else {
-            requestAnimationFrame(whenDone);
-          }
+        node.classList.add(classAnimateName);
+        var duration = getDuration.call(_this, node, direction);
+        if (duration) {
+          onAnimationEnd(node, duration, whenDone);
+        } else {
+          requestAnimationFrame(whenDone);
         }
         animateObject[methodAnimateName](node, whenDone);
       }
@@ -3071,7 +3067,7 @@ exports.create = function() {
   return new exports.Observations();
 };
 
-},{"./src/computed-properties/computed-property":22,"./src/observable-hash":28,"./src/observations":29,"./src/observer":31}],22:[function(require,module,exports){
+},{"./src/computed-properties/computed-property":22,"./src/observable-hash":28,"./src/observations":29,"./src/observer":30}],22:[function(require,module,exports){
 module.exports = ComputedProperty;
 var Class = require('chip-utils/class');
 
@@ -3717,7 +3713,7 @@ Class.extend(ObservableHash, {
 (function (global){
 module.exports = Observations;
 var Class = require('chip-utils/class');
-var ObserverChain = require('./observer-chain');
+var LinkedList = require('chip-utils/linked-list');
 var Observer = require('./observer');
 var computed = require('./computed');
 var ObservableHash = require('./observable-hash');
@@ -3735,7 +3731,7 @@ function Observations() {
   }, this);
   this.globals = {};
   this.formatters = {};
-  this.observers = new ObserverChain();
+  this.observers = new LinkedList();
   this.callbacks = [];
   this.listeners = [];
   this.syncing = false;
@@ -3984,7 +3980,7 @@ Class.extend(Observations, {
       }
       this.rerun = false;
       // the observer array may increase or decrease in size (remaining observers) during the sync
-      this.observers.sync();
+      this.observers.forEach(syncObserver);
     }
 
     this.callbacksRunning = true;
@@ -4044,7 +4040,7 @@ Class.extend(Observations, {
   // Adds a new observer to be synced with changes. If `skipUpdate` is true then the callback will only be called when a
   // change is made, not initially.
   add: function(observer, skipUpdate) {
-    this.observers.appendObserver(observer);
+    this.observers.add(observer);
     if (!skipUpdate) {
       observer.forceUpdateNextSync = true;
       observer.sync();
@@ -4054,7 +4050,7 @@ Class.extend(Observations, {
 
   // Removes an observer, stopping it from being run
   remove: function(observer) {
-    this.observers.removeObserver(observer);
+    this.observers.remove(observer);
   },
 
   removeClosed: function(win) {
@@ -4079,205 +4075,7 @@ function syncObserver(observer) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 
-},{"./computed":27,"./observable-hash":28,"./observer":31,"./observer-chain":30,"chip-utils/class":1,"expressions-js":5}],30:[function(require,module,exports){
-module.exports = ObserverChain;
-var Class = require('chip-utils/class');
-
-/**
- * Creates a chain of observers with a start and an end observer. This chain can be part of a larger chain.
- * @return {ObserverChain} An object with the properties:
- *                            @property {Observer} head The first observer in this chain
- *                            @property {Observer} tail The last observer in this chain
- *
- * Chains can be inserted into other chains to collapse a hierarchy into a flat linked list. Child chains can be
- * inserted anywhere within a parent except before the head. This means they may be inserted after the tail.
- *
- * Example:
- * Take a template with 5 observers watching for changes to data. The 2nd and 5th observer belong to `if` binders. The
- * first `if` binder contains 2 observer in its template, and the second contains 3.
- *
- * Before either `if` binder equates `true` the observer chain will look like this:
- * Legend: H for head, T for tail, O for Observer
- *
- *   H       T
- *   O-O-O-O-O
- *
- * When the first `if` binder becomes true, its observers will be inserted into the chain right after the `if` observer:
- *
- *   H       T
- *   O-O-O-O-O
- *      ^
- *     H T
- *     O-O
- *
- * Making one longer chain of the two, while still keeping track of them separately:
- *
- *   H           T
- *   |   H T     |
- *   O-O-O-O-O-O-O
- *
- * When the second `if` is added, because it is at the end or the tail, it extends the tail of the original:
- *
- *   H           T
- *   |   H T     |
- *   O-O-O-O-O-O-O
- *                ^
- *                H   T
- *                O-O-O
- *
- * Becoming:
- *   H                 T
- *   |   H T       H   T
- *   O-O-O-O-O-O-O-O-O-O
- *
- * If the first `if` binder becomes false, it is removed:
- *
- *   H             T
- *   |         H   T
- *   O-O-O-O-O-O-O-O
- *      |
- *     H T
- *     O-O
- *
- * And finally the if the second `if` binder is false and its template/observers removed:
- *
- *   H       T
- *   O-O-O-O-O
- *      |     |
- *     H T    H   T
- *     O-O    O-O-O
- */
-function ObserverChain(observers) {
-  this.parent = null;
-  this.head = null;
-  this.tail = null;
-
-  var length = observers && observers.length || 0;
-  if (length) {
-    this.head = observers[0];
-    this.tail = observers[length - 1];
-    if (length > 1) {
-      observers.forEach(linkObserver);
-    }
-  }
-}
-
-
-Class.extend(ObserverChain, {
-  /**
-   * Check the value of every observer in this chain.
-   * @param  {Observer} observer    The first observer to update
-   * @param  {Observer} endObserver The last observer to update, or undefined if updating all
-   */
-  sync: function() {
-    var observer = this.head;
-    while (observer) {
-      observer.sync();
-      if (observer === this.tail) break;
-      observer = observer.next;
-    }
-  },
-
-  /**
-   * Insert a child chain into this parent chain after the specified observer.
-   * @param  {ObserverChain} chain The chain that is being inserted into this parent
-   * @param  {Observer}      after The observer which this chain is being inserted directly after
-   */
-  insertChain: function(chain, after) {
-    chain.parent = this;
-    var head = chain.head;
-    var tail = chain.tail;
-    var prev = after || null;
-    var next = prev ? prev.next : this.head;
-    head.prev = prev;
-    tail.next = next;
-    if (prev) prev.next = head;
-    if (next) next.prev = tail;
-
-    // Extend the head of this chain if the child chain was prepended to the head
-    if (next === this.head) {
-      var parent = this;
-      while (parent) {
-        parent.head = head;
-        parent = parent.parent;
-      }
-    }
-
-    // Extend the tail of this chain if the child chain was appended to the tail
-    if (prev === this.tail) {
-      var parent = this;
-      while (parent) {
-        parent.tail = tail;
-        parent = parent.parent;
-      }
-    }
-  },
-
-  /**
-   * Remove this chain from its parent.
-   */
-  remove: function() {
-    var parent = this.parent;
-    if (!parent) return;
-    var head = this.head;
-    var tail = this.tail;
-    var prev = head.prev;
-    var next = tail.next;
-    this.parent = null;
-    head.prev = null;
-    tail.next = null;
-    if (prev) prev.next = next;
-    if (next) next.prev = prev;
-
-    // Reduce the head of the parent chains if the chain was removed from the head
-    if (parent.head === head) {
-      while (parent) {
-        parent.head = next;
-        parent = parent.parent;
-      }
-    }
-
-    // Reduce the tail of the parent chains if the chain was removed from the tail
-    if (parent.tail === tail) {
-      while (parent) {
-        parent.tail = prev;
-        parent = parent.parent;
-      }
-    }
-  },
-
-  appendObserver: function(observer) {
-    if (this.tail) {
-      observer.prev = this.tail;
-      this.tail.next = observer;
-      this.tail = observer;
-    } else {
-      this.head = this.tail = observer;
-    }
-  },
-
-  removeObserver: function(observer) {
-    var next = observer.next;
-    var prev = observer.prev;
-    observer.prev = null;
-    observer.next = null;
-    if (next) next.prev = prev;
-    if (prev) prev.next = next;
-    if (this.head === observer) this.head = next;
-    if (this.tail === observer) this.tail = prev;
-  }
-});
-
-// Add an observer to the observer chain, setting up the head/tail/next/prev properties correctly
-function linkObserver(observer, i, observers) {
-  var next = observers[i + 1];
-  if (next) {
-    observer.next = next;
-    next.prev = observer;
-  }
-}
-
-},{"chip-utils/class":1}],31:[function(require,module,exports){
+},{"./computed":27,"./observable-hash":28,"./observer":30,"chip-utils/class":1,"chip-utils/linked-list":2,"expressions-js":5}],30:[function(require,module,exports){
 module.exports = Observer;
 var Class = require('chip-utils/class');
 var LinkedList = require('chip-utils/linked-list');
@@ -4309,8 +4107,7 @@ function Observer(observations, expression, callback, callbackContext) {
   this.forceUpdateNextSync = false;
   this.context = null;
   this.oldValue = undefined;
-  this.next = null;
-  this.prev = null;
+  LinkedList.makeNode(this);
 }
 
 Class.extend(Observer, {
