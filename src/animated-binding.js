@@ -104,8 +104,8 @@ Binding.extend(AnimatedBinding, {
    * Allow an element to use CSS3 transitions or animations to animate in or out of the page.
    */
   animateNode: function(direction, node, callback) {
-    var animateObject, className, classAnimateName, classWillName, whenDone,
-        methodAnimateName, methodWillName, methodDidName, dir, _this = this;
+    var animateObject, className, classAnimateName, classWillName, whenDone, duration,
+      methodAnimateName, methodWillName, methodDidName, dir, _this = this;
 
     if (this.fragments.disableAnimations) {
       return callback.call(_this);
@@ -127,7 +127,7 @@ Binding.extend(AnimatedBinding, {
       if (this.animateObject[0] === '.') {
         className = this.animateObject.slice(1);
       } else if (this.animateObject) {
-        animateObject = fragments.getAnimation(this.animateObject);
+        animateObject = this.fragments.getAnimation(this.animateObject);
         if (typeof animateObject === 'function') animateObject = new animateObject(this);
       }
     }
@@ -160,7 +160,7 @@ Binding.extend(AnimatedBinding, {
       }
       if (typeof animateObject[methodAnimateName] === 'function') {
         node.classList.add(classAnimateName);
-        var duration = getDuration.call(_this, node, direction);
+        duration = getDuration.call(_this, node, direction);
         if (duration) {
           onAnimationEnd(node, duration, whenDone);
         } else {
@@ -173,7 +173,7 @@ Binding.extend(AnimatedBinding, {
       node.offsetWidth = node.offsetWidth;
       node.classList.remove(classWillName);
       node.classList.add(classAnimateName);
-      var duration = getDuration.call(_this, node, direction);
+      duration = getDuration.call(_this, node, direction);
       if (duration) {
         onAnimationEnd(node, duration, whenDone);
       } else {
