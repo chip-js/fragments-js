@@ -4072,7 +4072,7 @@ var stringToFragment = function(string) {
 };
 
 // If HTML Templates are not available (e.g. in IE) then use an older method to work with certain elements.
-if (!document.createElement('template').content instanceof DocumentFragment) {
+if (!(document.createElement('template').content instanceof DocumentFragment)) {
   stringToFragment = (function() {
     var tagExp = /<([\w:-]+)/;
 
