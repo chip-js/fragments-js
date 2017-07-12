@@ -24,20 +24,21 @@ ObservableHash.extend(ElementController, {
     // Bind/unbind the observers for this hash
     if (value) {
       this._listeners.forEach(function(item) {
-        item.targetRef = addListener(this, item.target, item.eventName, item.listener);
+        item.targetRef = addListener(this, item.target, item.eventName, item.listener, item.capture);
       }, this);
     } else {
       this._listeners.forEach(function(item) {
-        removeListener(item.targetRef, item.eventName, item.listener);
+        removeListener(item.targetRef, item.eventName, item.listener, item.capture);
         delete item.targetRef;
       }, this);
     }
   },
 
 
-  listen: function(target, eventName, listener, context) {
+  listen: function(target, eventName, listener, context, capture) {
     var element = this instanceof Node ? this : this.element;
     if (typeof eventName === 'function') {
+      capture = context;
       context = listener;
       listener = eventName;
       eventName = target;
@@ -68,6 +69,7 @@ ObservableHash.extend(ElementController, {
       target: target,
       eventName: eventName,
       listener: listener,
+      capture: capture,
       targetRef: null
     };
 
@@ -75,7 +77,7 @@ ObservableHash.extend(ElementController, {
 
     if (this.listenersEnabled) {
       // If not bound will add on attachment
-      listenerData.targetRef = addListener(this, target, eventName, listener);
+      listenerData.targetRef = addListener(this, target, eventName, listener, capture);
     }
   }
 });
@@ -93,16 +95,16 @@ function getTarget(component, target) {
   return target;
 }
 
-function addListener(component, target, eventName, listener) {
+function addListener(component, target, eventName, listener, capture) {
   // If it's been moved to another document change targets to the relavent one
   if ((target = getTarget(component, target))) {
-    target.addEventListener(eventName, listener);
+    target.addEventListener(eventName, listener, capture);
     return target;
   }
 }
 
-function removeListener(target, eventName, listener) {
+function removeListener(target, eventName, listener, capture) {
   if (target) {
-    target.removeEventListener(eventName, listener);
+    target.removeEventListener(eventName, listener, capture);
   }
 }

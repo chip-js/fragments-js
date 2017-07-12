@@ -1,4 +1,24 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.fragments = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var Fragments = require('./src/fragments');
+var Observations = require('observations-js');
+
+function create(options) {
+  options = options || {};
+  var observations = Observations.create();
+  options.observations = observations;
+  var fragments = new Fragments(options);
+  fragments.sync = observations.sync;
+  fragments.syncNow = observations.syncNow;
+  fragments.afterSync = observations.afterSync;
+  fragments.onSync = observations.onSync;
+  fragments.offSync = observations.offSync;
+  return fragments;
+}
+
+// Create an instance of fragments with the default observer
+exports.create = create;
+
+},{"./src/fragments":25,"observations-js":11}],2:[function(require,module,exports){
 var slice = Array.prototype.slice;
 
 /**
@@ -122,7 +142,7 @@ function makeInstanceOf(object) {
   return object;
 }
 
-},{}],2:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 module.exports = LinkedList;
 var Class = require('./class');
 var nodeDescriptors = {
@@ -223,10 +243,10 @@ Class.extend(LinkedList, {
   }
 });
 
-},{"./class":1}],3:[function(require,module,exports){
+},{"./class":2}],4:[function(require,module,exports){
 module.exports = require('./src/diff');
 
-},{"./src/diff":4}],4:[function(require,module,exports){
+},{"./src/diff":5}],5:[function(require,module,exports){
 /*
 Copyright (c) 2015 Jacob Wright <jacwright@gmail.com>
 
@@ -632,10 +652,10 @@ var diff = exports;
   }
 })();
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 module.exports = require('./src/expressions');
 
-},{"./src/expressions":6}],6:[function(require,module,exports){
+},{"./src/expressions":7}],7:[function(require,module,exports){
 var slice = Array.prototype.slice;
 var strings = require('./strings');
 var formatterParser = require('./formatters');
@@ -730,13 +750,15 @@ function compileExpression(original, expr, globals, formatters, extraArgs) {
 
 // a custom "bind" function to bind arguments to a function without binding the context
 function bindArguments(func) {
-  var args = slice.call(arguments, 1);
-  return function() {
+  function binder() {
     return func.apply(this, args.concat(slice.call(arguments)));
   }
+
+  var args = slice.call(arguments, 1);
+  return binder;
 }
 
-},{"./formatters":7,"./property-chains":8,"./strings":9}],7:[function(require,module,exports){
+},{"./formatters":8,"./property-chains":9,"./strings":10}],8:[function(require,module,exports){
 
 // finds pipes that are not ORs (i.e. ` | ` not ` || `) for formatters
 var pipeRegex = /\|(\|)?/g;
@@ -766,7 +788,7 @@ exports.parseFormatters = function(expr) {
   });
 
   // splits the string by "@@@", pulls of the first as the expr, the remaining are formatters
-  var formatters = expr.split(placeholderRegex);
+  formatters = expr.split(placeholderRegex);
   expr = formatters.shift();
   if (!formatters.length) return expr;
 
@@ -808,7 +830,7 @@ exports.parseFormatters = function(expr) {
   return setter + value;
 };
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var referenceCount = 0;
 var currentReference = 0;
 var currentIndex = 0;
@@ -986,7 +1008,8 @@ function parseChain(prefix, propChain, postfix, paren, expr) {
   var newChain = '';
 
   if (links.length === 1 && !continuation && !parens[paren]) {
-    newChain = addThisOrGlobal(links[0]);
+    link = links[0];
+    newChain = addThisOrGlobal(link);
   } else {
     if (!continuation) {
       newChain = '(';
@@ -1153,7 +1176,7 @@ function addReferences(expr) {
   return expr;
 }
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 // finds all quoted strings
 var quoteRegex = /(['"\/])(\\\1|[^\1])*?\1/g;
 
@@ -1199,27 +1222,1210 @@ exports.putInStrings = function(expr) {
   return expr;
 };
 
-},{}],10:[function(require,module,exports){
-var Fragments = require('./src/fragments');
-var Observations = require('observations-js');
+},{}],11:[function(require,module,exports){
 
-function create(options) {
-  options = options || {};
-  var observations = Observations.create();
-  options.observations = observations;
-  var fragments = new Fragments(options);
-  fragments.sync = observations.sync;
-  fragments.syncNow = observations.syncNow;
-  fragments.afterSync = observations.afterSync;
-  fragments.onSync = observations.onSync;
-  fragments.offSync = observations.offSync;
-  return fragments;
+exports.Observations = require('./src/observations');
+exports.Observer = require('./src/observer');
+exports.ObservableHash = require('./src/observable-hash');
+exports.ComputedProperty = require('./src/computed-properties/computed-property');
+exports.create = function() {
+  return new exports.Observations();
+};
+
+},{"./src/computed-properties/computed-property":12,"./src/observable-hash":18,"./src/observations":19,"./src/observer":20}],12:[function(require,module,exports){
+module.exports = ComputedProperty;
+var Class = require('chip-utils/class');
+
+
+/**
+ * An object which will be replaced by its computed value
+ */
+function ComputedProperty() {}
+
+Class.extend(ComputedProperty, {
+
+  get isComputedProperty() {
+    return true;
+  },
+
+  /**
+   * Add a computed property to a computed object
+   * @param {Object} computedObject The object which this property is being added to
+   * @param {String} propertyName The name of the property on the object that will be set
+   * @return {Observer} An observer which can be bound to the computed object
+   */
+  addTo: function(observations, computedObject, propertyName, context) {
+    throw new Error('Abstract function is not implemented');
+  },
+
+  watch: function(observations, expression, obj, property, context) {
+    if (typeof expression === 'string') {
+      // This is a computed expression
+      return observations.createObserver(expression, function(value) {
+        if (value === undefined) {
+          delete obj[property];
+        } else {
+          obj[property] = value;
+        }
+      });
+    } else if (expression.isComputedProperty) {
+      // Add ComputedProperty's observer to the observers and bind if enabled
+      return expression.addTo(observations, obj, property, context);
+    }
+  }
+});
+
+},{"chip-utils/class":2}],13:[function(require,module,exports){
+module.exports = ExprProperty;
+var ComputedProperty = require('./computed-property');
+
+/**
+ * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
+ * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
+ * @param {String|ComputedProperty} thenExpression The expression which will be executed when `if` is truthy and the
+ *                                                 result set on the object. May also nest computed properties.
+ */
+function ExprProperty(expression) {
+  this.expression = expression;
 }
 
-// Create an instance of fragments with the default observer
-exports.create = create;
 
-},{"./src/fragments":15,"observations-js":21}],11:[function(require,module,exports){
+ComputedProperty.extend(ExprProperty, {
+
+  addTo: function(observations, computedObject, propertyName, context) {
+    return this.watch(observations, this.expression, computedObject, propertyName, context);
+  }
+});
+
+},{"./computed-property":12}],14:[function(require,module,exports){
+module.exports = IfProperty;
+var ComputedProperty = require('./computed-property');
+
+/**
+ * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
+ * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
+ * @param {String|ComputedProperty} thenExpression The expression which will be executed when `if` is truthy and the
+ *                                                 result set on the object. May also nest computed properties.
+ */
+function IfProperty(ifExpression, thenExpression) {
+  this.ifExpression = ifExpression;
+  this.thenExpression = thenExpression;
+}
+
+
+ComputedProperty.extend(IfProperty, {
+
+  addTo: function(observations, computedObject, propertyName, context) {
+    var observer = this.watch(observations, this.thenExpression, computedObject, propertyName, context);
+
+    return observations.createObserver(this.ifExpression, function(value) {
+      if (value && !observer.context) {
+        observer.bind(context);
+      } else if (!value && observer.context) {
+        observer.unbind();
+        observer.sync();
+      }
+    });
+  }
+});
+
+},{"./computed-property":12}],15:[function(require,module,exports){
+module.exports = MapProperty;
+var ComputedProperty = require('./computed-property');
+
+/**
+ * Creates an object hash with the key being the value of the `key` property of each item in `sourceExpression` and the
+ * value being the result of `expression`. `key` is optional, defaulting to "id" when not provided. `sourceExpression`
+ * can resolve to an array or an object hash.
+ * @param {Array|Object} sourceExpression An array or object whose members will be added to the map.
+ * @param {String} keyExpression The name of the property to key against as values are added to the map.
+ * @param {String} resultExpression [Optional] The expression evaluated against the array/object member whose value is
+ *                                  added to the map. If not provided, the member will be added.
+ * @return {Object} The object map of key=>value
+ */
+function MapProperty(sourceExpression, keyExpression, resultExpression, removeExpression) {
+  var parts = sourceExpression.split(/\s+in\s+/);
+  this.sourceExpression = parts.pop();
+  this.itemName = parts.pop();
+  this.keyExpression = keyExpression;
+  this.resultExpression = resultExpression;
+  this.removeExpression = removeExpression;
+}
+
+
+ComputedProperty.extend(MapProperty, {
+
+  addTo: function(observations, computedObject, propertyName, context) {
+    var map = {};
+    var observers = {};
+    computedObject[propertyName] = map;
+    var add = this.addItem.bind(this, observations, computedObject, map, observers, context);
+    var remove = this.removeItem.bind(this, observations, computedObject, map, observers, context);
+    return observations.createMemberObserver(this.sourceExpression, add, remove, this);
+  },
+
+  addItem: function(observations, computedObject, map, observers, context, item) {
+    if (!this.getKey) {
+      this.getKey = observations.getExpression(this.keyExpression);
+    }
+
+    var proxy;
+    if (this.itemName) {
+      proxy = Object.create(context);
+      proxy[this.itemName] = item;
+    } else {
+      proxy = Object.create(item);
+      proxy.$$ = context;
+    }
+
+    var key = item && this.getKey.call(proxy);
+    if (!key) {
+      return;
+    }
+
+    if (observers.hasOwnProperty(key)) {
+      this.removeObserver(observers, key);
+    }
+
+    if (this.resultExpression) {
+      var observer = this.watch(observations, this.resultExpression, map, key, proxy);
+      if (!observer) {
+        throw new TypeError('Invalid resultExpression for computed.map');
+      }
+
+      observer.bind(proxy);
+      observers[key] = observer;
+    } else {
+      map[key] = item;
+    }
+  },
+
+  removeItem: function(observations, computedObject, map, observers, context, item) {
+    var key = item && this.getKey.call(item);
+    if (key) {
+      this.removeObserver(observers, key);
+      if (this.removeExpression) {
+        observations.get(context, this.removeExpression);
+      }
+      delete map[key];
+    }
+  },
+
+  removeObserver: function(observers, key) {
+    var observer = observers[key];
+    if (observer) {
+      observer.unbind();
+      delete observers[key];
+    }
+  }
+});
+
+},{"./computed-property":12}],16:[function(require,module,exports){
+module.exports = WhenProperty;
+var ComputedProperty = require('./computed-property');
+
+/**
+ * Calls the `thenExpression` and assigns the results to the object's property when the `whenExpression` changes value
+ * to anything other than a falsey value such as undefined. The return value of the `thenExpression` may be a Promise.
+ *
+ * @param {String} whenExpression The conditional expression use to determine when to call the `thenExpression`
+ * @param {String} thenExpression The expression which will be executed when the `when` value changes and the result (or
+ * the result of the returned promise) is set on the object.
+ */
+function WhenProperty(whenExpression, thenExpression) {
+  if (!thenExpression) {
+    thenExpression = whenExpression;
+    whenExpression = 'true';
+  }
+
+  this.whenExpression = whenExpression;
+  this.thenExpression = thenExpression;
+}
+
+
+ComputedProperty.extend(WhenProperty, {
+
+  addTo: function(observations, computedObject, propertyName, context) {
+    if (!this.thenMethod) {
+      this.thenMethod = observations.getExpression(this.thenExpression);
+    }
+
+    return observations.createObserver(this.whenExpression, function(value) {
+      if (value) {
+        var result = this.thenMethod.call(context);
+        if (result && result.then) {
+          result.then(function(value) {
+            computedObject[propertyName] = value;
+            observations.sync();
+          }, function(err) {
+            computedObject[propertyName] = undefined;
+            observations.sync();
+          });
+        } else {
+          computedObject[propertyName] = result;
+        }
+      } else {
+        computedObject[propertyName] = undefined;
+      }
+    }, this);
+  }
+});
+
+},{"./computed-property":12}],17:[function(require,module,exports){
+var ComputedProperty = require('./computed-properties/computed-property');
+var ExprProperty = require('./computed-properties/expr');
+var MapProperty = require('./computed-properties/map');
+var IfProperty = require('./computed-properties/if');
+var WhenProperty = require('./computed-properties/when');
+
+
+exports.create = function(observations) {
+
+  /**
+   * Create an object whose properties are dynamically updated with the values of the mapped expressions. An expression
+   * can be a simple JavaScript expression with formatters (see https://github.com/chip-js/expressions-js) or it can be
+   * a URL for watching the REST APIs. The object will have an array named `computedObservers` which contain all the
+   * observers created to watch the properties. The `computedObservers` array has two additional methods, `enable` and
+   * `disable` which will turn the binding on/off. When disabled the properties are reset to undefined.
+   * @param {Object} map A hash of computed properties, expressions or URLs, that will be set and updated on the object
+   * @param {Object} options Options for this computed object:
+   *   * enabled {Boolean} Whether to enable this computed object. Default is true.
+   * @return {Object} An object which will contain all the values of the computed properties
+   */
+  function computed(map, options) {
+    return computed.extend({}, map, options);
+  }
+
+
+  /**
+   * Extends an existing object with the values of the computed properties in the map.
+   * @param {Object} obj The object to extend, will create, update, and delete properties from the object as they change
+   * @param {Object} map A hash of computed properties that will be mapped onto the object
+   * @param {Object} options Options for this computed object:
+   *   * enabled {Boolean} Whether to enable this computed object. Default is true.
+   * @return {Object} Returns the object passed in
+   */
+  computed.extend = function(obj, map, options) {
+    if (!obj || !map) {
+      throw new TypeError('computed.extend expects `obj` and `map` to be objects');
+    }
+    ensureObservers(obj, options);
+
+    Object.keys(map).forEach(function(property) {
+      var expression = map[property];
+      var observer;
+
+      if (typeof expression === 'string') {
+        // This is a computed expression
+        observer = observations.createObserver(expression, function(value) {
+          obj[property] = value;
+        });
+      } else if (expression && expression.isComputedProperty) {
+        // Add ComputedProperty's observer to the observers and bind if enabled
+        observer = expression.addTo(observations, obj, property, obj);
+      } else {
+        obj[property] = expression;
+      }
+
+      if (observer) {
+        obj.computedObservers.push(observer);
+        if (obj.computedObservers.enabled) {
+          observer.bind(options && options.context || obj);
+        }
+      }
+    });
+
+    return obj;
+  };
+
+
+  /**
+   * Assigns the result of the expression to the computed object's property.
+   * @param {String} expression The string expression
+   * @return {ComputedProperty}
+   */
+  computed.expr = function(expression) {
+    return new ExprProperty(expression);
+  };
+
+
+  /**
+   * Creates an object hash with the key being the value of the `key` property of each item in `sourceExpression` and the
+   * value being the result of `expression`. `key` is optional, defaulting to "id" when not provided. `sourceExpression`
+   * can resolve to an array or an object hash.
+   * @param {Array|Object} sourceExpression An array or object whose members will be added to the map.
+   * @param {String} keyName [Optional] The name of the property to key against as values are added to the map. Defaults
+   *                         to "id"
+   * @param {String} expression The expression evaluated against the array/object member whose value is added to the map.
+   * @return {ComputedProperty}
+   */
+  computed.map = function(sourceExpression, keyName, resultExpression, removeExpression) {
+    return new MapProperty(sourceExpression, keyName, resultExpression, removeExpression);
+  };
+
+
+  /**
+   * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
+   * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
+   * @param {String} thenExpression The expression which will be executed when `if` is truthy and the result set on the
+   * object.
+   * @return {ComputedProperty}
+   */
+  computed.if = function(ifExpression, thenExpression) {
+    return new IfProperty(ifExpression, thenExpression);
+  };
+
+
+  /**
+   * Calls the `thenExpression` and assigns the results to the object's property when the `whenExpression` changes value
+   * to anything other than a falsey value such as undefined. The return value of the `thenExpression` may be a Promise.
+   * @param {String} whenExpression The conditional expression use to determine when to call the `thenExpression`
+   * @param {String} thenExpression The expression which will be executed when the `when` value changes and the result
+   * (or the result of the returned promise) is set on the object.
+   * @return {ComputedProperty}
+   */
+  computed.when = function(whenExpression, thenExpression) {
+    return new WhenProperty(whenExpression, thenExpression);
+  };
+  // Alias when to async for readability and backwards compatability
+  computed.async = computed.when;
+
+
+  // Make the ComputedProperty class available for extension
+  computed.ComputedProperty = ComputedProperty;
+
+  return computed;
+};
+
+
+/**
+ * Ensures the observers array exists on an object, creating it if not and adding disable/enable functions to enable and
+ * disable observing.
+ * @param {Object} obj The object which ought to have an observers array on it
+ * @param {Object} options Options for this computed object:
+ *   * enabled {Boolean} Whether to enable this computed object. Default is true.
+ * @return {Object} The `obj` that was passed in
+ */
+function ensureObservers(obj, options) {
+  if (!obj.computedObservers) {
+    Object.defineProperty(obj, 'computedObservers', { value: [] });
+    obj.computedObservers.enabled = (!options || options.enabled !== false);
+
+    // Restarts observing changes
+    obj.computedObservers.enable = function() {
+      if (!this.enabled) {
+        this.enabled = true;
+        this.forEach(function(observer) {
+          observer.bind(options && options.context || obj);
+        });
+      }
+    };
+
+    // Stops observing changes and resets all computed properties to undefined
+    obj.computedObservers.disable = function() {
+      if (this.enabled) {
+        this.enabled = false;
+        this.forEach(function(observer) {
+          observer.unbind();
+          observer.sync();
+        });
+      }
+    };
+  }
+  return obj;
+}
+
+},{"./computed-properties/computed-property":12,"./computed-properties/expr":13,"./computed-properties/if":14,"./computed-properties/map":15,"./computed-properties/when":16}],18:[function(require,module,exports){
+module.exports = ObservableHash;
+var Class = require('chip-utils/class');
+var deepDelimiter = /(?:\[\]|\{\})\.?/i;
+
+/**
+ * An object for storing data to be accessed by an application. Has methods for easily computing and watching data
+ * changes.
+ * @param {Observations} observations An instance of the Observations class this has is bound to
+ */
+function ObservableHash(observations) {
+  var enabled = true;
+  var _observers = [];
+  _observers.enabled = true;
+
+  Object.defineProperties(this, {
+    _context: { writable: true, value: this },
+    _observations: { value: observations },
+    _namespaces: { value: [] },
+    _observers: { value: _observers },
+    computedObservers: { value: _observers } // alias to work with the computed system
+  });
+}
+
+
+Class.extend(ObservableHash, {
+
+  /**
+   * Whether or not this hash is currently enabled and running the observations/computations. When disabled, watchers
+   * and all computed properties will be cleared out with `undefined`. The hash will be ready for garbage collection.
+   * @return {Boolean} If the hash is enabled, default `true`
+   */
+  get observersEnabled() {
+    return this._observers.enabled;
+  },
+  set observersEnabled(value) {
+    // Bind/unbind the observers for this hash
+    value ? this.observersStart() : this.observersStop(true);
+  },
+
+  /**
+   * Starts the observers watching their values
+   */
+  observersStart: function() {
+    this._observers.enabled = true;
+    this._observers.forEach(this.observersBindHelper.bind(this), this);
+
+    // Set namespaced hashes to the same value
+    this._namespaces.forEach(this.observersStartHelper.bind(this), this);
+  },
+
+  observersBindHelper: function(observer) {
+    observer.bind(this._context);
+  },
+
+  observersStartHelper: function(namespace) {
+    this[namespace].observersStart();
+  },
+
+  /**
+   * Stops the observers watching and responding to changes, optionally clearing out the values
+   * @param {Boolean} clearValues Whether to clear the values out to `undefined` or leave them as-is
+   */
+  observersStop: function(clearValues) {
+    this._observers.enabled = false;
+    this._observers.forEach(this.observersUnbindHelper.bind(this, clearValues));
+
+    // Set namespaced hashes to the same value
+    this._namespaces.forEach(this.observersStopHelper.bind(this, clearValues), this);
+  },
+
+  observersUnbindHelper: function(clearValues, observer) {
+    observer.unbind();
+    if (clearValues) observer.sync();
+  },
+
+  observersStopHelper: function(clearValues, namespace) {
+    this[namespace].observersStop(clearValues);
+  },
+
+  /**
+   * Get the value of an expression
+   * @param {String} expression The JavaScript expression to evaluate
+   * @return {mixed} The value of the expression
+   */
+  get: function(expression) {
+    return this._observations.get(this._context, expression);
+  },
+
+  /**
+   * Set the value of an expression
+   * @param {String} expression The JavaScript expression to set
+   * @param {mixed} value The value you'd like to set the expression to
+   */
+  set: function(expression, value) {
+    return this._observations.set(this._context, expression, value);
+  },
+
+  /**
+   * Add computed properties to this hash. If `name` is provided it will add the computed properties to that namespace
+   * on the hash. Otherwise they will be added directly to the hash.
+   * @param {String} name [OPTIONAL] The namespace to add the computed properties under
+   * @param {Object} map The map of computed properties that will be set on this ObservableHash
+   */
+  addComputed: function(namespace, map) {
+    if (typeof namespace === 'string' && typeof map === 'object') {
+      if (!this[namespace]) {
+        this[namespace] = new ObservableHash(this._observations);
+        this[namespace].observersEnabled = this.observersEnabled;
+        this._namespaces.push(namespace);
+      }
+      this._observations.computed.extend(this[namespace], map, { context: this[namespace]._context });
+      return this[namespace];
+    } else if (namespace && typeof namespace === 'object') {
+      this._observations.computed.extend(this, namespace, { context: this._context });
+      return this;
+    } else {
+      throw new TypeError('addComputed must have a map object');
+    }
+  },
+
+  /**
+   * Watch this object for changes in the value of the expression
+   * @param {String} expression The expression to observe
+   * @param {Function} onChange The function which will be called when the expression value changes
+   * @return {Observer} The observer created
+   */
+  watch: function(expression, onChange, callbackContext) {
+    var observer = this._observations.createObserver(expression, onChange, callbackContext || this);
+    this._observers.push(observer);
+    if (this.observersEnabled) observer.bind(this._context);
+    return observer;
+  },
+
+  /**
+   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {String} expression The expression to observe
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer created
+   */
+  track: function(expression, onAdd, onRemove, callbackContext) {
+    if (deepDelimiter.test(expression)) {
+      return this.trackDeeply(expression, onAdd, onRemove, callbackContext);
+    }
+    var observer = this._observations.createMemberObserver(expression, onAdd, onRemove, callbackContext || this);
+    this._observers.push(observer);
+    if (this.observersEnabled) observer.bind(this._context);
+    return observer;
+  },
+
+  /**
+   * Works like `track` but allows it to track deeply using `[]` and `{}` in the expression. Example:
+   * ```
+   * data.addComputed({
+   *   widgets: 'getArrayOfWidgets()',
+   *   widgetTags: computed.map('w in widgets', 'w.id', 'w.tags')
+   * });
+   * // know when a tag is added
+   * data.trackDeeply('widgets[].tags[].tagName', function(tagAdded) { console.log('tag added', tagAdded )});
+   * // widgetTags is an object hash of arrays, so we need to use two levels next to each other
+   * data.trackDeeply('widgetTags{}[].tagName', function(tagAdded) { console.log('tag added', tagAdded )});
+   * ```
+   * @param {String} expression The expression to observe with `{}` and `[]` indicating
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer created
+   */
+  trackDeeply: function(expression, onAdd, onRemove, callbackContext) {
+    if (!deepDelimiter.test(expression)) {
+      return this.track(expression, onAdd, onRemove, callbackContext);
+    }
+    callbackContext = callbackContext || this;
+    var observers = new WeakMap();
+    var observations = this._observations;
+    var steps = expression.split(deepDelimiter);
+    var lastIndex = steps.length - 1;
+
+    var removedCallback = function(item) {
+      var observer = observers.get(item);
+      if (observer) {
+        observer.unbind();
+        observer.sync();
+        observers.delete(item);
+      }
+    };
+
+    // Add a unique onAdd callback for each step of the observation
+    var addedCallbacks = steps.slice(1, -1).map(function(expr, index) {
+      // Observe the next set of members
+      return function(item) {
+        if (!item) return;
+        var observer = observations.observeMembers(
+          expr || 'this',
+          addedCallbacks[index + 1],
+          removedCallbacks[index + 1],
+          callbackContext
+        );
+        observers.set(item, observer);
+        observer.bind(item);
+        return observer;
+      };
+    });
+
+    // Removed callbacks are all the same except the last
+    var removedCallbacks = steps.map(function() {
+      return removedCallback;
+    });
+
+    // Add last callback
+    if (steps[lastIndex]) {
+      // Observe the item's property
+      addedCallbacks.push(function(item, key) {
+        if (!item) return;
+        var observer = observations.createObserver(steps[lastIndex], function(value, oldValue) {
+          if (oldValue != null && typeof onRemove === 'function') {
+            onRemove.call(callbackContext, oldValue, key, item);
+          }
+          if (value != null && typeof onAdd === 'function') {
+            onAdd.call(callbackContext, value, key, item);
+          }
+        });
+        observers.set(item, observer);
+        observer.bind(item);
+        return observer;
+      });
+    } else {
+      addedCallbacks.push(onAdd);
+      removedCallbacks[lastIndex] = onRemove;
+    }
+
+    var observer = observations.observeMembers(steps[0], addedCallbacks[0], removedCallbacks[0], callbackContext);
+    this._observers.push(observer);
+    if (this.observersEnabled) observer.bind(this._context);
+    return observer;
+  }
+
+});
+
+},{"chip-utils/class":2}],19:[function(require,module,exports){
+(function (global){
+module.exports = Observations;
+var Class = require('chip-utils/class');
+var LinkedList = require('chip-utils/linked-list');
+var Observer = require('./observer');
+var computed = require('./computed');
+var ObservableHash = require('./observable-hash');
+var expressions = require('expressions-js');
+var requestAnimationFrame = global.requestAnimationFrame || setTimeout;
+var cancelAnimationFrame = global.cancelAnimationFrame || clearTimeout;
+
+
+function Observations() {
+  // Bind all methods to this instance
+  Object.getOwnPropertyNames(this.constructor.prototype).forEach(function(name) {
+    if (typeof this[name] === 'function') {
+      this[name] = this[name].bind(this);
+    }
+  }, this);
+  this.globals = {};
+  this.formatters = {};
+  this.observers = new LinkedList();
+  this.callbacks = [];
+  this.listeners = [];
+  this.syncing = false;
+  this.callbacksRunning = false;
+  this.rerun = false;
+  this.cycles = 0;
+  this.maxCycles = 10;
+  this.timeout = null;
+  this.pendingSync = null;
+  this.computed = computed.create(this);
+  this.expressions = expressions;
+  this.windows = [ window ];
+}
+
+
+Class.extend(Observations, {
+  ObservableHash: ObservableHash,
+
+  /**
+   * Creates a new ObservableHash with useful methods for managing data using watch, track, and computed.
+   * @param {Object} computedMap [OPTIONAL] An initial computed map for this hash
+   * @return {ObservableHash} An object for putting your data on for accessibility
+   */
+  createHash: function(computedMap) {
+    var hash = new ObservableHash(this);
+    if (computedMap) hash.addComputed(computedMap);
+    return hash;
+  },
+
+  /**
+   * Observes any changes to the result of the expression on the context object and calls the callback.
+   * @param {Object} context The context to bind the expression against
+   * @param {String} expression The expression to observe
+   * @param {Function} onChange The function which will be called when the expression value changes
+   * @return {Observer} The observer created
+   */
+  watch: function(context, expression, onChange, callbackContext) {
+    var observer = this.createObserver(expression, onChange, callbackContext || context);
+    observer.bind(context);
+    return observer;
+  },
+
+  // Alias for `watch`, DEPRECATED
+  observe: function(context, expression, onChange, callbackContext) {
+    return this.watch(context, expression, onChange, callbackContext);
+  },
+
+  /**
+   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {Object} context The context to bind the expression against
+   * @param {String} expression The expression to observe
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer created
+   */
+  track: function(context, expression, onAdd, onRemove, callbackContext) {
+    var observer = this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
+    observer.bind(context);
+    return observer;
+  },
+
+  // Alias for `createMemberObserver`, DEPRECATED
+  observeMembers: function(expression, onAdd, onRemove, callbackContext) {
+    return this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
+  },
+
+  /**
+   * Creates a new observer attached to this observations object. When the observer is bound to a context it will be
+   * added to this `observations` and synced when this `observations.sync` is called.
+   * @param {String} expression The expression to observe
+   * @param {Function} callback The function which will be called when the expression value changes
+   * @return {Observer} The observer
+   */
+  createObserver: function(expression, callback, callbackContext) {
+    return new Observer(this, expression, callback, callbackContext);
+  },
+
+  /**
+   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+   * @param {String} expression The expression to observe
+   * @param {Function} onAdd The function which will be called when a member is added to the source
+   * @param {Function} onRemove The function which will be called when a member is removed from the source
+   * @return {Observer} The observer
+   */
+  createMemberObserver: function(expression, onAdd, onRemove, callbackContext) {
+    if (!onAdd) onAdd = function(){};
+    if (!onRemove) onRemove = function(){};
+
+    var observer = this.createObserver(expression, this.createMemberObserverCallback.bind(this, onAdd, onRemove, callbackContext));
+
+    observer.getChangeRecords = true;
+    return observer;
+  },
+
+  createMemberObserverCallback: function(onAdd, onRemove, callbackContext, source, oldValue, changes) {
+    if (changes) {
+      // call onRemoved on everything first
+      changes.forEach(function(change) {
+        if (change.type === 'splice') {
+          change.removed.forEach(function(item, index) {
+            // Only call onRemove if this item was removed completely, not if it just changed location in the array
+            if (source.indexOf(item) === -1) {
+              onRemove.call(callbackContext, item, index + change.index);
+            }
+          }, callbackContext);
+        } else {
+          if (change.oldValue != null) {
+            onRemove.call(callbackContext, change.oldValue, change.name);
+          }
+        }
+      });
+
+      // call onAdded second, allowing for items that changed location to be accurately processed
+      changes.forEach(function(change) {
+        if (change.type === 'splice') {
+          source.slice(change.index, change.index + change.addedCount).forEach(function(item, index) {
+            // Only call onAdd if this item was added, not if it changed location in the array
+            if (oldValue.indexOf(item) === -1) {
+              onAdd.call(callbackContext, item, index + change.index, source);
+            }
+          }, callbackContext);
+        } else {
+          var value = source[change.name];
+          if (value != null) {
+            onAdd.call(callbackContext, value, change.name, source);
+          }
+        }
+      });
+    } else if (Array.isArray(source)) {
+      source.forEach(onAdd, callbackContext);
+    } else if (source && typeof source === 'object') {
+      Object.keys(source).forEach(function(key) {
+        var value = source[key];
+        if (value != null) {
+          onAdd.call(callbackContext, value, key, source);
+        }
+      });
+    } else if (Array.isArray(oldValue)) {
+      oldValue.forEach(onRemove, callbackContext);
+    } else if (oldValue && typeof oldValue === 'object') {
+      // If undefined (or something that isn't an array/object) remove the observers
+      Object.keys(oldValue).forEach(function(key) {
+        var value = oldValue[key];
+        if (value != null) {
+          onRemove.call(callbackContext, value, key, oldValue);
+        }
+      });
+    }
+  },
+
+
+  /**
+   * Parses an expression into a function using the globals and formatters objects associated with this instance of
+   * observations.
+   * @param {String} expression The expression string to parse into a function
+   * @param {Object} options Additional options to pass to the parser.
+   *                        `{ isSetter: true }` will make this expression a setter that accepts a value.
+   *                        `{ extraArgs: [ 'argName' ]` will make extra arguments to pass in to the function.
+   * @return {Function} A function that may be called to execute the expression (call it against a context using=
+   * `func.call(context)` in order to get the data from the context correct)
+   */
+  getExpression: function(expression, options) {
+    if (options && options.isSetter) {
+      return expressions.parseSetter(expression, this.globals, this.formatters, options.extraArgs);
+    } else if (options && options.extraArgs) {
+      var allArgs = [expression, this.globals, this.formatters].concat(options.extraArgs);
+      return expressions.parse.apply(expressions, allArgs);
+    } else {
+      return expressions.parse(expression, this.globals, this.formatters);
+    }
+  },
+
+
+  /**
+   * Gets the value of an expression from the given context object
+   * @param {Object} context The context object the expression will be evaluated against
+   * @param {String} expression The expression to evaluate
+   * @return {mixed} The result of the expression against the context
+   */
+  get: function(context, expression) {
+    return this.getExpression(expression).call(context);
+  },
+
+
+  /**
+   * Sets the value on the expression in the given context object
+   * @param {Object} context The context object the expression will be evaluated against
+   * @param {String} expression The expression to set a value with
+   * @param {mixed} value The value to set on the expression
+   * @return {mixed} The result of the expression against the context
+   */
+  set: function(source, expression, value) {
+    return this.getExpression(expression, { isSetter: true }).call(source, value);
+  },
+
+
+  // Schedules an observer sync cycle which checks all the observers to see if they've changed.
+  sync: function(callback) {
+    if (typeof callback === 'function') {
+      this.afterSync(callback);
+    }
+
+    if (this.pendingSync) {
+      return false;
+    }
+
+    this.windows = this.windows.filter(this.removeClosed);
+    this.pendingSync = this.windows.map(this.queueSync);
+    return true;
+  },
+
+
+  // Runs the observer sync cycle which checks all the observers to see if they've changed.
+  syncNow: function(callback) {
+    if (typeof callback === 'function') {
+      this.afterSync(callback);
+    }
+
+    if (this.pendingSync) {
+      this.pendingSync.forEach(this.cancelQueue);
+      this.pendingSync = null;
+    }
+
+    if (this.syncing) {
+      this.rerun = true;
+      return false;
+    }
+
+    this.runSync();
+    return true;
+  },
+
+
+  runSync: function() {
+    this.syncing = true;
+    this.rerun = true;
+    this.cycles = 0;
+
+    var i, l;
+
+    // Allow callbacks to run the sync cycle again immediately, but stop at `maxCyles` (default 10) cycles so we don't
+    // run infinite loops
+    while (this.rerun) {
+      if (++this.cycles === this.maxCycles) {
+        throw new Error('Infinite observer syncing, an observer is calling Observer.sync() too many times');
+      }
+      this.rerun = false;
+      // the observer array may increase or decrease in size (remaining observers) during the sync
+      this.observers.forEach(syncObserver);
+    }
+
+    this.callbacksRunning = true;
+
+    var callbacks = this.callbacks;
+    this.callbacks = [];
+    while (callbacks.length) {
+      callbacks.shift()();
+    }
+
+    for (i = 0, l = this.listeners.length; i < l; i++) {
+      var listener = this.listeners[i];
+      listener();
+    }
+
+    this.callbacksRunning = false;
+    this.syncing = false;
+    this.cycles = 0;
+  },
+
+
+  // After the next sync (or the current if in the middle of one), run the provided callback
+  afterSync: function(callback) {
+    if (typeof callback !== 'function') {
+      throw new TypeError('callback must be a function');
+    }
+
+    if (this.callbacksRunning) {
+      this.sync();
+    }
+
+    this.callbacks.push(callback);
+  },
+
+
+  onSync: function(listener) {
+    if (typeof listener !== 'function') {
+      throw new TypeError('listener must be a function');
+    }
+
+    this.listeners.push(listener);
+  },
+
+
+  offSync: function(listener) {
+    if (typeof listener !== 'function') {
+      throw new TypeError('listener must be a function');
+    }
+
+    var index = this.listeners.indexOf(listener);
+    if (index !== -1) {
+      this.listeners.splice(index, 1).pop();
+    }
+  },
+
+
+  // Adds a new observer to be synced with changes. If `skipUpdate` is true then the callback will only be called when a
+  // change is made, not initially.
+  add: function(observer, skipUpdate) {
+    this.observers.add(observer);
+    if (!skipUpdate) {
+      observer.forceUpdateNextSync = true;
+      observer.sync();
+    }
+  },
+
+
+  // Removes an observer, stopping it from being run
+  remove: function(observer) {
+    this.observers.remove(observer);
+  },
+
+  removeClosed: function(win) {
+    return !win.closed;
+  },
+
+  queueSync: function(win) {
+    var reqId = win.requestAnimationFrame(this.syncNow);
+    return [win, reqId];
+  },
+
+  cancelQueue: function(queue) {
+    var win = queue[0];
+    var reqId = queue[1];
+    win.cancelAnimationFrame(reqId);
+  },
+});
+
+function syncObserver(observer) {
+  observer.sync();
+}
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{"./computed":17,"./observable-hash":18,"./observer":20,"chip-utils/class":2,"chip-utils/linked-list":3,"expressions-js":6}],20:[function(require,module,exports){
+module.exports = Observer;
+var Class = require('chip-utils/class');
+var LinkedList = require('chip-utils/linked-list');
+var expressions = require('expressions-js');
+var diff = require('differences-js');
+
+// # Observer
+
+// Defines an observer class which represents an expression. Whenever that expression returns a new value the `callback`
+// is called with the value.
+//
+// If the old and new values were either an array or an object, the `callback` also
+// receives an array of splices (for an array), or an array of change objects (for an object) which are the same
+// format that `Array.observe` and `Object.observe` return
+// <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/observe>.
+function Observer(observations, expression, callback, callbackContext) {
+  if (typeof expression === 'function') {
+    this.getter = expression;
+    this.setter = expression;
+  } else {
+    this.getter = expressions.parse(expression, observations.globals, observations.formatters);
+  }
+  this.observations = observations;
+  this.expression = expression;
+  this.callback = callback;
+  this.callbackContext = callbackContext;
+  this.getChangeRecords = false;
+  this.skip = false;
+  this.forceUpdateNextSync = false;
+  this.context = null;
+  this.oldValue = undefined;
+  LinkedList.makeNode(this);
+}
+
+Class.extend(Observer, {
+
+  get getChangeRecords() {
+    return this._getChangeRecords;
+  },
+
+  set getChangeRecords(value) {
+    this._getChangeRecords = Boolean(value);
+    if (value && this.oldValue) {
+      this.oldValue = diff.clone(this.oldValue);
+    }
+  },
+
+  // Binds this expression to a given context
+  bind: function(context, skipUpdate) {
+    this.context = context;
+    if (this.callback) {
+      this.observations.add(this, skipUpdate);
+    }
+  },
+
+  // Unbinds this expression
+  unbind: function() {
+    this.observations.remove(this);
+    this.context = null;
+  },
+
+  // Closes the observer, cleaning up any possible memory-leaks
+  close: function() {
+    this.unbind();
+    this.callback = null;
+    this.callbackContext = null;
+  },
+
+  // Returns the current value of this observer
+  get: function() {
+    if (this.context) {
+      return this.getter.call(this.context);
+    }
+  },
+
+  // Sets the value of this expression
+  set: function(value) {
+    if (!this.context) return;
+    if (this.setter === false) return;
+    if (!this.setter) {
+      try {
+        this.setter = typeof this.expression === 'string'
+          ? expressions.parseSetter(this.expression, this.observations.globals, this.observations.formatters)
+          : false;
+      } catch (e) {
+        this.setter = false;
+      }
+      if (!this.setter) return;
+    }
+
+    try {
+      var result = this.setter.call(this.context, value);
+    } catch(e) {
+      return;
+    }
+
+    // We can't expect code in fragments outside Observer to be aware of "sync" since observer can be replaced by other
+    // types (e.g. one without a `sync()` method, such as one that uses `Object.observe`) in other systems.
+    this.sync();
+    this.observations.sync();
+    return result;
+  },
+
+
+  // Instructs this observer to not call its `callback` on the next sync, whether the value has changed or not
+  skipNextSync: function() {
+    this.skip = true;
+  },
+
+
+  // Syncs this observer now, calling the callback immediately if there have been changes
+  sync: function() {
+    var value = this.get();
+
+    // Don't call the callback if `skipNextSync` was called on the observer
+    if (this.skip || !this.callback) {
+      this.skip = false;
+
+      if (this.getChangeRecords) {
+        // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
+        // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+        // in bind-each)
+        this.oldValue = diff.clone(value);
+      } else {
+        this.oldValue = value;
+      }
+    } else {
+      var change;
+      var useCompareBy = this.getChangeRecords &&
+                         this.compareBy &&
+                         Array.isArray(value) &&
+                         Array.isArray(this.oldValue);
+
+      if (useCompareBy) {
+        var compareExpression = this.compareBy;
+        var name = this.compareByName;
+        var index = this.compareByIndex || '__index__';
+        var ctx = this.context;
+        var globals = this.observations.globals;
+        var formatters = this.observations.formatters;
+        var oldValue = this.oldValue;
+        if (!name) {
+          name = '__item__';
+          // Turn "id" into "__item__.id"
+          compareExpression = name + '.' + compareExpression;
+        }
+
+        var getCompareValue = expressions.parse(compareExpression, globals, formatters, name, index);
+        changed = diff.values(value.map(getCompareValue, ctx), oldValue.map(getCompareValue, ctx));
+      } else if (this.getChangeRecords) {
+        changed = diff.values(value, this.oldValue);
+      } else {
+        changed = diff.basic(value, this.oldValue);
+      }
+
+      var oldValue = this.oldValue;
+
+      if (this.getChangeRecords) {
+        // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
+        // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
+        // in bind-each)
+        this.oldValue = diff.clone(value);
+      } else {
+        this.oldValue = value;
+      }
+
+      // If an array has changed calculate the splices and call the callback.
+      if (!changed && !this.forceUpdateNextSync) return;
+      this.forceUpdateNextSync = false;
+      if (Array.isArray(changed)) {
+        this.callback.call(this.callbackContext, value, oldValue, changed);
+      } else {
+        this.callback.call(this.callbackContext, value, oldValue);
+      }
+    }
+  }
+});
+
+function mapToProperty(property) {
+  return function(item) {
+    return item && item[property];
+  }
+}
+
+},{"chip-utils/class":2,"chip-utils/linked-list":3,"differences-js":4,"expressions-js":6}],21:[function(require,module,exports){
 module.exports = AnimatedBinding;
 var animation = require('./util/animation');
 var Binding = require('./binding');
@@ -1326,8 +2532,8 @@ Binding.extend(AnimatedBinding, {
    * Allow an element to use CSS3 transitions or animations to animate in or out of the page.
    */
   animateNode: function(direction, node, callback) {
-    var animateObject, className, classAnimateName, classWillName, whenDone,
-        methodAnimateName, methodWillName, methodDidName, dir, _this = this;
+    var animateObject, className, classAnimateName, classWillName, whenDone, duration,
+      methodAnimateName, methodWillName, methodDidName, dir, _this = this;
 
     if (this.fragments.disableAnimations) {
       return callback.call(_this);
@@ -1349,7 +2555,7 @@ Binding.extend(AnimatedBinding, {
       if (this.animateObject[0] === '.') {
         className = this.animateObject.slice(1);
       } else if (this.animateObject) {
-        animateObject = fragments.getAnimation(this.animateObject);
+        animateObject = this.fragments.getAnimation(this.animateObject);
         if (typeof animateObject === 'function') animateObject = new animateObject(this);
       }
     }
@@ -1382,7 +2588,7 @@ Binding.extend(AnimatedBinding, {
       }
       if (typeof animateObject[methodAnimateName] === 'function') {
         node.classList.add(classAnimateName);
-        var duration = getDuration.call(_this, node, direction);
+        duration = getDuration.call(_this, node, direction);
         if (duration) {
           onAnimationEnd(node, duration, whenDone);
         } else {
@@ -1395,7 +2601,7 @@ Binding.extend(AnimatedBinding, {
       node.offsetWidth = node.offsetWidth;
       node.classList.remove(classWillName);
       node.classList.add(classAnimateName);
-      var duration = getDuration.call(_this, node, direction);
+      duration = getDuration.call(_this, node, direction);
       if (duration) {
         onAnimationEnd(node, duration, whenDone);
       } else {
@@ -1476,7 +2682,7 @@ function onAnimationEnd(node, duration, callback) {
   node.addEventListener(animationEventName, onEnd);
 }
 
-},{"./binding":12,"./util/animation":17}],12:[function(require,module,exports){
+},{"./binding":22,"./util/animation":27}],22:[function(require,module,exports){
 module.exports = Binding;
 var ElementController = require('./element-controller');
 
@@ -1658,7 +2864,7 @@ function initNodePath(node, view) {
   return path;
 }
 
-},{"./element-controller":14}],13:[function(require,module,exports){
+},{"./element-controller":24}],23:[function(require,module,exports){
 var slice = Array.prototype.slice;
 module.exports = compile;
 
@@ -1830,7 +3036,7 @@ function notEmpty(value) {
   return Boolean(value);
 }
 
-},{}],14:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 module.exports = ElementController;
 var ObservableHash = require('observations-js').ObservableHash;
 
@@ -1857,20 +3063,21 @@ ObservableHash.extend(ElementController, {
     // Bind/unbind the observers for this hash
     if (value) {
       this._listeners.forEach(function(item) {
-        item.targetRef = addListener(this, item.target, item.eventName, item.listener);
+        item.targetRef = addListener(this, item.target, item.eventName, item.listener, item.capture);
       }, this);
     } else {
       this._listeners.forEach(function(item) {
-        removeListener(item.targetRef, item.eventName, item.listener);
+        removeListener(item.targetRef, item.eventName, item.listener, item.capture);
         delete item.targetRef;
       }, this);
     }
   },
 
 
-  listen: function(target, eventName, listener, context) {
+  listen: function(target, eventName, listener, context, capture) {
     var element = this instanceof Node ? this : this.element;
     if (typeof eventName === 'function') {
+      capture = context;
       context = listener;
       listener = eventName;
       eventName = target;
@@ -1901,6 +3108,7 @@ ObservableHash.extend(ElementController, {
       target: target,
       eventName: eventName,
       listener: listener,
+      capture: capture,
       targetRef: null
     };
 
@@ -1908,7 +3116,7 @@ ObservableHash.extend(ElementController, {
 
     if (this.listenersEnabled) {
       // If not bound will add on attachment
-      listenerData.targetRef = addListener(this, target, eventName, listener);
+      listenerData.targetRef = addListener(this, target, eventName, listener, capture);
     }
   }
 });
@@ -1926,21 +3134,21 @@ function getTarget(component, target) {
   return target;
 }
 
-function addListener(component, target, eventName, listener) {
+function addListener(component, target, eventName, listener, capture) {
   // If it's been moved to another document change targets to the relavent one
   if ((target = getTarget(component, target))) {
-    target.addEventListener(eventName, listener);
+    target.addEventListener(eventName, listener, capture);
     return target;
   }
 }
 
-function removeListener(target, eventName, listener) {
+function removeListener(target, eventName, listener, capture) {
   if (target) {
-    target.removeEventListener(eventName, listener);
+    target.removeEventListener(eventName, listener, capture);
   }
 }
 
-},{"observations-js":21}],15:[function(require,module,exports){
+},{"observations-js":11}],25:[function(require,module,exports){
 module.exports = Fragments;
 require('./util/polyfills');
 var Class = require('chip-utils/class');
@@ -2623,7 +3831,7 @@ function processOption(obj, fragments, methodName) {
   }
 }
 
-},{"./animated-binding":11,"./binding":12,"./compile":13,"./template":16,"./util/animation":17,"./util/polyfills":18,"./util/toFragment":19,"./view":20,"chip-utils/class":1}],16:[function(require,module,exports){
+},{"./animated-binding":21,"./binding":22,"./compile":23,"./template":26,"./util/animation":27,"./util/polyfills":28,"./util/toFragment":29,"./view":30,"chip-utils/class":2}],26:[function(require,module,exports){
 module.exports = Template;
 var View = require('./view');
 var Class = require('chip-utils/class');
@@ -2666,7 +3874,7 @@ Class.extend(Template, {
   }
 });
 
-},{"./view":20,"chip-utils/class":1}],17:[function(require,module,exports){
+},{"./view":30,"chip-utils/class":2}],27:[function(require,module,exports){
 // Helper methods for animation
 exports.makeElementAnimatable = makeElementAnimatable;
 exports.getComputedCSS = getComputedCSS;
@@ -2759,7 +3967,7 @@ function animateElement(css, options) {
   return playback;
 }
 
-},{}],18:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 
 
 
@@ -2786,7 +3994,7 @@ if (!Element.prototype.closest) {
   };
 }
 
-},{}],19:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 module.exports = toFragment;
 
 // Convert stuff into document fragments. Stuff can be:
@@ -2909,7 +4117,7 @@ if (!document.createElement('template').content instanceof DocumentFragment) {
   })();
 }
 
-},{}],20:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 module.exports = View;
 var Class = require('chip-utils/class');
 
@@ -3057,1209 +4265,6 @@ Class.extend(View, {
   }
 });
 
-},{"chip-utils/class":1}],21:[function(require,module,exports){
-
-exports.Observations = require('./src/observations');
-exports.Observer = require('./src/observer');
-exports.ObservableHash = require('./src/observable-hash');
-exports.ComputedProperty = require('./src/computed-properties/computed-property');
-exports.create = function() {
-  return new exports.Observations();
-};
-
-},{"./src/computed-properties/computed-property":22,"./src/observable-hash":28,"./src/observations":29,"./src/observer":30}],22:[function(require,module,exports){
-module.exports = ComputedProperty;
-var Class = require('chip-utils/class');
-
-
-/**
- * An object which will be replaced by its computed value
- */
-function ComputedProperty() {}
-
-Class.extend(ComputedProperty, {
-
-  get isComputedProperty() {
-    return true;
-  },
-
-  /**
-   * Add a computed property to a computed object
-   * @param {Object} computedObject The object which this property is being added to
-   * @param {String} propertyName The name of the property on the object that will be set
-   * @return {Observer} An observer which can be bound to the computed object
-   */
-  addTo: function(observations, computedObject, propertyName, context) {
-    throw new Error('Abstract function is not implemented');
-  },
-
-  watch: function(observations, expression, obj, property, context) {
-    if (typeof expression === 'string') {
-      // This is a computed expression
-      return observations.createObserver(expression, function(value) {
-        if (value === undefined) {
-          delete obj[property];
-        } else {
-          obj[property] = value;
-        }
-      });
-    } else if (expression.isComputedProperty) {
-      // Add ComputedProperty's observer to the observers and bind if enabled
-      return expression.addTo(observations, obj, property, context);
-    }
-  }
-});
-
-},{"chip-utils/class":1}],23:[function(require,module,exports){
-module.exports = ExprProperty;
-var ComputedProperty = require('./computed-property');
-
-/**
- * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
- * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
- * @param {String|ComputedProperty} thenExpression The expression which will be executed when `if` is truthy and the
- *                                                 result set on the object. May also nest computed properties.
- */
-function ExprProperty(expression) {
-  this.expression = expression;
-}
-
-
-ComputedProperty.extend(ExprProperty, {
-
-  addTo: function(observations, computedObject, propertyName, context) {
-    return this.watch(observations, this.expression, computedObject, propertyName, context);
-  }
-});
-
-},{"./computed-property":22}],24:[function(require,module,exports){
-module.exports = IfProperty;
-var ComputedProperty = require('./computed-property');
-
-/**
- * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
- * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
- * @param {String|ComputedProperty} thenExpression The expression which will be executed when `if` is truthy and the
- *                                                 result set on the object. May also nest computed properties.
- */
-function IfProperty(ifExpression, thenExpression) {
-  this.ifExpression = ifExpression;
-  this.thenExpression = thenExpression;
-}
-
-
-ComputedProperty.extend(IfProperty, {
-
-  addTo: function(observations, computedObject, propertyName, context) {
-    var observer = this.watch(observations, this.thenExpression, computedObject, propertyName, context);
-
-    return observations.createObserver(this.ifExpression, function(value) {
-      if (value && !observer.context) {
-        observer.bind(context);
-      } else if (!value && observer.context) {
-        observer.unbind();
-        observer.sync();
-      }
-    });
-  }
-});
-
-},{"./computed-property":22}],25:[function(require,module,exports){
-module.exports = MapProperty;
-var ComputedProperty = require('./computed-property');
-
-/**
- * Creates an object hash with the key being the value of the `key` property of each item in `sourceExpression` and the
- * value being the result of `expression`. `key` is optional, defaulting to "id" when not provided. `sourceExpression`
- * can resolve to an array or an object hash.
- * @param {Array|Object} sourceExpression An array or object whose members will be added to the map.
- * @param {String} keyExpression The name of the property to key against as values are added to the map.
- * @param {String} resultExpression [Optional] The expression evaluated against the array/object member whose value is
- *                                  added to the map. If not provided, the member will be added.
- * @return {Object} The object map of key=>value
- */
-function MapProperty(sourceExpression, keyExpression, resultExpression, removeExpression) {
-  var parts = sourceExpression.split(/\s+in\s+/);
-  this.sourceExpression = parts.pop();
-  this.itemName = parts.pop();
-  this.keyExpression = keyExpression;
-  this.resultExpression = resultExpression;
-  this.removeExpression = removeExpression;
-}
-
-
-ComputedProperty.extend(MapProperty, {
-
-  addTo: function(observations, computedObject, propertyName, context) {
-    var map = {};
-    var observers = {};
-    computedObject[propertyName] = map;
-    var add = this.addItem.bind(this, observations, computedObject, map, observers, context);
-    var remove = this.removeItem.bind(this, observations, computedObject, map, observers, context);
-    return observations.createMemberObserver(this.sourceExpression, add, remove, this);
-  },
-
-  addItem: function(observations, computedObject, map, observers, context, item) {
-    if (!this.getKey) {
-      this.getKey = observations.getExpression(this.keyExpression);
-    }
-
-    var proxy;
-    if (this.itemName) {
-      proxy = Object.create(context);
-      proxy[this.itemName] = item;
-    } else {
-      proxy = Object.create(item);
-      proxy.$$ = context;
-    }
-
-    var key = item && this.getKey.call(proxy);
-    if (!key) {
-      return;
-    }
-
-    if (observers.hasOwnProperty(key)) {
-      this.removeObserver(observers, key);
-    }
-
-    if (this.resultExpression) {
-      var observer = this.watch(observations, this.resultExpression, map, key, proxy);
-      if (!observer) {
-        throw new TypeError('Invalid resultExpression for computed.map');
-      }
-
-      observer.bind(proxy);
-      observers[key] = observer;
-    } else {
-      map[key] = item;
-    }
-  },
-
-  removeItem: function(observations, computedObject, map, observers, context, item) {
-    var key = item && this.getKey.call(item);
-    if (key) {
-      this.removeObserver(observers, key);
-      if (this.removeExpression) {
-        observations.get(context, this.removeExpression);
-      }
-      delete map[key];
-    }
-  },
-
-  removeObserver: function(observers, key) {
-    var observer = observers[key];
-    if (observer) {
-      observer.unbind();
-      delete observers[key];
-    }
-  }
-});
-
-},{"./computed-property":22}],26:[function(require,module,exports){
-module.exports = WhenProperty;
-var ComputedProperty = require('./computed-property');
-
-/**
- * Calls the `thenExpression` and assigns the results to the object's property when the `whenExpression` changes value
- * to anything other than a falsey value such as undefined. The return value of the `thenExpression` may be a Promise.
- *
- * @param {String} whenExpression The conditional expression use to determine when to call the `thenExpression`
- * @param {String} thenExpression The expression which will be executed when the `when` value changes and the result (or
- * the result of the returned promise) is set on the object.
- */
-function WhenProperty(whenExpression, thenExpression) {
-  if (!thenExpression) {
-    thenExpression = whenExpression;
-    whenExpression = 'true';
-  }
-
-  this.whenExpression = whenExpression;
-  this.thenExpression = thenExpression;
-}
-
-
-ComputedProperty.extend(WhenProperty, {
-
-  addTo: function(observations, computedObject, propertyName, context) {
-    if (!this.thenMethod) {
-      this.thenMethod = observations.getExpression(this.thenExpression);
-    }
-
-    return observations.createObserver(this.whenExpression, function(value) {
-      if (value) {
-        var result = this.thenMethod.call(context);
-        if (result && result.then) {
-          result.then(function(value) {
-            computedObject[propertyName] = value;
-            observations.sync();
-          }, function(err) {
-            computedObject[propertyName] = undefined;
-            observations.sync();
-          });
-        } else {
-          computedObject[propertyName] = result;
-        }
-      } else {
-        computedObject[propertyName] = undefined;
-      }
-    }, this);
-  }
-});
-
-},{"./computed-property":22}],27:[function(require,module,exports){
-var ComputedProperty = require('./computed-properties/computed-property');
-var ExprProperty = require('./computed-properties/expr');
-var MapProperty = require('./computed-properties/map');
-var IfProperty = require('./computed-properties/if');
-var WhenProperty = require('./computed-properties/when');
-
-
-exports.create = function(observations) {
-
-  /**
-   * Create an object whose properties are dynamically updated with the values of the mapped expressions. An expression
-   * can be a simple JavaScript expression with formatters (see https://github.com/chip-js/expressions-js) or it can be
-   * a URL for watching the REST APIs. The object will have an array named `computedObservers` which contain all the
-   * observers created to watch the properties. The `computedObservers` array has two additional methods, `enable` and
-   * `disable` which will turn the binding on/off. When disabled the properties are reset to undefined.
-   * @param {Object} map A hash of computed properties, expressions or URLs, that will be set and updated on the object
-   * @param {Object} options Options for this computed object:
-   *   * enabled {Boolean} Whether to enable this computed object. Default is true.
-   * @return {Object} An object which will contain all the values of the computed properties
-   */
-  function computed(map, options) {
-    return computed.extend({}, map, options);
-  }
-
-
-  /**
-   * Extends an existing object with the values of the computed properties in the map.
-   * @param {Object} obj The object to extend, will create, update, and delete properties from the object as they change
-   * @param {Object} map A hash of computed properties that will be mapped onto the object
-   * @param {Object} options Options for this computed object:
-   *   * enabled {Boolean} Whether to enable this computed object. Default is true.
-   * @return {Object} Returns the object passed in
-   */
-  computed.extend = function(obj, map, options) {
-    if (!obj || !map) {
-      throw new TypeError('computed.extend expects `obj` and `map` to be objects');
-    }
-    ensureObservers(obj, options);
-
-    Object.keys(map).forEach(function(property) {
-      var expression = map[property];
-      var observer;
-
-      if (typeof expression === 'string') {
-        // This is a computed expression
-        observer = observations.createObserver(expression, function(value) {
-          obj[property] = value;
-        });
-      } else if (expression && expression.isComputedProperty) {
-        // Add ComputedProperty's observer to the observers and bind if enabled
-        observer = expression.addTo(observations, obj, property, obj);
-      } else {
-        obj[property] = expression;
-      }
-
-      if (observer) {
-        obj.computedObservers.push(observer);
-        if (obj.computedObservers.enabled) {
-          observer.bind(options && options.context || obj);
-        }
-      }
-    });
-
-    return obj;
-  };
-
-
-  /**
-   * Assigns the result of the expression to the computed object's property.
-   * @param {String} expression The string expression
-   * @return {ComputedProperty}
-   */
-  computed.expr = function(expression) {
-    return new ExprProperty(expression);
-  };
-
-
-  /**
-   * Creates an object hash with the key being the value of the `key` property of each item in `sourceExpression` and the
-   * value being the result of `expression`. `key` is optional, defaulting to "id" when not provided. `sourceExpression`
-   * can resolve to an array or an object hash.
-   * @param {Array|Object} sourceExpression An array or object whose members will be added to the map.
-   * @param {String} keyName [Optional] The name of the property to key against as values are added to the map. Defaults
-   *                         to "id"
-   * @param {String} expression The expression evaluated against the array/object member whose value is added to the map.
-   * @return {ComputedProperty}
-   */
-  computed.map = function(sourceExpression, keyName, resultExpression, removeExpression) {
-    return new MapProperty(sourceExpression, keyName, resultExpression, removeExpression);
-  };
-
-
-  /**
-   * Assigns the result of the `thenExpression` to the object's property when the `ifExpression` is true.
-   * @param {String} ifExpression The conditional expression use to determine when to call the `thenExpression`
-   * @param {String} thenExpression The expression which will be executed when `if` is truthy and the result set on the
-   * object.
-   * @return {ComputedProperty}
-   */
-  computed.if = function(ifExpression, thenExpression) {
-    return new IfProperty(ifExpression, thenExpression);
-  };
-
-
-  /**
-   * Calls the `thenExpression` and assigns the results to the object's property when the `whenExpression` changes value
-   * to anything other than a falsey value such as undefined. The return value of the `thenExpression` may be a Promise.
-   * @param {String} whenExpression The conditional expression use to determine when to call the `thenExpression`
-   * @param {String} thenExpression The expression which will be executed when the `when` value changes and the result
-   * (or the result of the returned promise) is set on the object.
-   * @return {ComputedProperty}
-   */
-  computed.when = function(whenExpression, thenExpression) {
-    return new WhenProperty(whenExpression, thenExpression);
-  };
-  // Alias when to async for readability and backwards compatability
-  computed.async = computed.when;
-
-
-  // Make the ComputedProperty class available for extension
-  computed.ComputedProperty = ComputedProperty;
-
-  return computed;
-};
-
-
-/**
- * Ensures the observers array exists on an object, creating it if not and adding disable/enable functions to enable and
- * disable observing.
- * @param {Object} obj The object which ought to have an observers array on it
- * @param {Object} options Options for this computed object:
- *   * enabled {Boolean} Whether to enable this computed object. Default is true.
- * @return {Object} The `obj` that was passed in
- */
-function ensureObservers(obj, options) {
-  if (!obj.computedObservers) {
-    Object.defineProperty(obj, 'computedObservers', { value: [] });
-    obj.computedObservers.enabled = (!options || options.enabled !== false);
-
-    // Restarts observing changes
-    obj.computedObservers.enable = function() {
-      if (!this.enabled) {
-        this.enabled = true;
-        this.forEach(function(observer) {
-          observer.bind(options && options.context || obj);
-        });
-      }
-    };
-
-    // Stops observing changes and resets all computed properties to undefined
-    obj.computedObservers.disable = function() {
-      if (this.enabled) {
-        this.enabled = false;
-        this.forEach(function(observer) {
-          observer.unbind();
-          observer.sync();
-        });
-      }
-    };
-  }
-  return obj;
-}
-
-},{"./computed-properties/computed-property":22,"./computed-properties/expr":23,"./computed-properties/if":24,"./computed-properties/map":25,"./computed-properties/when":26}],28:[function(require,module,exports){
-module.exports = ObservableHash;
-var Class = require('chip-utils/class');
-var deepDelimiter = /(?:\[\]|\{\})\.?/i;
-
-/**
- * An object for storing data to be accessed by an application. Has methods for easily computing and watching data
- * changes.
- * @param {Observations} observations An instance of the Observations class this has is bound to
- */
-function ObservableHash(observations) {
-  var enabled = true;
-  var _observers = [];
-  _observers.enabled = true;
-
-  Object.defineProperties(this, {
-    _context: { writable: true, value: this },
-    _observations: { value: observations },
-    _namespaces: { value: [] },
-    _observers: { value: _observers },
-    computedObservers: { value: _observers } // alias to work with the computed system
-  });
-}
-
-
-Class.extend(ObservableHash, {
-
-  /**
-   * Whether or not this hash is currently enabled and running the observations/computations. When disabled, watchers
-   * and all computed properties will be cleared out with `undefined`. The hash will be ready for garbage collection.
-   * @return {Boolean} If the hash is enabled, default `true`
-   */
-  get observersEnabled() {
-    return this._observers.enabled;
-  },
-  set observersEnabled(value) {
-    // Bind/unbind the observers for this hash
-    value ? this.observersStart() : this.observersStop(true);
-  },
-
-  /**
-   * Starts the observers watching their values
-   */
-  observersStart: function() {
-    this._observers.enabled = true;
-    this._observers.forEach(this.observersBindHelper.bind(this), this);
-
-    // Set namespaced hashes to the same value
-    this._namespaces.forEach(this.observersStartHelper.bind(this), this);
-  },
-
-  observersBindHelper: function(observer) {
-    observer.bind(this._context);
-  },
-
-  observersStartHelper: function(namespace) {
-    this[namespace].observersStart();
-  },
-
-  /**
-   * Stops the observers watching and responding to changes, optionally clearing out the values
-   * @param {Boolean} clearValues Whether to clear the values out to `undefined` or leave them as-is
-   */
-  observersStop: function(clearValues) {
-    this._observers.enabled = false;
-    this._observers.forEach(this.observersUnbindHelper.bind(this, clearValues));
-
-    // Set namespaced hashes to the same value
-    this._namespaces.forEach(this.observersStopHelper.bind(this, clearValues), this);
-  },
-
-  observersUnbindHelper: function(clearValues, observer) {
-    observer.unbind();
-    if (clearValues) observer.sync();
-  },
-
-  observersStopHelper: function(clearValues, namespace) {
-    this[namespace].observersStop(clearValues);
-  },
-
-  /**
-   * Get the value of an expression
-   * @param {String} expression The JavaScript expression to evaluate
-   * @return {mixed} The value of the expression
-   */
-  get: function(expression) {
-    return this._observations.get(this._context, expression);
-  },
-
-  /**
-   * Set the value of an expression
-   * @param {String} expression The JavaScript expression to set
-   * @param {mixed} value The value you'd like to set the expression to
-   */
-  set: function(expression, value) {
-    return this._observations.set(this._context, expression, value);
-  },
-
-  /**
-   * Add computed properties to this hash. If `name` is provided it will add the computed properties to that namespace
-   * on the hash. Otherwise they will be added directly to the hash.
-   * @param {String} name [OPTIONAL] The namespace to add the computed properties under
-   * @param {Object} map The map of computed properties that will be set on this ObservableHash
-   */
-  addComputed: function(namespace, map) {
-    if (typeof namespace === 'string' && typeof map === 'object') {
-      if (!this[namespace]) {
-        this[namespace] = new ObservableHash(this._observations);
-        this[namespace].observersEnabled = this.observersEnabled;
-        this._namespaces.push(namespace);
-      }
-      this._observations.computed.extend(this[namespace], map, { context: this[namespace]._context });
-      return this[namespace];
-    } else if (namespace && typeof namespace === 'object') {
-      this._observations.computed.extend(this, namespace, { context: this._context });
-      return this;
-    } else {
-      throw new TypeError('addComputed must have a map object');
-    }
-  },
-
-  /**
-   * Watch this object for changes in the value of the expression
-   * @param {String} expression The expression to observe
-   * @param {Function} onChange The function which will be called when the expression value changes
-   * @return {Observer} The observer created
-   */
-  watch: function(expression, onChange, callbackContext) {
-    var observer = this._observations.createObserver(expression, onChange, callbackContext || this);
-    this._observers.push(observer);
-    if (this.observersEnabled) observer.bind(this._context);
-    return observer;
-  },
-
-  /**
-   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
-   * @param {String} expression The expression to observe
-   * @param {Function} onAdd The function which will be called when a member is added to the source
-   * @param {Function} onRemove The function which will be called when a member is removed from the source
-   * @return {Observer} The observer created
-   */
-  track: function(expression, onAdd, onRemove, callbackContext) {
-    if (deepDelimiter.test(expression)) {
-      return this.trackDeeply(expression, onAdd, onRemove, callbackContext);
-    }
-    var observer = this._observations.createMemberObserver(expression, onAdd, onRemove, callbackContext || this);
-    this._observers.push(observer);
-    if (this.observersEnabled) observer.bind(this._context);
-    return observer;
-  },
-
-  /**
-   * Works like `track` but allows it to track deeply using `[]` and `{}` in the expression. Example:
-   * ```
-   * data.addComputed({
-   *   widgets: 'getArrayOfWidgets()',
-   *   widgetTags: computed.map('w in widgets', 'w.id', 'w.tags')
-   * });
-   * // know when a tag is added
-   * data.trackDeeply('widgets[].tags[].tagName', function(tagAdded) { console.log('tag added', tagAdded )});
-   * // widgetTags is an object hash of arrays, so we need to use two levels next to each other
-   * data.trackDeeply('widgetTags{}[].tagName', function(tagAdded) { console.log('tag added', tagAdded )});
-   * ```
-   * @param {String} expression The expression to observe with `{}` and `[]` indicating
-   * @param {Function} onAdd The function which will be called when a member is added to the source
-   * @param {Function} onRemove The function which will be called when a member is removed from the source
-   * @return {Observer} The observer created
-   */
-  trackDeeply: function(expression, onAdd, onRemove, callbackContext) {
-    if (!deepDelimiter.test(expression)) {
-      return this.track(expression, onAdd, onRemove, callbackContext);
-    }
-    callbackContext = callbackContext || this;
-    var observers = new WeakMap();
-    var observations = this._observations;
-    var steps = expression.split(deepDelimiter);
-    var lastIndex = steps.length - 1;
-
-    var removedCallback = function(item) {
-      var observer = observers.get(item);
-      if (observer) {
-        observer.unbind();
-        observer.sync();
-        observers.delete(item);
-      }
-    };
-
-    // Add a unique onAdd callback for each step of the observation
-    var addedCallbacks = steps.slice(1, -1).map(function(expr, index) {
-      // Observe the next set of members
-      return function(item) {
-        if (!item) return;
-        var observer = observations.observeMembers(
-          expr || 'this',
-          addedCallbacks[index + 1],
-          removedCallbacks[index + 1],
-          callbackContext
-        );
-        observers.set(item, observer);
-        observer.bind(item);
-        return observer;
-      };
-    });
-
-    // Removed callbacks are all the same except the last
-    var removedCallbacks = steps.map(function() {
-      return removedCallback;
-    });
-
-    // Add last callback
-    if (steps[lastIndex]) {
-      // Observe the item's property
-      addedCallbacks.push(function(item, key) {
-        if (!item) return;
-        var observer = observations.createObserver(steps[lastIndex], function(value, oldValue) {
-          if (oldValue != null && typeof onRemove === 'function') {
-            onRemove.call(callbackContext, oldValue, key, item);
-          }
-          if (value != null && typeof onAdd === 'function') {
-            onAdd.call(callbackContext, value, key, item);
-          }
-        });
-        observers.set(item, observer);
-        observer.bind(item);
-        return observer;
-      });
-    } else {
-      addedCallbacks.push(onAdd);
-      removedCallbacks[lastIndex] = onRemove;
-    }
-
-    var observer = observations.observeMembers(steps[0], addedCallbacks[0], removedCallbacks[0], callbackContext);
-    this._observers.push(observer);
-    if (this.observersEnabled) observer.bind(this._context);
-    return observer;
-  }
-
-});
-
-},{"chip-utils/class":1}],29:[function(require,module,exports){
-(function (global){
-module.exports = Observations;
-var Class = require('chip-utils/class');
-var LinkedList = require('chip-utils/linked-list');
-var Observer = require('./observer');
-var computed = require('./computed');
-var ObservableHash = require('./observable-hash');
-var expressions = require('expressions-js');
-var requestAnimationFrame = global.requestAnimationFrame || setTimeout;
-var cancelAnimationFrame = global.cancelAnimationFrame || clearTimeout;
-
-
-function Observations() {
-  // Bind all methods to this instance
-  Object.getOwnPropertyNames(this.constructor.prototype).forEach(function(name) {
-    if (typeof this[name] === 'function') {
-      this[name] = this[name].bind(this);
-    }
-  }, this);
-  this.globals = {};
-  this.formatters = {};
-  this.observers = new LinkedList();
-  this.callbacks = [];
-  this.listeners = [];
-  this.syncing = false;
-  this.callbacksRunning = false;
-  this.rerun = false;
-  this.cycles = 0;
-  this.maxCycles = 10;
-  this.timeout = null;
-  this.pendingSync = null;
-  this.computed = computed.create(this);
-  this.expressions = expressions;
-  this.windows = [ window ];
-}
-
-
-Class.extend(Observations, {
-  ObservableHash: ObservableHash,
-
-  /**
-   * Creates a new ObservableHash with useful methods for managing data using watch, track, and computed.
-   * @param {Object} computedMap [OPTIONAL] An initial computed map for this hash
-   * @return {ObservableHash} An object for putting your data on for accessibility
-   */
-  createHash: function(computedMap) {
-    var hash = new ObservableHash(this);
-    if (computedMap) hash.addComputed(computedMap);
-    return hash;
-  },
-
-  /**
-   * Observes any changes to the result of the expression on the context object and calls the callback.
-   * @param {Object} context The context to bind the expression against
-   * @param {String} expression The expression to observe
-   * @param {Function} onChange The function which will be called when the expression value changes
-   * @return {Observer} The observer created
-   */
-  watch: function(context, expression, onChange, callbackContext) {
-    var observer = this.createObserver(expression, onChange, callbackContext || context);
-    observer.bind(context);
-    return observer;
-  },
-
-  // Alias for `watch`, DEPRECATED
-  observe: function(context, expression, onChange, callbackContext) {
-    return this.watch(context, expression, onChange, callbackContext);
-  },
-
-  /**
-   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
-   * @param {Object} context The context to bind the expression against
-   * @param {String} expression The expression to observe
-   * @param {Function} onAdd The function which will be called when a member is added to the source
-   * @param {Function} onRemove The function which will be called when a member is removed from the source
-   * @return {Observer} The observer created
-   */
-  track: function(context, expression, onAdd, onRemove, callbackContext) {
-    var observer = this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
-    observer.bind(context);
-    return observer;
-  },
-
-  // Alias for `createMemberObserver`, DEPRECATED
-  observeMembers: function(expression, onAdd, onRemove, callbackContext) {
-    return this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
-  },
-
-  /**
-   * Creates a new observer attached to this observations object. When the observer is bound to a context it will be
-   * added to this `observations` and synced when this `observations.sync` is called.
-   * @param {String} expression The expression to observe
-   * @param {Function} callback The function which will be called when the expression value changes
-   * @return {Observer} The observer
-   */
-  createObserver: function(expression, callback, callbackContext) {
-    return new Observer(this, expression, callback, callbackContext);
-  },
-
-  /**
-   * Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
-   * @param {String} expression The expression to observe
-   * @param {Function} onAdd The function which will be called when a member is added to the source
-   * @param {Function} onRemove The function which will be called when a member is removed from the source
-   * @return {Observer} The observer
-   */
-  createMemberObserver: function(expression, onAdd, onRemove, callbackContext) {
-    if (!onAdd) onAdd = function(){};
-    if (!onRemove) onRemove = function(){};
-
-    var observer = this.createObserver(expression, this.createMemberObserverCallback.bind(this, onAdd, onRemove, callbackContext));
-
-    observer.getChangeRecords = true;
-    return observer;
-  },
-
-  createMemberObserverCallback: function(onAdd, onRemove, callbackContext, source, oldValue, changes) {
-    if (changes) {
-      // call onRemoved on everything first
-      changes.forEach(function(change) {
-        if (change.type === 'splice') {
-          change.removed.forEach(function(item, index) {
-            // Only call onRemove if this item was removed completely, not if it just changed location in the array
-            if (source.indexOf(item) === -1) {
-              onRemove.call(callbackContext, item, index + change.index);
-            }
-          }, callbackContext);
-        } else {
-          if (change.oldValue != null) {
-            onRemove.call(callbackContext, change.oldValue, change.name);
-          }
-        }
-      });
-
-      // call onAdded second, allowing for items that changed location to be accurately processed
-      changes.forEach(function(change) {
-        if (change.type === 'splice') {
-          source.slice(change.index, change.index + change.addedCount).forEach(function(item, index) {
-            // Only call onAdd if this item was added, not if it changed location in the array
-            if (oldValue.indexOf(item) === -1) {
-              onAdd.call(callbackContext, item, index + change.index, source);
-            }
-          }, callbackContext);
-        } else {
-          var value = source[change.name];
-          if (value != null) {
-            onAdd.call(callbackContext, value, change.name, source);
-          }
-        }
-      });
-    } else if (Array.isArray(source)) {
-      source.forEach(onAdd, callbackContext);
-    } else if (source && typeof source === 'object') {
-      Object.keys(source).forEach(function(key) {
-        var value = source[key];
-        if (value != null) {
-          onAdd.call(callbackContext, value, key, source);
-        }
-      });
-    } else if (Array.isArray(oldValue)) {
-      oldValue.forEach(onRemove, callbackContext);
-    } else if (oldValue && typeof oldValue === 'object') {
-      // If undefined (or something that isn't an array/object) remove the observers
-      Object.keys(oldValue).forEach(function(key) {
-        var value = oldValue[key];
-        if (value != null) {
-          onRemove.call(callbackContext, value, key, oldValue);
-        }
-      });
-    }
-  },
-
-
-  /**
-   * Parses an expression into a function using the globals and formatters objects associated with this instance of
-   * observations.
-   * @param {String} expression The expression string to parse into a function
-   * @param {Object} options Additional options to pass to the parser.
-   *                        `{ isSetter: true }` will make this expression a setter that accepts a value.
-   *                        `{ extraArgs: [ 'argName' ]` will make extra arguments to pass in to the function.
-   * @return {Function} A function that may be called to execute the expression (call it against a context using=
-   * `func.call(context)` in order to get the data from the context correct)
-   */
-  getExpression: function(expression, options) {
-    if (options && options.isSetter) {
-      return expressions.parseSetter(expression, this.globals, this.formatters, options.extraArgs);
-    } else if (options && options.extraArgs) {
-      var allArgs = [expression, this.globals, this.formatters].concat(options.extraArgs);
-      return expressions.parse.apply(expressions, allArgs);
-    } else {
-      return expressions.parse(expression, this.globals, this.formatters);
-    }
-  },
-
-
-  /**
-   * Gets the value of an expression from the given context object
-   * @param {Object} context The context object the expression will be evaluated against
-   * @param {String} expression The expression to evaluate
-   * @return {mixed} The result of the expression against the context
-   */
-  get: function(context, expression) {
-    return this.getExpression(expression).call(context);
-  },
-
-
-  /**
-   * Sets the value on the expression in the given context object
-   * @param {Object} context The context object the expression will be evaluated against
-   * @param {String} expression The expression to set a value with
-   * @param {mixed} value The value to set on the expression
-   * @return {mixed} The result of the expression against the context
-   */
-  set: function(source, expression, value) {
-    return this.getExpression(expression, { isSetter: true }).call(source, value);
-  },
-
-
-  // Schedules an observer sync cycle which checks all the observers to see if they've changed.
-  sync: function(callback) {
-    if (typeof callback === 'function') {
-      this.afterSync(callback);
-    }
-
-    if (this.pendingSync) {
-      return false;
-    }
-
-    this.windows = this.windows.filter(this.removeClosed);
-    this.pendingSync = this.windows.map(this.queueSync);
-    return true;
-  },
-
-
-  // Runs the observer sync cycle which checks all the observers to see if they've changed.
-  syncNow: function(callback) {
-    if (typeof callback === 'function') {
-      this.afterSync(callback);
-    }
-
-    if (this.pendingSync) {
-      this.pendingSync.forEach(this.cancelQueue);
-      this.pendingSync = null;
-    }
-
-    if (this.syncing) {
-      this.rerun = true;
-      return false;
-    }
-
-    this.runSync();
-    return true;
-  },
-
-
-  runSync: function() {
-    this.syncing = true;
-    this.rerun = true;
-    this.cycles = 0;
-
-    var i, l;
-
-    // Allow callbacks to run the sync cycle again immediately, but stop at `maxCyles` (default 10) cycles so we don't
-    // run infinite loops
-    while (this.rerun) {
-      if (++this.cycles === this.maxCycles) {
-        throw new Error('Infinite observer syncing, an observer is calling Observer.sync() too many times');
-      }
-      this.rerun = false;
-      // the observer array may increase or decrease in size (remaining observers) during the sync
-      this.observers.forEach(syncObserver);
-    }
-
-    this.callbacksRunning = true;
-
-    var callbacks = this.callbacks;
-    this.callbacks = [];
-    while (callbacks.length) {
-      callbacks.shift()();
-    }
-
-    for (i = 0, l = this.listeners.length; i < l; i++) {
-      var listener = this.listeners[i];
-      listener();
-    }
-
-    this.callbacksRunning = false;
-    this.syncing = false;
-    this.cycles = 0;
-  },
-
-
-  // After the next sync (or the current if in the middle of one), run the provided callback
-  afterSync: function(callback) {
-    if (typeof callback !== 'function') {
-      throw new TypeError('callback must be a function');
-    }
-
-    if (this.callbacksRunning) {
-      this.sync();
-    }
-
-    this.callbacks.push(callback);
-  },
-
-
-  onSync: function(listener) {
-    if (typeof listener !== 'function') {
-      throw new TypeError('listener must be a function');
-    }
-
-    this.listeners.push(listener);
-  },
-
-
-  offSync: function(listener) {
-    if (typeof listener !== 'function') {
-      throw new TypeError('listener must be a function');
-    }
-
-    var index = this.listeners.indexOf(listener);
-    if (index !== -1) {
-      this.listeners.splice(index, 1).pop();
-    }
-  },
-
-
-  // Adds a new observer to be synced with changes. If `skipUpdate` is true then the callback will only be called when a
-  // change is made, not initially.
-  add: function(observer, skipUpdate) {
-    this.observers.add(observer);
-    if (!skipUpdate) {
-      observer.forceUpdateNextSync = true;
-      observer.sync();
-    }
-  },
-
-
-  // Removes an observer, stopping it from being run
-  remove: function(observer) {
-    this.observers.remove(observer);
-  },
-
-  removeClosed: function(win) {
-    return !win.closed;
-  },
-
-  queueSync: function(win) {
-    var reqId = win.requestAnimationFrame(this.syncNow);
-    return [win, reqId];
-  },
-
-  cancelQueue: function(queue) {
-    var win = queue[0];
-    var reqId = queue[1];
-    win.cancelAnimationFrame(reqId);
-  },
-});
-
-function syncObserver(observer) {
-  observer.sync();
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-
-},{"./computed":27,"./observable-hash":28,"./observer":30,"chip-utils/class":1,"chip-utils/linked-list":2,"expressions-js":5}],30:[function(require,module,exports){
-module.exports = Observer;
-var Class = require('chip-utils/class');
-var LinkedList = require('chip-utils/linked-list');
-var expressions = require('expressions-js');
-var diff = require('differences-js');
-
-// # Observer
-
-// Defines an observer class which represents an expression. Whenever that expression returns a new value the `callback`
-// is called with the value.
-//
-// If the old and new values were either an array or an object, the `callback` also
-// receives an array of splices (for an array), or an array of change objects (for an object) which are the same
-// format that `Array.observe` and `Object.observe` return
-// <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/observe>.
-function Observer(observations, expression, callback, callbackContext) {
-  if (typeof expression === 'function') {
-    this.getter = expression;
-    this.setter = expression;
-  } else {
-    this.getter = expressions.parse(expression, observations.globals, observations.formatters);
-  }
-  this.observations = observations;
-  this.expression = expression;
-  this.callback = callback;
-  this.callbackContext = callbackContext;
-  this.getChangeRecords = false;
-  this.skip = false;
-  this.forceUpdateNextSync = false;
-  this.context = null;
-  this.oldValue = undefined;
-  LinkedList.makeNode(this);
-}
-
-Class.extend(Observer, {
-
-  get getChangeRecords() {
-    return this._getChangeRecords;
-  },
-
-  set getChangeRecords(value) {
-    this._getChangeRecords = Boolean(value);
-    if (value && this.oldValue) {
-      this.oldValue = diff.clone(this.oldValue);
-    }
-  },
-
-  // Binds this expression to a given context
-  bind: function(context, skipUpdate) {
-    this.context = context;
-    if (this.callback) {
-      this.observations.add(this, skipUpdate);
-    }
-  },
-
-  // Unbinds this expression
-  unbind: function() {
-    this.observations.remove(this);
-    this.context = null;
-  },
-
-  // Closes the observer, cleaning up any possible memory-leaks
-  close: function() {
-    this.unbind();
-    this.callback = null;
-    this.callbackContext = null;
-  },
-
-  // Returns the current value of this observer
-  get: function() {
-    if (this.context) {
-      return this.getter.call(this.context);
-    }
-  },
-
-  // Sets the value of this expression
-  set: function(value) {
-    if (!this.context) return;
-    if (this.setter === false) return;
-    if (!this.setter) {
-      try {
-        this.setter = typeof this.expression === 'string'
-          ? expressions.parseSetter(this.expression, this.observations.globals, this.observations.formatters)
-          : false;
-      } catch (e) {
-        this.setter = false;
-      }
-      if (!this.setter) return;
-    }
-
-    try {
-      var result = this.setter.call(this.context, value);
-    } catch(e) {
-      return;
-    }
-
-    // We can't expect code in fragments outside Observer to be aware of "sync" since observer can be replaced by other
-    // types (e.g. one without a `sync()` method, such as one that uses `Object.observe`) in other systems.
-    this.sync();
-    this.observations.sync();
-    return result;
-  },
-
-
-  // Instructs this observer to not call its `callback` on the next sync, whether the value has changed or not
-  skipNextSync: function() {
-    this.skip = true;
-  },
-
-
-  // Syncs this observer now, calling the callback immediately if there have been changes
-  sync: function() {
-    var value = this.get();
-
-    // Don't call the callback if `skipNextSync` was called on the observer
-    if (this.skip || !this.callback) {
-      this.skip = false;
-
-      if (this.getChangeRecords) {
-        // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
-        // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
-        // in bind-each)
-        this.oldValue = diff.clone(value);
-      } else {
-        this.oldValue = value;
-      }
-    } else {
-      var change;
-      var useCompareBy = this.getChangeRecords &&
-                         this.compareBy &&
-                         Array.isArray(value) &&
-                         Array.isArray(this.oldValue);
-
-      if (useCompareBy) {
-        var compareExpression = this.compareBy;
-        var name = this.compareByName;
-        var index = this.compareByIndex || '__index__';
-        var ctx = this.context;
-        var globals = this.observations.globals;
-        var formatters = this.observations.formatters;
-        var oldValue = this.oldValue;
-        if (!name) {
-          name = '__item__';
-          // Turn "id" into "__item__.id"
-          compareExpression = name + '.' + compareExpression;
-        }
-
-        var getCompareValue = expressions.parse(compareExpression, globals, formatters, name, index);
-        changed = diff.values(value.map(getCompareValue, ctx), oldValue.map(getCompareValue, ctx));
-      } else if (this.getChangeRecords) {
-        changed = diff.values(value, this.oldValue);
-      } else {
-        changed = diff.basic(value, this.oldValue);
-      }
-
-      var oldValue = this.oldValue;
-
-      if (this.getChangeRecords) {
-        // Store an immutable version of the value, allowing for arrays and objects to change instance but not content and
-        // still refrain from dispatching callbacks (e.g. when using an object in bind-class or when using array formatters
-        // in bind-each)
-        this.oldValue = diff.clone(value);
-      } else {
-        this.oldValue = value;
-      }
-
-      // If an array has changed calculate the splices and call the callback.
-      if (!changed && !this.forceUpdateNextSync) return;
-      this.forceUpdateNextSync = false;
-      if (Array.isArray(changed)) {
-        this.callback.call(this.callbackContext, value, oldValue, changed);
-      } else {
-        this.callback.call(this.callbackContext, value, oldValue);
-      }
-    }
-  }
-});
-
-function mapToProperty(property) {
-  return function(item) {
-    return item && item[property];
-  }
-}
-
-},{"chip-utils/class":1,"chip-utils/linked-list":2,"differences-js":3,"expressions-js":5}]},{},[10])(10)
+},{"chip-utils/class":2}]},{},[1])(1)
 });
 //# sourceMappingURL=fragments.js.map
