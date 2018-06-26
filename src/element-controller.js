@@ -14,11 +14,11 @@ function ElementController(observations) {
 
 ObservableHash.extend(ElementController, {
   get listenersEnabled() {
-    return this._listeners.enabled;
+    return this._listeners && this._listeners.enabled;
   },
 
   set listenersEnabled(value) {
-    if (this.enabled === value) return;
+    if (!this._listeners || this.enabled === value) return;
     this._listeners.enabled = value;
 
     // Bind/unbind the observers for this hash
